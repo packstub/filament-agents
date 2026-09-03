@@ -2,40 +2,37 @@
 
 namespace Packstub\Agents\Tests\Fixtures\Tools;
 
+use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
-use Laravel\Mcp\Response;
-use Laravel\Mcp\ResponseFactory;
-use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
+use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
-use Packstub\Agents\Authorization\AgentGate;
-use Packstub\Agents\Enums\ToolMode;
-use Packstub\Agents\Mcp\GovernedTool;
+use Packstub\Agents\Mcp\AgentTool;
+use Packstub\Agents\Support\AgentResources;
+use Packstub\Agents\Tests\Fixtures\Filament\Resources\Widgets\WidgetResource;
 use Packstub\Agents\Tests\Fixtures\Models\Widget;
 
 #[IsReadOnly]
-#[IsIdempotent]
-class ListWidgets extends GovernedTool
+#[Description('Find widgets by name, status and price.')]
+class ListWidgets extends AgentTool
 {
-    protected string $description = 'List all widgets.';
+    protected ?string $ability = 'widgets.view';
 
-    public static function requiredMode(): ToolMode
+    protected function run(Request $request): array
     {
-        return ToolMode::Read;
+        $filters = AgentResources::normalizeFilters('widgets', (array) ($request->get('filters') ?? []));
+        $query = AgentResources::apply('widgets', Widget::query(), $filters);
+
+        return [
+            'total' => $query->count(),
+            'rows' => $query->limit($this->limit($request))->get()->map(fn (Widget $w) => WidgetResource::agentSummary($w))->all(),
+        ];
     }
 
-    public function handle(Request $request, AgentGate $gate): ResponseFactory|Response
+    public function schema(JsonSchema $schema): array
     {
-        $this->authorizeOrFail($gate, $request);
-
-        return Response::structured([
-            'widgets' => Widget::query()
-                ->get()
-                ->map(fn (Widget $widget): array => [
-                    'id' => $widget->id,
-                    'name' => $widget->name,
-                    'description' => $widget->description,
-                ])
-                ->all(),
-        ]);
+        return [
+            'filters' => $schema->object(AgentResources::filterSchema($schema, 'widgets')),
+            'limit' => $schema->integer(),
+        ];
     }
 }

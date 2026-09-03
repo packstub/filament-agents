@@ -4,30 +4,42 @@ namespace Packstub\Agents\Mcp;
 
 use Laravel\Mcp\Server;
 use Laravel\Mcp\Server\Contracts\Transport;
+use Packstub\Agents\Facades\Agents;
 
+/**
+ * The product as an MCP server: POST {mcp.path} with a bearer token from the
+ * Agent access page, and Claude Code, Claude Desktop or any MCP client works
+ * inside the workspace with the person's own role.
+ *
+ * Subclass it to give the server its name, version, instructions and the
+ * tool list (`protected array $tools = [...]`, reads first); the chat agent
+ * reads that same list, so adding a tool there adds it everywhere. Used as
+ * is, it serves the tools registered on AgentsPlugin under the assistant's
+ * name.
+ */
 class AgentServer extends Server
 {
-    protected string $name = 'Packstub Agents';
+    protected string $name = 'Assistant';
+
+    protected string $version = '1.0.0';
 
     protected string $instructions = <<<'MARKDOWN'
-        This MCP server exposes a governed set of tools over this Laravel
-        application. Governance rules:
-
-        - You only see tools your agent token has been granted. Calling any
-          other tool fails.
-        - Read tools return data directly.
-        - Write and destructive tools NEVER change anything immediately. They
-          return a proposed change (a field-level diff) and file a pending
-          approval; a human administrator reviews and applies or rejects it in
-          the control plane. Report the approval id back to the user so they
-          can follow up.
-        - Every call — allowed or denied — is written to an audit trail.
+        This MCP server exposes a Filament panel to agents. You see the tools the person's role allows; write tools run
+        immediately with the token holder's role when the token may write, so read the record first when in doubt.
         MARKDOWN;
+
+    public int $defaultPaginationLength = 50;
 
     public function __construct(Transport $transport)
     {
         parent::__construct($transport);
 
-        $this->tools = config('packstub-agents.tools', []);
+        if ($this->tools === []) {
+            $this->tools = Agents::toolClasses();
+        }
+
+        if ($this->name === 'Assistant') {
+            $this->name = Agents::name();
+        }
     }
 }

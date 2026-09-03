@@ -1,0 +1,46 @@
+<?php
+
+namespace App\Ai\Agents;
+
+use Packstub\Agents\Ai\Agent;
+
+/**
+ * "{{ name }}" — the in-panel assistant. It works through the tools listed on
+ * the MCP server, answers in the person's language, and can only change data
+ * through tools the person's role allows, each approved first in the chat.
+ *
+ * Fill persona() and domain(); append domain rules and context lines by
+ * overriding workRules(), answerRules() and context() and merging the parent.
+ */
+class {{ class }} extends Agent
+{
+    protected function persona(): string
+    {
+        return 'You are {{ name }}, the assistant of this workspace. You live inside the panel and work with its data through tools.';
+    }
+
+    protected function domain(): string
+    {
+        return <<<'PROMPT'
+        - Describe the records, the pipeline they move through, the rules the workspace configured and the roles people have.
+        PROMPT;
+    }
+
+    /** @return list<string> */
+    protected function workRules(): array
+    {
+        return [
+            ...parent::workRules(),
+            // 'Order references can be the number (RO-00012), the shop number (#1042) or an id.',
+        ];
+    }
+
+    /** @return list<string> */
+    protected function context(): array
+    {
+        return [
+            ...parent::context(),
+            // 'Stores: '.Store::query()->pluck('code')->join(', ').'.',
+        ];
+    }
+}
