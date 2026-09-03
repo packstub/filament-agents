@@ -1,6 +1,6 @@
 {
     "name": "packstub/filament-agents",
-    "description": "Governed AI-agent access for Filament v5 panels — MCP tool exposure with capability grants, preview-and-approve write safety, and an append-only audit trail with a Filament control plane.",
+    "description": "An in-panel AI assistant and an MCP server for Filament v5 panels, built on laravel/ai and laravel/mcp — one tool list for both, role-based authorization, approve-in-chat writes, live tables and charts in answers, per-workspace budgets and an operator limits page.",
     "keywords": [
         "filament",
         "filament-plugin",
@@ -8,12 +8,11 @@
         "filament-v5",
         "ai",
         "agents",
+        "assistant",
+        "chat",
         "mcp",
         "mcp-server",
-        "governance",
-        "audit",
-        "approvals",
-        "capability-grants",
+        "laravel-ai",
         "laravel"
     ],
     "type": "library",
@@ -28,14 +27,20 @@
     "require": {
         "php": "^8.4",
         "filament/filament": "^5.0",
+        "laravel/ai": "^0.11",
         "laravel/framework": "^13.0",
         "laravel/mcp": "^0.9",
+        "laravel/sanctum": "^4.0",
         "spatie/laravel-package-tools": "^1.93"
     },
     "require-dev": {
-        "orchestra/testbench": "^11.0",
-        "phpunit/phpunit": "^12.0",
-        "laravel/pint": "^1.13"
+        "orchestra/testbench": "^11.2",
+        "phpunit/phpunit": "^13.3",
+        "laravel/pint": "^1.13",
+        "pestphp/pest": "^5.1",
+        "pestphp/pest-plugin-laravel": "^5.0",
+        "pestphp/pest-plugin-livewire": "^5.0",
+        "orchestra/pest-plugin-testbench": "^5.0"
     },
     "autoload": {
         "psr-4": {
@@ -48,8 +53,8 @@
         }
     },
     "scripts": {
-        "test": "phpunit -c phpunit.xml",
-        "test:filter": "phpunit -c phpunit.xml --filter",
+        "test": "pest",
+        "test:filter": "pest --filter",
         "lint": "vendor/bin/pint",
         "lint:test": "vendor/bin/pint --test"
     },
@@ -57,10 +62,13 @@
         "laravel": {
             "providers": [
                 "Packstub\\Agents\\AgentsServiceProvider"
-            ]
+            ],
+            "aliases": {
+                "Agents": "Packstub\\Agents\\Facades\\Agents"
+            }
         },
         "branch-alias": {
-            "dev-main": "0.x-dev"
+            "dev-main": "1.x-dev"
         }
     },
     "minimum-stability": "dev",
@@ -72,7 +80,11 @@
         "docs": "https://packstub.dev/docs/agents"
     },
     "suggest": {
-        "laravel/ai": "Required for in-panel agents (phase 2) — external MCP agents work without it.",
-        "packstub/filament-tenancy": "Tenant-scoped agent tokens, budgets, and audit visibility in multi-tenant panels."
+        "packstub/filament-tenancy": "Database-per-tenant panels: the MCP endpoint and the chat follow the workspace automatically."
+    },
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
     }
 }

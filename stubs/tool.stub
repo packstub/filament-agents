@@ -1,0 +1,32 @@
+<?php
+
+namespace App\Mcp\Tools;
+
+use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Laravel\Mcp\Request;
+use Laravel\Mcp\Server\Attributes\Description;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
+use Packstub\Agents\Mcp\AgentTool;
+
+{{ readOnly }}#[Description('What this tool does, when to use it, what it returns.')]
+class {{ class }} extends AgentTool
+{
+    /** The ability required to see and run this tool (the same string that gates the panel action); null = any member. */
+    protected ?string $ability = {{ ability }};
+
+    protected function run(Request $request): array
+    {
+        return [
+            'total' => 0,
+            'rows' => [],
+        ];
+    }
+
+    public function schema(JsonSchema $schema): array
+    {
+        return [
+            'query' => $schema->string()->description('Free text.'),
+            'limit' => $schema->integer()->description('Max rows, default 20.'),
+        ];
+    }
+}

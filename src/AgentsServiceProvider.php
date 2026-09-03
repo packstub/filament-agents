@@ -2,15 +2,15 @@
 
 namespace Packstub\Agents;
 
-use Illuminate\Cache\RateLimiting\Limit;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Str;
+use Filament\Facades\Filament;
+use Filament\Support\Assets\Css;
+use Filament\Support\Facades\FilamentAsset;
+use Illuminate\Support\Facades\Blade;
 use Laravel\Mcp\Facades\Mcp;
-use Packstub\Agents\Commands\CreateAgentTokenCommand;
-use Packstub\Agents\Http\Middleware\AuthenticateAgentToken;
-use Packstub\Agents\Mcp\AgentServer;
+use Livewire\Livewire;
+use Packstub\Agents\Commands\MakeAgentCommand;
+use Packstub\Agents\Commands\MakeToolCommand;
+use Packstub\Agents\Livewire\AgentTable;
 use Spatie\LaravelPackageTools\Commands\InstallCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
@@ -22,76 +22,73 @@ class AgentsServiceProvider extends PackageServiceProvider
         $package
             ->name('packstub-agents')
             ->hasConfigFile()
+            ->hasViews('packstub-agents')
             ->discoversMigrations()
-            // Hybrid migration strategy: auto-run by default; consumers who need
-            // a custom schema set run_migrations=false and publish instead
-            // (vendor:publish --tag=packstub-agents-migrations).
+            // Auto-run by default; database-per-tenant apps set run_migrations=false, publish and split them.
             ->runsMigrations((bool) config('packstub-agents.run_migrations', true))
-            ->hasCommand(CreateAgentTokenCommand::class)
+            ->hasCommand(MakeAgentCommand::class)
+            ->hasCommand(MakeToolCommand::class)
             ->hasInstallCommand(function (InstallCommand $command): void {
                 $command
-                    ->startWith(fn (InstallCommand $command) => $command->info('🤖  Installing Packstub Agents…'))
+                    ->startWith(fn (InstallCommand $command) => $command->info('Installing Packstub Agents…'))
                     ->publishConfigFile()
                     ->askToRunMigrations()
-                    ->endWith(fn (InstallCommand $command) => $command->info(
-                        'Next: register the plugin in your panel provider'
-                        .' (->plugin(\Packstub\Agents\AgentsPlugin::make())), list your tools in'
-                        .' config/packstub-agents.php, then create a token with'
-                        .' `php artisan packstub:agents:create-token`.'
-                    ));
+                    ->endWith(function (InstallCommand $command): void {
+                        $command->call('packstub-agents:agent');
+                        $command->info('Next: register the plugin in your panel provider —');
+                        $command->line('    ->plugin(\Packstub\Agents\AgentsPlugin::make()->name(\'Ask …\')->agent(\App\Ai\Agents\Assistant::class)->tools([...]))');
+                        $command->line('add a provider key to .env (ANTHROPIC_API_KEY or OPENAI_API_KEY), run `php artisan filament:assets`,');
+                        $command->line('and add the package views to your theme: @source \'../../../../vendor/packstub/filament-agents/resources/views\';');
+                    });
             });
     }
 
-    /**
-     * Deep-merge the package's config defaults under any user-published values,
-     * so a slim published config cannot silently drop nested defaults.
-     */
+    /** Deep-merge the package's config defaults under any user-published values (mergeConfigFrom is top-level only). */
     public function packageRegistered(): void
     {
         $defaults = require __DIR__.'/../config/packstub-agents.php';
 
-        config()->set(
-            'packstub-agents',
-            array_replace_recursive($defaults, config('packstub-agents', [])),
-        );
+        config()->set('packstub-agents', array_replace_recursive($defaults, config('packstub-agents', [])));
+
+        $this->app->singleton(AgentsManager::class);
     }
 
     public function packageBooted(): void
     {
-        $this->registerRateLimiter();
-        $this->registerMcpRoute();
-    }
+        $this->loadJsonTranslationsFrom(__DIR__.'/../resources/lang');
 
-    protected function registerRateLimiter(): void
-    {
-        RateLimiter::for('packstub-agents', function (Request $request): Limit {
-            $bearerToken = (string) $request->bearerToken();
+        Blade::anonymousComponentPath(__DIR__.'/../resources/views/components', 'packstub-agents');
 
-            return Limit::perMinute((int) config('packstub-agents.rate_limit.per_minute', 120))
-                ->by($bearerToken !== '' ? 'token:'.Str::before($bearerToken, '.') : 'ip:'.$request->ip())
-                ->response(fn (Request $request, array $headers): JsonResponse => response()->json([
-                    'message' => 'Too many MCP requests for this agent token.',
-                ], 429, $headers));
+        FilamentAsset::register([
+            Css::make('packstub-agents', __DIR__.'/../resources/css/agents.css'),
+        ], 'packstub/filament-agents');
+
+        // Livewire and the panels may boot after this provider; both registrations wait for the whole app.
+        $this->app->booted(function (): void {
+            Livewire::component('packstub-agents.agent-table', AgentTable::class);
+            $this->registerMcpRoute();
         });
     }
 
+    /**
+     * POST {mcp.path} with "Authorization: Bearer <agent token>". Registered
+     * once every panel (and so the plugin's server choice) is known.
+     */
     protected function registerMcpRoute(): void
     {
-        if (! (bool) config('packstub-agents.enabled', true)) {
+        if (! (bool) config('packstub-agents.mcp.enabled', true)) {
             return;
         }
 
-        // Mirror laravel/mcp's own guard: when routes are cached at runtime the
-        // cached table already contains this route; during route:cache (console)
-        // we must still register so the rebuilt cache includes it.
         if (! $this->app->runningInConsole() && $this->app->routesAreCached()) {
             return;
         }
 
-        Mcp::web((string) config('packstub-agents.route.path', '/mcp/agents'), AgentServer::class)
-            ->middleware(array_merge(
-                ['throttle:packstub-agents', AuthenticateAgentToken::class],
-                config('packstub-agents.route.middleware', []),
-            ));
+        // Resolving the panels runs every plugin's register(), which mirrors the server class into config.
+        Filament::getPanels();
+
+        Mcp::web('/'.trim((string) config('packstub-agents.mcp.path', 'mcp'), '/'), app(AgentsManager::class)->serverClass())
+            ->where('tenant', '[A-Za-z0-9-]+')
+            ->middleware(config('packstub-agents.mcp.middleware', []));
     }
 }
