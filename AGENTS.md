@@ -1,6 +1,6 @@
 # packstub/filament-agents
 
-An in-panel AI assistant (laravel/ai) and an MCP server (laravel/mcp) for Filament v5 panels, sharing one tool list. Extracted from Orderflux and Taxflux (`../../../orderflux/app`, `../../../taxflux/app`), which consume it through a path repository and are its dogfood.
+Free (MIT) Filament v5 plugin: an in-panel AI assistant (laravel/ai) and an MCP server (laravel/mcp) sharing one tool list. Published on Packagist; listed on packstub.dev as **Filament Agents** and on filamentphp.com as **Packstub Agents**. The packstub.dev store dogfoods it in its admin panel.
 
 ## Commands
 
@@ -19,10 +19,12 @@ composer lint               # Pint
 - `src/Filament` — `Chat`, `Chats`, `AgentAccess` pages and the operator `AgentLimitResource`; `src/Livewire/AgentTable` embeds a resource table in an answer.
 - `AgentsPlugin` (panel wiring, fluent config mirrored into `packstub-agents.*`), `AgentsManager` + `Facades\Agents` (what the app told us).
 - `resources/views` (`packstub-agents::`), `resources/css/agents.css` (plain CSS, registered as a Filament asset), `resources/lang/*.json` (JSON translations keyed by the English text).
+- `docs/` customer docs, synced to packstub.dev by `.github/workflows/docs-sync.yml` on every push to `main`.
 
 ## Conventions
 
-- PHP 8.4+, Pint, Pest; every change needs a test.
-- UI strings are `__()` keyed by the English text; keep `resources/lang/{ro,ru,de}.json` in sync.
+- PHP 8.4+, Pint, Pest; every change needs a test. Keep `CHANGELOG.md` current.
+- UI strings are `__()` keyed by the English text; keep `resources/lang/{de,es,ro,ru}.json` in sync.
 - Anything domain-specific (record shapes, filter vocabulary, the prompt's domain block) belongs in the consuming app, behind the `AgentResource` hooks and the agent's slots — never in this package.
-- Run the Orderflux and Taxflux agent suites after a change here (`vendor/bin/pest tests/Feature/AgentTest.php` in each app).
+- Apps that consume the package through a path repository should run their own agent suites after a change here.
+- Listing assets/copy: use the `filament-plugin-listing` skill from the workspace root.

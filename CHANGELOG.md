@@ -1,0 +1,23 @@
+# Changelog
+
+All notable changes to `packstub/filament-agents` are documented here.
+
+## 1.0.0 — 2026-09-03
+
+First public release, under the MIT license.
+
+### Added
+
+- **One tool list for the chat and the MCP server**: `AgentTool` (a `laravel/mcp` tool with an `$ability`, a `run()` returning data for the model and domain errors mapped to tool errors), `AgentServer` (name, instructions, `$tools`), the `packstub-agents:tool` and `packstub-agents:agent` scaffolds and the `packstub-agents:install` command.
+- **In-panel chat**: a `Chat` page streaming answers over Livewire, an "Ask …" topbar button that carries the record being viewed as page context, recent conversations in the sidebar and a `Chats` page, thumbs up / down feedback on answers, a model picker (Auto / Fast / Deep) remembered per session.
+- **Approve-in-chat writes**: read-only tools run directly; every other tool is wrapped as an `ApprovableTool` so the person sees the proposed call and approves or rejects it before it runs.
+- **Live tables and charts in answers**: `show_table` renders a resource's own Filament table under the answer (`AgentResource` contract, `InteractsWithAgent` defaults, a `Filter` vocabulary shared with the app's search tools through `AgentResources`); `draw_chart` and any tool result with a `chart` key render a chart.
+- **MCP over HTTP**: `POST /mcp` behind `throttle`, `auth:sanctum` and `AuthenticateAgent`; an **Agent access** page mints Sanctum tokens with `read` / `write` abilities, shown once, listed and revocable; a read token cannot run write tools.
+- **Budgets and the operator page**: per-user burst limit, answers per day and tokens per month per workspace, tokens per day and per month per user and a prompt length cap, checked before a turn reaches the provider (`AgentBudget`); config defaults overridden by global, per-workspace and per-user rows edited in the **AI limits** resource (`AgentLimits`, `AgentLimit`).
+- **Tenancy**: an `mcp/{tenant}` path resolves the workspace by the panel's tenant slug, checks membership and the token's `tenant:{slug}` ability and fires Filament's `TenantSet`; `credentialsUsing()` lets a workspace bring its own provider, key and model; `limits_connection` and `run_migrations` for database-per-tenant apps.
+- Prompt assembly with a provider-cached static block (persona, domain, working and answering rules) and a dynamic block (date, workspace, person, role, language, page context); reasoning effort per model for Anthropic and OpenAI.
+- German, Spanish, Romanian and Russian translations.
+
+### Changed
+
+- The 0.x line (governance-only MCP tools with capability grants, pending approvals and an audit trail) was replaced by this rebuild. Its consumers migrate to `AgentTool`, the panel's own authorization and Sanctum tokens; see the docs.

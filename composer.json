@@ -1,6 +1,6 @@
 {
     "name": "packstub/filament-agents",
-    "description": "An in-panel AI assistant and an MCP server for Filament v5 panels, built on laravel/ai and laravel/mcp — one tool list for both, role-based authorization, approve-in-chat writes, live tables and charts in answers, per-workspace budgets and an operator limits page.",
+    "description": "An in-panel AI assistant and an MCP server for Filament v5 panels, built on laravel/ai and laravel/mcp: one tool list for both, the panel's own authorization, approve-in-chat writes, live tables and charts in answers, per-workspace budgets and an operator limits page.",
     "keywords": [
         "filament",
         "filament-plugin",
@@ -16,7 +16,7 @@
         "laravel"
     ],
     "type": "library",
-    "license": "proprietary",
+    "license": "MIT",
     "authors": [
         {
             "name": "Packstub",
@@ -71,13 +71,13 @@
             "dev-main": "1.x-dev"
         }
     },
-    "minimum-stability": "dev",
+    "minimum-stability": "stable",
     "prefer-stable": true,
-    "homepage": "https://packstub.dev",
+    "homepage": "https://github.com/packstub/filament-agents",
     "support": {
-        "email": "support@packstub.dev",
         "issues": "https://github.com/packstub/filament-agents/issues",
-        "docs": "https://packstub.dev/docs/agents"
+        "source": "https://github.com/packstub/filament-agents",
+        "docs": "https://packstub.dev/docs/filament-agents"
     },
     "suggest": {
         "packstub/filament-tenancy": "Database-per-tenant panels: the MCP endpoint and the chat follow the workspace automatically."

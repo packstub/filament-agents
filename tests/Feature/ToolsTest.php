@@ -64,9 +64,11 @@ it('serves MCP over HTTP with a read or write token', function () {
     $this->widgets();
     $read = $user->createToken('laptop', ['read'])->plainTextToken;
     $write = $user->createToken('desk', ['read', 'write'])->plainTextToken;
-    $headers = fn (string $token) => ['Authorization' => 'Bearer '.$token, 'Accept' => 'application/json, text/event-stream'];
+    // The headers a real MCP client sends.
+    $mcp = ['Accept' => 'application/json, text/event-stream', 'MCP-Protocol-Version' => '2025-06-18'];
+    $headers = fn (string $token) => ['Authorization' => 'Bearer '.$token] + $mcp;
 
-    postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 0, 'method' => 'tools/list'], ['Accept' => 'application/json'])->assertStatus(401);
+    postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 0, 'method' => 'tools/list'], $mcp)->assertStatus(401);
 
     postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/list'], $headers($read))
         ->assertOk()

@@ -44,7 +44,7 @@ abstract class Agent implements AgentContract, Conversational, HasProviderOption
         return $this;
     }
 
-    /** One sentence on who the assistant is and where it lives ("You are Orderflux, the back-office assistant of…"). */
+    /** One sentence on who the assistant is and where it lives ("You are Acme Assistant, the back-office assistant of…"). */
     abstract protected function persona(): string;
 
     /** What the workspace is: the domain in a few bullets (records, pipeline, rules, roles). */

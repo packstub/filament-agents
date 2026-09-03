@@ -19,9 +19,9 @@ use Packstub\Agents\Filament\Resources\AgentLimits\AgentLimitResource;
  * Registers the assistant in a panel:
  *
  *   AgentsPlugin::make()
- *       ->name('Ask Orderflux')
- *       ->agent(Orderflux::class)
- *       ->server(OrderfluxServer::class)
+ *       ->name('Ask Acme')
+ *       ->agent(AcmeAssistant::class)
+ *       ->server(AcmeServer::class)
  *       ->authorizeUsing(fn (string $ability) => Access::can($ability))
  *
  * gives the panel the chat pages, the "Ask …" button and recent chats, and
@@ -74,7 +74,7 @@ class AgentsPlugin implements Plugin
         return 'packstub-agents';
     }
 
-    /** How the assistant is called in the panel ("Ask Orderflux"). */
+    /** How the assistant is called in the panel ("Ask Acme"). */
     public function name(string $name): static
     {
         $this->name = $name;

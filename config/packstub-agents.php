@@ -16,7 +16,7 @@ use Packstub\Agents\Http\Middleware\AuthenticateAgent;
 */
 
 return [
-    // How the assistant introduces itself in the panel ("Ask Orderflux"). AgentsPlugin::make()->name() overrides it.
+    // How the assistant introduces itself in the panel ("Ask Acme"). AgentsPlugin::make()->name() overrides it.
     'name' => env('AGENT_NAME', 'Assistant'),
 
     // The panel the assistant lives in. Set by AgentsPlugin when it registers; only set it here for a headless install.

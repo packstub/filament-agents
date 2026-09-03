@@ -50,7 +50,7 @@ class AgentsManager
     /** @var list<string> */
     protected array $askButtonHiddenOn = ['*.pages.chat', '*.pages.chat.*'];
 
-    /** How the assistant is called in the panel ("Ask Orderflux"). */
+    /** How the assistant is called in the panel ("Ask Acme"). */
     public function name(): string
     {
         return (string) config('packstub-agents.name', 'Assistant');
@@ -71,7 +71,7 @@ class AgentsManager
             return $current;
         }
 
-        return $id && Filament::hasPanel($id) ? Filament::getPanel($id) : $current;
+        return $id && array_key_exists($id, Filament::getPanels()) ? Filament::getPanel($id) : $current;
     }
 
     /** True when the request is served inside the assistant's panel (chat, hooks and agent access show up). */
