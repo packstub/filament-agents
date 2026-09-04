@@ -32,6 +32,34 @@ it('mints agent access tokens from the panel and lists them', function () {
     expect(AgentAccess::canAccess())->toBeFalse();
 });
 
+it('mints tokens limited to named tools and with an expiry', function () {
+    $user = $this->user();
+    actingAs($user);
+
+    $page = livewire(AgentAccess::class);
+    expect($page->instance()->availableTools())->toHaveKeys(['list-widgets', 'rename-widget', 'show-table', 'draw-chart'])
+        ->and($page->instance()->availableTools()['rename-widget'])->toMatchArray(['title' => 'Rename Widget', 'description' => 'Rename a widget.', 'readOnly' => false]);
+
+    $page->callAction('create', ['label' => 'Queue', 'abilities' => ['read', 'write'], 'expires' => '30', 'read_tools' => ['list-widgets'], 'write_tools' => ['rename-widget']])
+        ->assertHasNoActionErrors();
+
+    $token = $user->tokens()->latest('id')->first();
+    expect($token->abilities)->toBe(['read', 'write', 'tool:list-widgets', 'tool:rename-widget'])
+        ->and($token->expires_at->diffInDays(now()->addDays(30), true))->toBeLessThan(1);
+
+    // The picker offers only what the role allows, and a write tool ticked on a read-only token is dropped.
+    Abilities::$allowed = ['widgets.view', 'setup.view'];
+    $user->createToken('plain', ['read']);
+    $page = livewire(AgentAccess::class);
+    expect($page->instance()->availableTools())->not->toHaveKey('rename-widget');
+    $page->callAction('create', ['label' => 'Report', 'abilities' => ['read'], 'expires' => 'never', 'read_tools' => ['list-widgets'], 'write_tools' => ['rename-widget']])
+        ->assertHasNoActionErrors()
+        ->assertSee(['List Widgets', 'Rename Widget', 'All tools']);
+
+    $token = $user->tokens()->latest('id')->first();
+    expect($token->abilities)->toBe(['read', 'tool:list-widgets'])->and($token->expires_at)->toBeNull();
+});
+
 it('resolves operator limits from config, global, workspace and user rows and guards the resource', function () {
     $owner = $this->user();
     actingAs($owner);

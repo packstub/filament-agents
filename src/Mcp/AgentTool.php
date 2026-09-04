@@ -8,6 +8,8 @@ use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
+use Laravel\Sanctum\Contracts\HasAbilities;
+use Laravel\Sanctum\TransientToken;
 use Packstub\Agents\Facades\Agents;
 use ReflectionClass;
 use RuntimeException;
@@ -21,6 +23,9 @@ use Throwable;
  * Authorization is the panel's: a tool is only registered (and only runs)
  * when the current person may $ability — the same strings that gate the
  * resources and actions, so the agent can never do more than its user.
+ * An agent access token narrows that further: a read token never sees a
+ * write tool, and a token scoped to some tools ("tool:{name}" abilities)
+ * sees only those. Both checks run on the tool list and again on the call.
  * Domain errors (RuntimeException from the services) are handed back to the
  * model as tool errors, never thrown at the user.
  */
@@ -31,7 +36,7 @@ abstract class AgentTool extends Tool
 
     public function shouldRegister(): bool
     {
-        return Agents::allows($this->ability);
+        return Agents::allows($this->ability) && $this->tokenRefusal() === null;
     }
 
     public function handle(Request $request): Response
@@ -40,12 +45,8 @@ abstract class AgentTool extends Tool
             return Response::error(self::refusal());
         }
 
-        // An agent access token may be read-only; the in-panel chat (session auth) has no token and relies on approvals instead.
-        $user = $request->user();
-        $token = $user?->currentAccessToken();
-
-        if ($token && ! $this->isReadOnly() && ! $user->tokenCan('write')) {
-            return Response::error(__('This access token is read-only.'));
+        if ($refusal = $this->tokenRefusal()) {
+            return Response::error($refusal);
         }
 
         try {
@@ -67,6 +68,57 @@ abstract class AgentTool extends Tool
      * @return array<string, mixed>
      */
     abstract protected function run(Request $request): array;
+
+    /**
+     * Why the current agent access token may not run this tool, or null when
+     * it may. The in-panel chat (session auth) has no token and relies on
+     * approvals instead; Sanctum's transient token for a session stands for
+     * "no token" as well.
+     */
+    public function tokenRefusal(): ?string
+    {
+        $token = self::accessToken();
+
+        if (! $token) {
+            return null;
+        }
+
+        if (! $this->isReadOnly() && ! $token->can('write')) {
+            return __('This access token is read-only.');
+        }
+
+        if (self::tokenIsScoped($token) && ! $token->can('tool:'.$this->name())) {
+            return __('This access token does not include :tool.', ['tool' => $this->name()]);
+        }
+
+        return null;
+    }
+
+    /** The personal access token the request was authenticated with, if any. */
+    public static function accessToken(): ?HasAbilities
+    {
+        $user = auth()->user();
+        $token = $user && method_exists($user, 'currentAccessToken') ? $user->currentAccessToken() : null;
+
+        return $token instanceof HasAbilities && ! $token instanceof TransientToken ? $token : null;
+    }
+
+    /**
+     * The tool names a token was limited to ("tool:{name}" abilities); empty = every tool the role allows.
+     *
+     * @return list<string>
+     */
+    public static function tokenTools(HasAbilities $token): array
+    {
+        $abilities = (array) ($token->abilities ?? []);
+
+        return array_values(array_map(fn (string $a) => substr($a, 5), array_filter($abilities, fn ($a) => str_starts_with((string) $a, 'tool:'))));
+    }
+
+    public static function tokenIsScoped(HasAbilities $token): bool
+    {
+        return self::tokenTools($token) !== [];
+    }
 
     public function isReadOnly(): bool
     {

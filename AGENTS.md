@@ -13,7 +13,7 @@ composer lint               # Pint
 ## Layout
 
 - `src/Ai` — the base `Agent` (persona/domain slots, generic rules, provider options), `ApprovableTool`, `WorkspaceCredentials`.
-- `src/Mcp` — `AgentTool` (ability check, read/write token gate, error mapping), `AgentServer`, generic tools `ShowTable` and `DrawChart`.
+- `src/Mcp` — `AgentTool` (ability check, token gate — read/write, `tool:{name}` scope — error mapping), `AgentServer`, generic tools `ShowTable` and `DrawChart`.
 - `src/Filters`, `src/Contracts/AgentResource`, `src/Concerns/InteractsWithAgent`, `src/Support/AgentResources`, `src/Support/PageContext` — a resource's filter vocabulary and summaries, discovered from the panel.
 - `src/Support/{AgentBudget,AgentLimits,AgentModels}` — spending guard rails and provider/model resolution.
 - `src/Filament` — `Chat`, `Chats`, `AgentAccess` pages and the operator `AgentLimitResource`; `src/Livewire/AgentTable` embeds a resource table in an answer.

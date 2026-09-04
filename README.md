@@ -16,7 +16,7 @@ An in-panel AI assistant and an MCP server for your Filament v5 panel, built on 
 ## Features
 
 - **[One tool list, two front doors](#writing-tools)** — every capability is a `laravel/mcp` tool. The in-panel chat calls it through laravel/ai's bridge; external agents call it over HTTP with a token minted in the panel. Add a tool to the list and it is everywhere.
-- **[Authorization is the panel's](#writing-tools)** — a tool declares the ability string that gates the resource or action it mirrors. The assistant can never do more than the signed-in person could by hand, and a read-only token adds a second gate for external agents.
+- **[Authorization is the panel's](#writing-tools)** — a tool declares the ability string that gates the resource or action it mirrors. The assistant can never do more than the signed-in person could by hand, and a token narrows that further for external agents: read-only, or just the tools they need.
 - **[Writes are approved where the human is](#the-chat)** — in the chat, a write tool is a proposal with Approve and Reject buttons (laravel/ai approvals). Over MCP, a write token runs it directly with the person's role.
 - **[Answers that show the real thing](#live-tables-and-charts)** — `show-table` renders the resource's own Filament table under the answer, with its search, filters, sorting and row actions. A tool result with a `chart` key becomes a chart. Page context tells the assistant which record the person opened the chat from.
 - **[A bounded bill](#budgets-and-the-operator-page)** — a per-user burst limit, answers per day and tokens per month per workspace, tokens per day and per month per user, and a prompt length cap, all checked before a turn reaches the provider and editable per workspace and per user on an operator page.
@@ -179,7 +179,7 @@ Read more: [Tables and charts](https://packstub.dev/docs/filament-agents/tables-
 
 ## MCP clients
 
-An **Agent access** page lets a person mint a token for Claude Code, Claude Desktop, Cursor or any MCP client, with read or read-and-write abilities. The token is shown once, carries the workspace when the panel has tenancy, and can be revoked from the same page. The MCP endpoint is `POST /mcp` by default, behind `throttle`, `auth:sanctum` and the package's own middleware, so external agents get exactly the tools the person's role allows.
+An **Agent access** page lets a person mint a token for Claude Code, Claude Desktop, Cursor or any MCP client: read or read-and-write, optionally limited to a few named tools, optionally expiring. The token is shown once, carries the workspace when the panel has tenancy, and can be revoked from the same page. The MCP endpoint is `POST /mcp` by default, behind `throttle`, `auth:sanctum` and the package's own middleware, so external agents get exactly the tools the person's role and their token allow.
 
 Read more: [MCP clients](https://packstub.dev/docs/filament-agents/mcp-clients).
 
