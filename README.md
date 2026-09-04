@@ -121,7 +121,17 @@ class AcmeServer extends \Packstub\Agents\Mcp\AgentServer
 
 The assistant lives on a chat page with an "Ask …" button in the topbar and the recent conversations in the sidebar. Answers stream in while the agent calls tools; a proposed change shows up as a card with Approve and Reject, and the turn resumes with the decision. Conversations are stored with laravel/ai's models, so a reload never loses anything, and every answer can be rated with a thumbs up or down. A model picker next to the composer offers Auto, Fast and Deep, remembered per session.
 
-![The chat: an answer with a live orders table under it, one with a chart, then a Confirm Order proposal with Approve and Reject buttons](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat.png)
+Ask for records and the answer comes with the resource's own table under it, filtered the way the answer says, with the row actions the person's role allows:
+
+![A question about pending orders answered with a short summary and the live Orders table under it, filtered to the three pending rows, with Confirm and Edit actions](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-table.png)
+
+Ask for a trend and the numbers come back drawn as a chart, from `draw-chart` or from a reporting tool of your own that returns one:
+
+![A question about order value over four weeks answered with a sentence and a bar chart, Order value by week](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-chart.png)
+
+Ask for a change and the turn pauses on a card until the person approves or rejects it; the composer with the model picker waits underneath:
+
+![A request to confirm an order paused as a Confirm Order card with the order number and Approve and Reject buttons, the composer with the model picker under it](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-approval.png)
 
 Read more: [The assistant](https://packstub.dev/docs/filament-agents/assistant).
 

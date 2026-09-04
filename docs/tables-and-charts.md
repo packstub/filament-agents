@@ -80,6 +80,10 @@ When the model calls it, the tool checks `canViewAny()` on the resource, normali
 
 The generic answering rules tell the model to use `show-table` whenever someone wants to see or work through records ("show me", "list", more than a handful of rows) and to use the search tools when it needs the data itself.
 
+In the chat, the answer is one or two sentences and the table does the rest:
+
+![A question about pending orders answered with a short summary and the live Orders table under it, filtered to the three pending rows, with Confirm and Edit actions](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-table.png)
+
 ## Charts
 
 `Packstub\Agents\Mcp\Tools\DrawChart` renders a chart from numbers the model already retrieved with other tools:
@@ -92,6 +96,10 @@ The generic answering rules tell the model to use `show-table` whenever someone 
 | `datasets` | 1 to 8 series of `{label, data}`; every series has one value per label |
 
 The rules tell the model to pass only values that came from a tool result, never estimates. For anything over time, prefer a reporting tool of your own that returns a `chart` key next to its data (see [Tools](tools.md)); the chat renders both the same way.
+
+A chart from the model's own `draw-chart` call, with the numbers it took from `search-orders`:
+
+![A question about order value over four weeks answered with a sentence and a bar chart, Order value by week](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-chart.png)
 
 ## Page context
 

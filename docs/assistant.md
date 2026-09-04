@@ -8,13 +8,23 @@
 - an **Ask …** button in the topbar, which opens a new chat and, on a record page of a resource that implements `AgentResource`, carries that record along as page context ("About Order RO-00012");
 - the recent conversations at the end of the sidebar, plus a **Chats** page listing all of the person's conversations.
 
-![The chat: an answer with a live orders table under it, one with a chart, then a Confirm Order proposal with Approve and Reject buttons](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat.png)
+An answer about records renders the resource's own table under itself, narrowed to what the answer says, with the same search, sorting and row actions as the list page:
+
+![A question about pending orders answered with a short summary and the live Orders table under it, filtered to the three pending rows, with Confirm and Edit actions](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-table.png)
+
+An answer about numbers renders a chart, from `draw-chart` or from a reporting tool of your own that returns one (see [Tables and charts](tables-and-charts.md)):
+
+![A question about order value over four weeks answered with a sentence and a bar chart, Order value by week](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-chart.png)
 
 Conversations and messages are laravel/ai's `Conversation` and `ConversationMessage` models, stored in the `agent_conversations` and `agent_conversation_messages` tables, so a reload never loses anything and one person never sees another person's chats. Every answer can be rated with a thumbs up or down (`agent_message_feedback`), which your app can read to find the questions that go wrong.
 
 ### Approvals
 
 When the agent calls a write tool, laravel/ai pauses the turn. The chat shows a card with the tool's title and arguments and two buttons, **Approve** and **Reject**; the turn resumes with the decision and the tool either runs or reports that it was rejected. The generic rules ask the model not to claim something was done until the tool result confirms it and never to chain destructive changes with anything else in one turn.
+
+The card sits in the conversation like any other answer, with the composer underneath for the follow-up:
+
+![A request to confirm an order paused as a Confirm Order card with the order number and Approve and Reject buttons, the composer with the model picker under it](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-approval.png)
 
 ### When the chat is hidden
 
