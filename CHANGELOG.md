@@ -2,6 +2,13 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## Unreleased
+
+### Added
+
+- **Scoped agent access tokens.** The Create token modal lists the tools the person's role allows, reads and writes apart, so a token can be limited to the few an agent needs (`tool:{name}` abilities). A scoped token sees only those tools in `tools/list` and a direct call to any other is refused; a read token no longer lists write tools at all. Tokens can also expire (7, 30, 90 or 365 days, Sanctum's `expires_at`). The table shows each token's tools and expiry. Existing tokens keep working unchanged: no `tool:` ability means every tool the role allows.
+- `AgentTool::tokenRefusal()`, `accessToken()`, `tokenTools()` and `tokenIsScoped()` for apps that gate their own tools or show what a token may do.
+
 ## 1.0.1 — 2026-09-04
 
 ### Fixed

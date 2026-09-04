@@ -9,14 +9,15 @@ This package lets a language model read and, with approval or a write token, cha
 | The signed-in person | their role's abilities, approving writes, minting tokens for themselves | nothing beyond their role |
 | The model | producing text and choosing tools | facts, authorization decisions, deciding whether a write happens |
 | Tool results (record contents) | data | instructions |
-| An external MCP client | acting as the token's owner within the token's abilities | anything the person's role or the token forbids |
+| An external MCP client | acting as the token's owner within the token's abilities (read or write, the tools it was scoped to) | anything the person's role or the token forbids |
 | The provider (Anthropic, OpenAI) | processing the prompt and tool results | nothing else; the package sends no secrets beyond what your tools return |
 
 ## What the package enforces
 
 - **Ability check on every tool, twice.** `shouldRegister()` hides a tool the person may not use; `handle()` checks again before running, so a tool called by name is refused as well. The check goes through your `authorizeUsing()` callback (or the `Gate`), the same code path as the panel.
-- **Writes need a human or a write token.** A tool without `#[IsReadOnly]` is wrapped for approval in the chat, and over MCP it refuses a `read` token before your `run()` is called.
-- **Tokens are bound to a person and, with tenancy, to a workspace.** They are Sanctum tokens: hashed at rest, shown once, listed and revocable on the Agent access page. The `tenant:{slug}` ability is checked against the URL, so a token minted for one workspace is refused on another even when the person is a member of both.
+- **Writes need a human or a write token.** A tool without `#[IsReadOnly]` is wrapped for approval in the chat, and over MCP it is hidden from a `read` token and refused before your `run()` is called.
+- **A token can be narrowed to named tools.** `tool:{name}` abilities limit a token to exactly those tools: the others are not listed and are refused by name. The picker only offers the tools the person's role allows, and the role is checked first on every call, so a token never widens what the person may do, only narrows it.
+- **Tokens are bound to a person and, with tenancy, to a workspace, and can expire.** They are Sanctum tokens: hashed at rest, shown once, listed and revocable on the Agent access page, with an optional `expires_at`. The `tenant:{slug}` ability is checked against the URL, so a token minted for one workspace is refused on another even when the person is a member of both.
 - **The MCP request runs as the panel would.** `AuthenticateAgent` resolves the panel, the tenant and the user before any tool runs, and fires `TenantSet`, so tenancy plugins, scopes and policies see the same state as on a page.
 - **Errors never leak stack traces.** Domain exceptions become tool errors with their message; unexpected exceptions are reported and the model gets a generic failure.
 - **Budgets are enforced before the provider is called.** Rate, daily and monthly limits per workspace and per user, and a prompt length cap, see [Budgets and limits](budgets-and-limits.md).

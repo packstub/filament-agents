@@ -24,8 +24,9 @@ class AgentServer extends Server
     protected string $version = '1.0.0';
 
     protected string $instructions = <<<'MARKDOWN'
-        This MCP server exposes a Filament panel to agents. You see the tools the person's role allows; write tools run
-        immediately with the token holder's role when the token may write, so read the record first when in doubt.
+        This MCP server exposes a Filament panel to agents. You see the tools the person's role and their access token
+        allow (a token may be read-only or limited to a few tools); write tools run immediately with the token holder's
+        role when the token may write, so read the record first when in doubt.
         MARKDOWN;
 
     public int $defaultPaginationLength = 50;
