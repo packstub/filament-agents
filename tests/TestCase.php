@@ -22,10 +22,10 @@ use Laravel\Sanctum\SanctumServiceProvider;
 use Livewire\LivewireServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 use Packstub\Agents\AgentsServiceProvider;
+use Packstub\Agents\Support\AgentLimits;
 use Packstub\Agents\Tests\Fixtures\Abilities;
 use Packstub\Agents\Tests\Fixtures\AdminPanelProvider;
 use Packstub\Agents\Tests\Fixtures\Models\User;
-use Packstub\Agents\Support\AgentLimits;
 use Packstub\Agents\Tests\Fixtures\Models\Widget;
 
 abstract class TestCase extends Orchestra
