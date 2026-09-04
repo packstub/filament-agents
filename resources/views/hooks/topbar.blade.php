@@ -10,7 +10,7 @@
     <x-filament::button
         tag="a"
         :href="Chat::getUrl(array_filter(['context' => PageContext::fromRequest()]))"
-        color="gray"
+        color="primary"
         outlined
         size="sm"
         icon="heroicon-m-sparkles"

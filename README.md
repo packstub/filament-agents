@@ -19,7 +19,7 @@ An in-panel AI assistant and an MCP server for your Filament v5 panel, built on 
 - **[One tool list, two front doors](#writing-tools)** — every capability is a `laravel/mcp` tool. The in-panel chat calls it through laravel/ai's bridge; external agents call it over HTTP with a token minted in the panel. Add a tool to the list and it is everywhere.
 - **[Authorization is the panel's](#writing-tools)** — a tool declares the ability string that gates the resource or action it mirrors. The assistant can never do more than the signed-in person could by hand, and a token narrows that further for external agents: read-only, or just the tools they need.
 - **[Writes are approved where the human is](#the-chat)** — in the chat, a write tool is a proposal with Approve and Reject buttons (laravel/ai approvals). Over MCP, a write token runs it directly with the person's role.
-- **[Answers that show the real thing](#live-tables-and-charts)** — `show-table` renders the resource's own Filament table under the answer, with its search, filters, sorting and row actions. A tool result with a `chart` key becomes a chart. Page context tells the assistant which record the person opened the chat from.
+- **[Answers that show the real thing](#live-tables-and-charts)** — `show-table` renders the resource's own Filament table under the answer, with its sorting and row actions (and the list page's search, filters and pagination once a result runs past ten rows). A tool result with a `chart` key becomes a chart. Page context tells the assistant which record the person opened the chat from.
 - **[A bounded bill](#budgets-and-the-operator-page)** — a per-user burst limit, answers per day and tokens per month per workspace, tokens per day and per month per user, and a prompt length cap, all checked before a turn reaches the provider and editable per workspace and per user on an operator page.
 - **[Your assistant, your prompt](#the-assistant)** — a scaffolded agent class with two slots to fill (who it is, what the workspace is) on top of generic working and answering rules, provider-cached instructions and a model picker (Auto, Fast, Deep) for Anthropic or OpenAI.
 - **[Tenancy-aware](#tenancy)** — the MCP path can carry the workspace, tokens are bound to it, conversations can live in the tenant database and a workspace can bring its own provider key. Works without tenancy too.
@@ -120,19 +120,19 @@ class AcmeServer extends \Packstub\Agents\Mcp\AgentServer
 
 ## The chat
 
-The assistant lives on a chat page with an "Ask …" button in the topbar and the recent conversations in the sidebar. Answers stream in while the agent calls tools; a proposed change shows up as a card with Approve and Reject, and the turn resumes with the decision. Conversations are stored with laravel/ai's models, so a reload never loses anything, and every answer can be rated with a thumbs up or down. A model picker next to the composer offers Auto, Fast and Deep, remembered per session.
+The assistant lives on a chat page with an "Ask …" button in the topbar and the recent conversations in the sidebar (an "Ask …" navigation item on a panel with top navigation). Answers stream in while the agent calls tools; a proposed change shows up as a card with Approve and Reject, and the turn resumes with the decision. Conversations are stored with laravel/ai's models, so a reload never loses anything, and every answer can be rated with a thumbs up or down. A model picker next to the composer offers Auto, Fast and Deep, remembered per session.
 
 Ask for records and the answer comes with the resource's own table under it, filtered the way the answer says, with the row actions the person's role allows:
 
-![A question about pending orders answered with a short summary and the live Orders table under it, filtered to the three pending rows, with Confirm and Edit actions](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-table.png)
+![The chat page under the panel's top navigation: a question about pending orders answered with a short summary and the live Orders table under it, three pending rows with View, Confirm and Edit links, then a Confirm Order proposal with Approve and Reject, and the composer](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-table.png)
 
 Ask for a trend and the numbers come back drawn as a chart, from `draw-chart` or from a reporting tool of your own that returns one:
 
-![A question about order value over four weeks answered with a sentence and a bar chart, Order value by week](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-chart.png)
+![The chat page: a question about order value over four weeks answered with a sentence and a bar chart, Order value by week, the composer under it](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-chart.png)
 
 Ask for a change and the turn pauses on a card until the person approves or rejects it; the composer with the model picker waits underneath:
 
-![A request to confirm an order paused as a Confirm Order card with the order number and Approve and Reject buttons, the composer with the model picker under it](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-approval.png)
+![The chat page: a request to confirm an order paused as a Confirm Order card showing the exact tool call, with Approve and Reject buttons, the composer with the model picker under it](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-approval.png)
 
 Read more: [The assistant](https://packstub.dev/docs/filament-agents/assistant).
 

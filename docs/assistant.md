@@ -6,15 +6,15 @@
 
 - a **Chat** page (`/chat/{conversation?}`) where the answer streams in over Livewire while the agent calls tools, with a model picker (Auto, Fast, Deep) next to the composer;
 - an **Ask …** button in the topbar, which opens a new chat and, on a record page of a resource that implements `AgentResource`, carries that record along as page context ("About Order RO-00012");
-- the recent conversations at the end of the sidebar, plus a **Chats** page listing all of the person's conversations.
+- the recent conversations at the end of the sidebar, plus a **Chats** page listing all of the person's conversations. A panel with top navigation has no sidebar, so it gets an **Ask …** navigation item instead, active on the chats and on a chat.
 
-An answer about records renders the resource's own table under itself, narrowed to what the answer says, with the same search, sorting and row actions as the list page:
+An answer about records renders the resource's own table under itself, narrowed to what the answer says, with the same sorting and row actions as the list page. A result of up to ten rows is shown whole, with a caption and the row count; a longer one keeps the search field, the filters and the pagination, ten rows a page:
 
-![A question about pending orders answered with a short summary and the live Orders table under it, filtered to the three pending rows, with Confirm and Edit actions](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-table.png)
+![The chat page under the panel's top navigation: a question about pending orders answered with a short summary and the live Orders table under it, three pending rows with View, Confirm and Edit links, then a Confirm Order proposal with Approve and Reject, and the composer](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-table.png)
 
 An answer about numbers renders a chart, from `draw-chart` or from a reporting tool of your own that returns one (see [Tables and charts](tables-and-charts.md)):
 
-![A question about order value over four weeks answered with a sentence and a bar chart, Order value by week](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-chart.png)
+![The chat page: a question about order value over four weeks answered with a sentence and a bar chart, Order value by week, the composer under it](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-chart.png)
 
 Conversations and messages are laravel/ai's `Conversation` and `ConversationMessage` models, stored in the `agent_conversations` and `agent_conversation_messages` tables, so a reload never loses anything and one person never sees another person's chats. Every answer can be rated with a thumbs up or down (`agent_message_feedback`), which your app can read to find the questions that go wrong.
 
@@ -24,7 +24,7 @@ When the agent calls a write tool, laravel/ai pauses the turn. The chat shows a 
 
 The card sits in the conversation like any other answer, with the composer underneath for the follow-up:
 
-![A request to confirm an order paused as a Confirm Order card with the order number and Approve and Reject buttons, the composer with the model picker under it](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-approval.png)
+![The chat page: a request to confirm an order paused as a Confirm Order card showing the exact tool call, with Approve and Reject buttons, the composer with the model picker under it](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-approval.png)
 
 ### When the chat is hidden
 

@@ -76,13 +76,13 @@ $schema = AgentResources::filterSchema($schema, 'orders');   // for the tool's s
 
 Add `Packstub\Agents\Mcp\Tools\ShowTable` to the tool list. Its description and schema are generated from the resources: the `table` argument is an enum of the agent keys, `filters` is the union of every table's vocabulary (each key described per table), and `title` is an optional caption.
 
-When the model calls it, the tool checks `canViewAny()` on the resource, normalizes the filters, counts the rows and returns the total plus a note telling the model that an interactive table is rendered under the answer. The chat then embeds the resource's own `table()`, with the resource's query narrowed by the filters as the base query, so the person gets the same columns, search, sorting, pagination and row actions their role allows on the list page.
+When the model calls it, the tool checks `canViewAny()` on the resource, normalizes the filters, counts the rows and returns the total plus a note telling the model that an interactive table is rendered under the answer. The chat then embeds the resource's own `table()`, with the resource's query narrowed by the filters as the base query, so the person gets the same columns, sorting and row actions their role allows on the list page. Up to ten rows are shown whole, under a caption and the row count; a longer result keeps the list page's search field, filters and pagination, ten rows a page.
 
 The generic answering rules tell the model to use `show-table` whenever someone wants to see or work through records ("show me", "list", more than a handful of rows) and to use the search tools when it needs the data itself.
 
 In the chat, the answer is one or two sentences and the table does the rest:
 
-![A question about pending orders answered with a short summary and the live Orders table under it, filtered to the three pending rows, with Confirm and Edit actions](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-table.png)
+![The chat page under the panel's top navigation: a question about pending orders answered with a short summary and the live Orders table under it, three pending rows with View, Confirm and Edit links, then a Confirm Order proposal with Approve and Reject, and the composer](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-table.png)
 
 ## Charts
 
@@ -99,7 +99,7 @@ The rules tell the model to pass only values that came from a tool result, never
 
 A chart from the model's own `draw-chart` call, with the numbers it took from `search-orders`:
 
-![A question about order value over four weeks answered with a sentence and a bar chart, Order value by week](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-chart.png)
+![The chat page: a question about order value over four weeks answered with a sentence and a bar chart, Order value by week, the composer under it](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-chart.png)
 
 ## Page context
 

@@ -47,3 +47,45 @@
 .fi-agent-tools-desc { color: var(--color-gray-500); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: help; }
 .fi-agent-tools-off { opacity: 0.45; }
 .fi-agent-tools-off label { cursor: not-allowed; }
+
+/* The chat: what the assistant looked at, one chip per read tool, named as the tool is registered. */
+.fi-chat-tool { display: inline-flex; align-items: center; gap: 0.4rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.75rem; color: var(--color-gray-700); background: rgb(0 0 0 / 0.05); border-radius: 0.375rem; padding: 0.2rem 0.55rem; }
+.dark .fi-chat-tool { color: var(--color-gray-300); background: rgb(255 255 255 / 0.08); }
+.fi-chat-tool-dot { width: 0.375rem; height: 0.375rem; border-radius: 9999px; background: var(--primary-500); }
+
+/* A proposed change, one row: icon, what it is and the exact call, Approve / Reject; then the outcome. */
+.fi-chat-proposal { display: flex; align-items: center; flex-wrap: wrap; gap: 0.75rem 1rem; border: 1px solid rgb(0 0 0 / 0.1); border-radius: 0.75rem; background: rgb(0 0 0 / 0.02); padding: 0.75rem 1rem; }
+.dark .fi-chat-proposal { border-color: rgb(255 255 255 / 0.1); background: rgb(255 255 255 / 0.03); }
+.fi-chat-proposal-pending { border-color: var(--warning-300); background: var(--warning-50); }
+.dark .fi-chat-proposal-pending { border-color: rgb(245 158 11 / 0.4); background: rgb(245 158 11 / 0.08); }
+.fi-chat-proposal-icon { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgb(0 0 0 / 0.06); color: var(--color-gray-500); }
+.dark .fi-chat-proposal-icon { background: rgb(255 255 255 / 0.08); color: var(--color-gray-400); }
+.fi-chat-proposal-pending .fi-chat-proposal-icon { background: var(--warning-100); color: var(--warning-700); }
+.dark .fi-chat-proposal-pending .fi-chat-proposal-icon { background: rgb(245 158 11 / 0.2); color: var(--warning-400); }
+.fi-chat-proposal-done .fi-chat-proposal-icon { background: var(--success-100); color: var(--success-700); }
+.dark .fi-chat-proposal-done .fi-chat-proposal-icon { background: rgb(16 185 129 / 0.2); color: var(--success-400); }
+.fi-chat-proposal-call { display: block; margin-top: 0.25rem; font-size: 0.75rem; color: var(--color-gray-600); overflow-wrap: anywhere; }
+.dark .fi-chat-proposal-call { color: var(--color-gray-400); }
+
+/* Thumbs and the time stay out of the way until the answer is hovered (or was rated). */
+.fi-chat-feedback { opacity: 0; transition: opacity 0.15s; }
+.fi-chat-answer:hover .fi-chat-feedback, .fi-chat-feedback:focus-within, .fi-chat-feedback-rated { opacity: 1; }
+
+/* The composer: a compact model picker and a square send button on the same row as the question. */
+.fi-agent-composer-model .fi-select-input { font-size: 0.875rem; padding-block: 0.375rem; }
+.fi-agent-composer-send { width: 2.5rem; height: 2.5rem; padding: 0; border-radius: 0.75rem; justify-content: center; }
+
+/* An embedded table: caption and row count in one header, small capitals for the column titles, the table's own frame dropped. */
+.fi-chat-table { border: 1px solid rgb(0 0 0 / 0.1); border-radius: 0.75rem; overflow: hidden; background: #fff; }
+.dark .fi-chat-table { border-color: rgb(255 255 255 / 0.1); background: var(--color-gray-900); }
+.fi-chat-table-header { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding: 0.75rem 1rem; font-size: 0.875rem; }
+.fi-chat-table-title { font-weight: 600; color: var(--color-gray-950); }
+.dark .fi-chat-table-title { color: #fff; }
+.fi-chat-table-meta { font-size: 0.75rem; color: var(--color-gray-500); white-space: nowrap; }
+.fi-chat-table .fi-ta-ctn { border: 0; border-radius: 0; box-shadow: none; }
+.fi-chat-table .fi-ta-header-cell { font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-gray-500); padding-block: 0.625rem; }
+.dark .fi-chat-table .fi-ta-header-cell { color: var(--color-gray-400); }
+.fi-chat-table .fi-ta-header-cell-sort-btn { font-size: inherit; font-weight: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; }
+
+/* The live areas take no room (and no flex gap) until something streams into them. */
+.fi-chat-stream:has(> :empty) { display: none; }

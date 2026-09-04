@@ -1,5 +1,6 @@
 {
   "/ min": "/ мин",
+  ":count row · live table|:count rows · live table": ":count строка · живая таблица|:count строки · живая таблица|:count строк · живая таблица",
   ":days days": ":days дн.",
   ":name is also an MCP server. An agent that connects with your token sees the same tools the in-panel chat has and acts with your role in this workspace only.": ":name — это ещё и MCP-сервер. Агент, подключённый с вашим токеном, видит те же инструменты, что и чат в панели, и действует с вашей ролью только в этом рабочем пространстве.",
   ":name is not connected to an AI provider yet.": ":name ещё не подключён к AI-провайдеру.",
@@ -22,7 +23,6 @@
   "Answers per day, per workspace": "Ответов в день на пространство",
   "Applies to": "Применяется к",
   "Approve": "Одобрить",
-  "Ask a follow-up…": "Задайте уточняющий вопрос…",
   "Ask anything about your workspace.": "Спросите что угодно о вашем рабочем пространстве.",
   "Assistant": "Ассистент",
   "Burst protection.": "Защита от всплесков.",
