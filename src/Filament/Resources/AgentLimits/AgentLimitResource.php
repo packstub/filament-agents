@@ -130,13 +130,14 @@ class AgentLimitResource extends Resource
                     }),
                 TextColumn::make('target')->label(__('Applies to'))->state(fn (AgentLimit $r) => $r->targetLabel())->searchable(false),
                 TextColumn::make('enabled')->label(__('Assistant'))->formatStateUsing(fn ($state) => $state === null ? '—' : ($state ? __('On') : __('Off')))->placeholder('—'),
-                TextColumn::make('turns_per_minute')->label(__('/ min'))->formatStateUsing($fmt)->placeholder('—'),
                 TextColumn::make('turns_per_day')->label(__('Answers / day'))->formatStateUsing($fmt)->placeholder('—'),
                 TextColumn::make('tokens_per_month')->label(__('Tokens / month'))->formatStateUsing($fmt)->placeholder('—'),
-                TextColumn::make('user_tokens_per_day')->label(__('User tokens / day'))->formatStateUsing($fmt)->placeholder('—'),
-                TextColumn::make('user_tokens_per_month')->label(__('User tokens / month'))->formatStateUsing($fmt)->placeholder('—'),
-                TextColumn::make('prompt_max_chars')->label(__('Max chars'))->formatStateUsing($fmt)->placeholder('—'),
-                TextColumn::make('note')->label(__('Note'))->limit(30)->placeholder('—'),
+                // The per-user detail fits a laptop screen only when toggled in.
+                TextColumn::make('turns_per_minute')->label(__('/ min'))->formatStateUsing($fmt)->placeholder('—')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('user_tokens_per_day')->label(__('User tokens / day'))->formatStateUsing($fmt)->placeholder('—')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('user_tokens_per_month')->label(__('User tokens / month'))->formatStateUsing($fmt)->placeholder('—')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('prompt_max_chars')->label(__('Max chars'))->formatStateUsing($fmt)->placeholder('—')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('note')->label(__('Note'))->limit(40)->placeholder('—'),
             ])
             ->recordActions([
                 EditAction::make()->after(fn () => AgentLimits::flush()),

@@ -2,6 +2,12 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## Unreleased
+
+### Changed
+
+- The AI limits table shows the workspace columns (Assistant, Answers / day, Tokens / month, Note) by default; the per-user detail (/ min, User tokens / day and / month, Max chars) is toggleable, so the table fits a laptop screen without a horizontal scroll.
+
 ## 1.1.0 — 2026-09-04
 
 ### Added

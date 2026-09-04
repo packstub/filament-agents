@@ -28,6 +28,8 @@ AgentsPlugin::make()
     ->limits(authorize: fn () => (bool) auth()->user()?->is_admin)
 ```
 
+![The AI limits resource on an operator panel: platform defaults, two workspace rows and one user switched off](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/ai-limits.png)
+
 **AI limits** then lists rows with three scopes:
 
 | Scope | Applies to | Fields |
