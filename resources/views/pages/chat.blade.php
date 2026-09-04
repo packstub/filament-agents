@@ -1,5 +1,5 @@
 <x-filament-panels::page>
-    <div class="fi-chat mx-auto flex w-full max-w-6xl flex-col gap-6" x-data x-init="@if ($autoSend) $wire.send() @endif">
+    <div class="fi-chat mx-auto flex w-full max-w-3xl flex-col gap-6" x-data x-init="@if ($autoSend) $wire.send() @endif">
         <div class="flex items-center justify-between gap-3">
             <div class="min-w-0">
                 <h1 class="truncate text-xl font-semibold text-gray-950 dark:text-white">{{ $this->getTitle() }}</h1>

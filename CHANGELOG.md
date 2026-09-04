@@ -6,6 +6,8 @@ All notable changes to `packstub/filament-agents` are documented here.
 
 ### Changed
 
+- The chat column is 48rem wide instead of 72rem, a reading width for the answers; embedded tables, charts and the composer share it.
+- The Create token modal lists the tools in one table (checkbox, title, Read / Write badge, one line of description with the full text on hover) instead of two checkbox lists with the model-facing descriptions in full. A header checkbox ticks all; write rows are switched off until Write is ticked. The action's form key is `tools` (was `read_tools` and `write_tools`), which only matters to tests that call the action directly.
 - The AI limits table shows the workspace columns (Assistant, Answers / day, Tokens / month, Note) by default; the per-user detail (/ min, User tokens / day and / month, Max chars) is toggleable, so the table fits a laptop screen without a horizontal scroll.
 
 ## 1.1.0 — 2026-09-04

@@ -40,7 +40,7 @@ it('mints tokens limited to named tools and with an expiry', function () {
     expect($page->instance()->availableTools())->toHaveKeys(['list-widgets', 'rename-widget', 'show-table', 'draw-chart'])
         ->and($page->instance()->availableTools()['rename-widget'])->toMatchArray(['title' => 'Rename Widget', 'description' => 'Rename a widget.', 'readOnly' => false]);
 
-    $page->callAction('create', ['label' => 'Queue', 'abilities' => ['read', 'write'], 'expires' => '30', 'read_tools' => ['list-widgets'], 'write_tools' => ['rename-widget']])
+    $page->callAction('create', ['label' => 'Queue', 'abilities' => ['read', 'write'], 'expires' => '30', 'tools' => ['list-widgets', 'rename-widget']])
         ->assertHasNoActionErrors();
 
     $token = $user->tokens()->latest('id')->first();
@@ -52,7 +52,7 @@ it('mints tokens limited to named tools and with an expiry', function () {
     $user->createToken('plain', ['read']);
     $page = livewire(AgentAccess::class);
     expect($page->instance()->availableTools())->not->toHaveKey('rename-widget');
-    $page->callAction('create', ['label' => 'Report', 'abilities' => ['read'], 'expires' => 'never', 'read_tools' => ['list-widgets'], 'write_tools' => ['rename-widget']])
+    $page->callAction('create', ['label' => 'Report', 'abilities' => ['read'], 'expires' => 'never', 'tools' => ['list-widgets', 'rename-widget']])
         ->assertHasNoActionErrors()
         ->assertSee(['List Widgets', 'Rename Widget', 'All tools']);
 

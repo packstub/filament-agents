@@ -22,6 +22,7 @@ use Illuminate\Support\Str;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Sanctum\Sanctum;
 use Packstub\Agents\Facades\Agents;
+use Packstub\Agents\Filament\Forms\ToolPicker;
 use Packstub\Agents\Mcp\AgentTool;
 
 /**
@@ -162,7 +163,6 @@ class AgentAccess extends Page implements HasTable
     protected function getHeaderActions(): array
     {
         $tools = $this->availableTools();
-        $options = fn (bool $readOnly) => collect($tools)->filter(fn ($t) => $t['readOnly'] === $readOnly);
 
         return [
             Action::make('create')
@@ -177,31 +177,22 @@ class AgentAccess extends Page implements HasTable
                         ->default(['read'])->required()->live(),
                     Select::make('expires')->label(__('Expires'))
                         ->options(self::expiryOptions())->default('never')->required()->selectablePlaceholder(false)->native(false),
-                    CheckboxList::make('read_tools')->label(__('Only these read tools'))
+                    ToolPicker::make('tools')->label(__('Only these tools'))
                         ->helperText(__('Leave empty to allow every tool your role allows.'))
-                        ->options($options(true)->map(fn ($t) => $t['title'])->all())
-                        ->descriptions($options(true)->map(fn ($t) => $t['description'])->all())
-                        ->columns(2)->bulkToggleable()
-                        ->visible($options(true)->isNotEmpty()),
-                    CheckboxList::make('write_tools')->label(__('Only these write tools'))
-                        ->helperText(__('Leave empty to allow every write tool your role allows.'))
-                        ->options($options(false)->map(fn ($t) => $t['title'])->all())
-                        ->descriptions($options(false)->map(fn ($t) => $t['description'])->all())
-                        ->columns(2)->bulkToggleable()
-                        ->visible(fn (Get $get) => $options(false)->isNotEmpty() && in_array('write', (array) $get('abilities'), true)),
+                        ->tools($tools)
+                        ->writeEnabled(fn (Get $get) => in_array('write', (array) $get('abilities'), true))
+                        ->visible($tools !== []),
                 ])
                 ->action(function (array $data): void {
                     $abilities = array_values($data['abilities']);
                     $canWrite = in_array('write', $abilities, true);
 
                     // Scope: every ticked tool, as "tool:{name}"; a write tool only when the token may write. None ticked = every tool the role allows.
-                    $scoped = array_merge(
-                        array_values((array) ($data['read_tools'] ?? [])),
-                        $canWrite ? array_values((array) ($data['write_tools'] ?? [])) : [],
-                    );
-                    $known = array_keys($this->availableTools());
-                    foreach (array_intersect($scoped, $known) as $name) {
-                        $abilities[] = 'tool:'.$name;
+                    $known = $this->availableTools();
+                    foreach (array_values((array) ($data['tools'] ?? [])) as $name) {
+                        if (isset($known[$name]) && ($canWrite || $known[$name]['readOnly'])) {
+                            $abilities[] = 'tool:'.$name;
+                        }
                     }
 
                     if ($slug = $this->slug()) {

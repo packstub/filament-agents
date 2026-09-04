@@ -8,7 +8,7 @@
 - an **Ask …** button in the topbar, which opens a new chat and, on a record page of a resource that implements `AgentResource`, carries that record along as page context ("About Order RO-00012");
 - the recent conversations at the end of the sidebar, plus a **Chats** page listing all of the person's conversations.
 
-![The chat: an answer with a live orders table under it, then a Confirm Order proposal with Approve and Reject buttons](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat.png)
+![The chat: an answer with a live orders table under it, one with a chart, then a Confirm Order proposal with Approve and Reject buttons](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat.png)
 
 Conversations and messages are laravel/ai's `Conversation` and `ConversationMessage` models, stored in the `agent_conversations` and `agent_conversation_messages` tables, so a reload never loses anything and one person never sees another person's chats. Every answer can be rated with a thumbs up or down (`agent_message_feedback`), which your app can read to find the questions that go wrong.
 

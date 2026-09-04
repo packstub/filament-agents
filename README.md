@@ -121,7 +121,7 @@ class AcmeServer extends \Packstub\Agents\Mcp\AgentServer
 
 The assistant lives on a chat page with an "Ask …" button in the topbar and the recent conversations in the sidebar. Answers stream in while the agent calls tools; a proposed change shows up as a card with Approve and Reject, and the turn resumes with the decision. Conversations are stored with laravel/ai's models, so a reload never loses anything, and every answer can be rated with a thumbs up or down. A model picker next to the composer offers Auto, Fast and Deep, remembered per session.
 
-![The chat: an answer with a live orders table under it, then a Confirm Order proposal with Approve and Reject buttons](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat.png)
+![The chat: an answer with a live orders table under it, one with a chart, then a Confirm Order proposal with Approve and Reject buttons](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat.png)
 
 Read more: [The assistant](https://packstub.dev/docs/filament-agents/assistant).
 
@@ -177,7 +177,7 @@ class OrderResource extends Resource implements AgentResource
 
 From that, `show-table` builds its schema, the embedded table applies the same filters, and the topbar button carries the current record into the chat as page context. `draw-chart` renders bar, line, pie and doughnut charts from numbers the model already retrieved, and any tool can return a `chart` key of its own.
 
-![The Orders resource with the Ask Acme button in the topbar](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/orders-ask-button.png)
+![The Ask Acme button in the topbar of the Orders resource](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/orders-ask-button.png)
 
 Read more: [Tables and charts](https://packstub.dev/docs/filament-agents/tables-and-charts).
 
@@ -187,7 +187,7 @@ An **Agent access** page lets a person mint a token for Claude Code, Claude Desk
 
 ![The Agent access page listing two tokens: one scoped to three tools and expiring, one read-only](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/agent-access.png)
 
-![The Create token modal: read and write abilities, an expiry, and the tool picker with read and write tools apart](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/create-token.png)
+![The Create token modal: read and write abilities, an expiry, and the tools table with a Read or Write badge per tool](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/create-token.png)
 
 Read more: [MCP clients](https://packstub.dev/docs/filament-agents/mcp-clients).
 

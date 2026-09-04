@@ -17,10 +17,10 @@ The page mints Sanctum personal access tokens for the signed-in person:
 - a label ("Claude Code on my laptop");
 - abilities: **Read** (look things up, reports) and **Write** (change data through the tools, still limited by the person's role);
 - an optional **expiry** (7, 30, 90 or 365 days; Sanctum's `expires_at`, so an expired token is refused by `auth:sanctum` like any other);
-- optionally, **only these tools**: the modal lists the tools the person's role allows right now, read tools and write tools apart (the write list appears once Write is ticked), with each tool's title and description. Ticking some stores them as `tool:{name}` abilities and the token is limited to exactly those. Ticking none keeps the token at every tool the role allows;
+- optionally, **only these tools**: the modal lists the tools the person's role allows right now in one table, each with its title, a Read or Write badge and what it does (the full description on hover; write rows are switched off until Write is ticked). Ticking some stores them as `tool:{name}` abilities and the token is limited to exactly those. Ticking none keeps the token at every tool the role allows;
 - in a panel with tenancy, the token also carries `tenant:{slug}` so it only works on that workspace's URL.
 
-![The Create token modal: read and write abilities, an expiry, and the tool picker with read and write tools apart](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/create-token.png)
+![The Create token modal: read and write abilities, an expiry, and the tools table with a Read or Write badge per tool](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/create-token.png)
 
 A token can only narrow what the role allows, never widen it: the picker offers only the tools the person may run, and the role is checked again on every call, so a tool the role loses later is refused even when the token names it. A typical split is one read-only token for a reporting agent and a second one scoped to `confirm-order` and `search-orders` for the agent that works the queue.
 

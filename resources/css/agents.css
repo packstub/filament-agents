@@ -30,3 +30,20 @@
 .fi-chat-table .fi-ta-cell { padding-inline: 0.5rem; }
 .fi-chat-table .fi-ta-header-cell { padding-inline: 0.5rem; }
 .fi-chat-table .fi-ta-content { scrollbar-width: thin; }
+
+/* The tool picker of the Create token modal: one table, a line per tool, the full description on hover. */
+.fi-agent-tools { border: 1px solid rgb(0 0 0 / 0.1); border-radius: 0.75rem; overflow: hidden; }
+.dark .fi-agent-tools { border-color: rgb(255 255 255 / 0.1); }
+.fi-agent-tools table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 0.875rem; }
+.fi-agent-tools th { background: rgb(0 0 0 / 0.03); color: var(--color-gray-500); font-size: 0.75rem; font-weight: 600; text-align: start; padding: 0.5rem 0.75rem; }
+.dark .fi-agent-tools th { background: rgb(255 255 255 / 0.04); }
+.fi-agent-tools td { padding: 0.5rem 0.75rem; border-top: 1px solid rgb(0 0 0 / 0.06); vertical-align: middle; }
+.dark .fi-agent-tools td { border-color: rgb(255 255 255 / 0.08); }
+.fi-agent-tools th:nth-child(2), .fi-agent-tools td:nth-child(2) { width: 11rem; }
+.fi-agent-tools th:nth-child(3), .fi-agent-tools td:nth-child(3) { width: 5.5rem; }
+.fi-agent-tools-check { width: 2.5rem; text-align: center; }
+.fi-agent-tools-name label { font-weight: 500; color: var(--color-gray-950); cursor: pointer; }
+.dark .fi-agent-tools-name label { color: #fff; }
+.fi-agent-tools-desc { color: var(--color-gray-500); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: help; }
+.fi-agent-tools-off { opacity: 0.45; }
+.fi-agent-tools-off label { cursor: not-allowed; }
