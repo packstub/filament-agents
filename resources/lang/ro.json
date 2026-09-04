@@ -1,5 +1,6 @@
 {
   "/ min": "/ min",
+  ":count row · live table|:count rows · live table": ":count rând · tabel live|:count rânduri · tabel live",
   ":days days": ":days zile",
   ":name is also an MCP server. An agent that connects with your token sees the same tools the in-panel chat has and acts with your role in this workspace only.": ":name este și un server MCP. Un agent conectat cu token-ul tău vede aceleași instrumente ca și conversația din panou și acționează cu rolul tău, doar în acest spațiu.",
   ":name is not connected to an AI provider yet.": ":name nu este încă conectat la un furnizor AI.",
@@ -22,7 +23,6 @@
   "Answers per day, per workspace": "Răspunsuri pe zi, per spațiu",
   "Applies to": "Se aplică la",
   "Approve": "Aprobă",
-  "Ask a follow-up…": "Continuă conversația…",
   "Ask anything about your workspace.": "Întreabă orice despre spațiul tău de lucru.",
   "Assistant": "Asistent",
   "Burst protection.": "Protecție la rafale.",

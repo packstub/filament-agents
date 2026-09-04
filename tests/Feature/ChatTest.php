@@ -1,5 +1,6 @@
 <?php
 
+use Filament\Facades\Filament;
 use Illuminate\Support\Str;
 use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Models\ConversationMessage;
@@ -123,6 +124,26 @@ it('carries the record being viewed into the chat as page context', function () 
     $this->get(Chat::getUrl(['context' => 'widgets/'.$alpha->id]))->assertOk()->assertSee('About Widget Alpha');
 
     expect((new WidgetAgent(pageContext: 'widgets/'.$alpha->id))->dynamicInstructions())->toContain('opened this chat from Widget Alpha', '"name":"Alpha"');
+
+    // The first answer redirects to the conversation's own URL; the context comes along, so the follow-ups stay about the record.
+    WidgetAgent::fake(['It is live.']);
+    $component = livewire(Chat::class)->set('context', 'widgets/'.$alpha->id)->set('prompt', 'Is it live?')->call('send');
+    $conversation = Conversation::query()->where('participant_id', auth()->id())->latest('created_at')->value('id');
+    $component->assertRedirect(Chat::getUrl(['conversation' => $conversation, 'context' => 'widgets/'.$alpha->id]));
+});
+
+it('adds an "Ask …" navigation item to a panel with top navigation only', function () {
+    actingAs($this->user());
+    $panel = Filament::getCurrentOrDefaultPanel();
+
+    // With a sidebar the recent chats live there; without one the page needs an item, active on a chat too.
+    expect(Chats::shouldRegisterNavigation())->toBeFalse();
+
+    $panel->topNavigation();
+    expect(Chats::shouldRegisterNavigation())->toBeTrue()
+        ->and(Chats::getNavigationLabel())->toBe('Ask Widgets')
+        ->and(Chats::getNavigationItemActiveRoutePattern())->toBe([Chats::getRouteName(), Chat::getRouteName()]);
+    $panel->topNavigation(false);
 });
 
 it('keeps a decided proposal as a card and lets the model carry on after a rejection', function () {
@@ -147,8 +168,8 @@ it('keeps a decided proposal as a card and lets the model carry on after a rejec
     expect(Chat::writeToolNames())->toBe(['rename-widget']);
 
     livewire(Chat::class, ['conversation' => $conversation->id])
-        ->assertSeeInOrder(['Rename Widget', 'Rejected', 'Rename Widget', 'Done', 'Rename Widget', 'Approve', 'Reject'])
-        ->assertSee('Alpha II');
+        ->assertSeeInOrder(['Rename Widget', 'Rejected', 'Rename Widget', 'Done', 'Rename Widget?', 'Approve', 'Reject'])
+        ->assertSee('rename-widget { "id": '.$alpha->id.', "name": "Alpha II" }');
 
     // Rejecting hands the model a reason instead of a bare "no", so the turn continues and the model can answer.
     WidgetAgent::fake(['Understood, I left the name as it is.']);

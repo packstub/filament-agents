@@ -121,7 +121,8 @@ class Chat extends Page
                     // A write tool stays a card (proposal / done / rejected) after the decision, when the paused list is empty again.
                     'tools' => collect($m->tool_calls ?? [])->map(fn ($call) => [
                         'id' => $call['id'] ?? null,
-                        'name' => Str::headline((string) ($call['name'] ?? '')),
+                        'name' => (string) ($call['name'] ?? ''),
+                        'label' => Str::headline((string) ($call['name'] ?? '')),
                         'arguments' => $call['arguments'] ?? [],
                         'pending' => $pending->contains($call['id'] ?? null),
                         'result' => $results->get($call['id'] ?? null)['result'] ?? null,
@@ -249,7 +250,7 @@ class Chat extends Page
         $id = $agent->currentConversation();
 
         if ($id && $id !== $this->conversation) {
-            $this->redirect(static::getUrl(['conversation' => $id]));
+            $this->redirect(static::getUrl(array_filter(['conversation' => $id, 'context' => $this->context])));
 
             return;
         }

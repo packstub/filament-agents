@@ -90,9 +90,25 @@ it('embeds a live resource table in the chat with the resource\'s own actions', 
         ->assertSee('Alpha')
         ->assertDontSee('Beta');
 
-    livewire(AgentTable::class, ['resource' => 'widgets', 'filters' => ['live_only' => true], 'title' => 'Live ones'])
+    // A short result is shown whole: caption and row count, no search field, no filters, no pagination; actions are links.
+    $compact = livewire(AgentTable::class, ['resource' => 'widgets', 'filters' => ['live_only' => true], 'title' => 'Live ones'])
         ->assertCanSeeTableRecords([$alpha])
-        ->assertTableActionExists('edit');
+        ->assertTableActionExists('edit')
+        ->assertSee('2 rows · live table');
+    $table = $compact->instance()->getTable();
+    expect($table->isPaginated())->toBeFalse()
+        ->and($table->isSearchable())->toBeFalse()
+        ->and($table->getFilters())->toBe([])
+        ->and($table->getHeading())->toBeNull();
+
+    // A longer one keeps the list page's search, filters and pagination, ten rows a page.
+    foreach (range(1, 9) as $i) {
+        Widget::query()->create(['name' => 'Widget '.$i, 'status' => 'live', 'price' => $i]);
+    }
+    $long = livewire(AgentTable::class, ['resource' => 'widgets'])->assertSee('12 rows · live table')->instance()->getTable();
+    expect($long->isPaginated())->toBeTrue()
+        ->and($long->getPaginationPageOptions())->toBe([10, 25])
+        ->and($long->isSearchable())->toBeTrue();
 
     expect(Chat::tableFromResult(json_encode(['table' => ['resource' => 'nope']])))->toBeNull();
 });

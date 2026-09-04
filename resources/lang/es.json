@@ -1,5 +1,6 @@
 {
   "/ min": "/ min",
+  ":count row · live table|:count rows · live table": ":count fila · tabla en vivo|:count filas · tabla en vivo",
   ":days days": ":days días",
   ":name is also an MCP server. An agent that connects with your token sees the same tools the in-panel chat has and acts with your role in this workspace only.": ":name también es un servidor MCP. Un agente conectado con tu token ve las mismas herramientas que el chat del panel y actúa con tu rol, solo en este espacio de trabajo.",
   ":name is not connected to an AI provider yet.": ":name aún no está conectado a un proveedor de IA.",
@@ -22,7 +23,6 @@
   "Answers per day, per workspace": "Respuestas por día, por espacio de trabajo",
   "Applies to": "Se aplica a",
   "Approve": "Aprobar",
-  "Ask a follow-up…": "Haga otra pregunta…",
   "Ask anything about your workspace.": "Pregunta lo que quieras sobre tu espacio de trabajo.",
   "Assistant": "Asistente",
   "Burst protection.": "Protección contra ráfagas.",

@@ -4,11 +4,21 @@ All notable changes to `packstub/filament-agents` are documented here.
 
 ## Unreleased
 
+### Added
+
+- A panel with top navigation gets an "Ask …" navigation item (the Chats page, active on a chat too), since the recent-chats section of the sidebar has no place there.
+
 ### Changed
 
+- **The chat page, redesigned.** A breadcrumb line above the title ("Ask Acme / About Order RO-00016"); the tools the assistant used as monospace chips named as the tools are registered (`search-orders`); an embedded table with one header (caption, row count) and small-caps column titles, its row actions as plain links, shown whole without search, filters and pagination when the result is ten rows or fewer (a longer result keeps them, ten rows a page); a proposed change as one row (icon, "Confirm Order RO-00016?", the exact call, Approve / Reject on the right), with the outcome in the same row afterwards; a one-row composer (the question, the model picker, a square send button) that grows with the text; thumbs and the time shown when the answer is hovered. The topbar "Ask …" button takes the primary colour.
+- The composer's placeholder is the assistant's name ("Ask Acme…").
 - The chat column is 48rem wide instead of 72rem, a reading width for the answers; embedded tables, charts and the composer share it.
 - The Create token modal lists the tools in one table (checkbox, title, Read / Write badge, one line of description with the full text on hover) instead of two checkbox lists with the model-facing descriptions in full. A header checkbox ticks all; write rows are switched off until Write is ticked. The action's form key is `tools` (was `read_tools` and `write_tools`), which only matters to tests that call the action directly.
 - The AI limits table shows the workspace columns (Assistant, Answers / day, Tokens / month, Note) by default; the per-user detail (/ min, User tokens / day and / month, Max chars) is toggleable, so the table fits a laptop screen without a horizontal scroll.
+
+### Fixed
+
+- The page context ("About Order RO-00016") stays with the conversation after the first answer: the redirect to the conversation's URL carries it, so follow-up questions are still about the record.
 
 ## 1.1.0 — 2026-09-04
 
