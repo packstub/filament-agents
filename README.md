@@ -18,7 +18,7 @@ An in-panel AI assistant and an MCP server for your Filament v5 panel, built on 
 - **[One tool list, two front doors](#writing-tools)** — every capability is a `laravel/mcp` tool. The in-panel chat calls it through laravel/ai's bridge; external agents call it over HTTP with a token minted in the panel. Add a tool to the list and it is everywhere.
 - **[Authorization is the panel's](#writing-tools)** — a tool declares the ability string that gates the resource or action it mirrors. The assistant can never do more than the signed-in person could by hand, and a read-only token adds a second gate for external agents.
 - **[Writes are approved where the human is](#the-chat)** — in the chat, a write tool is a proposal with Approve and Reject buttons (laravel/ai approvals). Over MCP, a write token runs it directly with the person's role.
-- **[Answers that show the real thing](#live-tables-and-charts)** — `show_table` renders the resource's own Filament table under the answer, with its search, filters, sorting and row actions. A tool result with a `chart` key becomes a chart. Page context tells the assistant which record the person opened the chat from.
+- **[Answers that show the real thing](#live-tables-and-charts)** — `show-table` renders the resource's own Filament table under the answer, with its search, filters, sorting and row actions. A tool result with a `chart` key becomes a chart. Page context tells the assistant which record the person opened the chat from.
 - **[A bounded bill](#budgets-and-the-operator-page)** — a per-user burst limit, answers per day and tokens per month per workspace, tokens per day and per month per user, and a prompt length cap, all checked before a turn reaches the provider and editable per workspace and per user on an operator page.
 - **[Your assistant, your prompt](#the-assistant)** — a scaffolded agent class with two slots to fill (who it is, what the workspace is) on top of generic working and answering rules, provider-cached instructions and a model picker (Auto, Fast, Deep) for Anthropic or OpenAI.
 - **[Tenancy-aware](#tenancy)** — the MCP path can carry the workspace, tokens are bound to it, conversations can live in the tenant database and a workspace can bring its own provider key. Works without tenancy too.
@@ -104,7 +104,7 @@ class AcmeServer extends \Packstub\Agents\Mcp\AgentServer
 {
     protected string $name = 'Acme';
 
-    protected string $instructions = 'The back office of an online shop. Start with search_orders.';
+    protected string $instructions = 'The back office of an online shop. Start with search-orders.';
 
     protected array $tools = [
         Tools\SearchOrders::class,
@@ -173,7 +173,7 @@ class OrderResource extends Resource implements AgentResource
 }
 ```
 
-From that, `show_table` builds its schema, the embedded table applies the same filters, and the topbar button carries the current record into the chat as page context. `draw_chart` renders bar, line, pie and doughnut charts from numbers the model already retrieved, and any tool can return a `chart` key of its own.
+From that, `show-table` builds its schema, the embedded table applies the same filters, and the topbar button carries the current record into the chat as page context. `draw-chart` renders bar, line, pie and doughnut charts from numbers the model already retrieved, and any tool can return a `chart` key of its own.
 
 Read more: [Tables and charts](https://packstub.dev/docs/filament-agents/tables-and-charts).
 

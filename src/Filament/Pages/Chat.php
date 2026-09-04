@@ -9,6 +9,7 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use Laravel\Ai\Approvals\Decision;
 use Laravel\Ai\Approvals\Decisions;
 use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Models\ConversationMessage;
@@ -17,6 +18,7 @@ use Laravel\Ai\Streaming\Events\TextDelta;
 use Laravel\Ai\Streaming\Events\ToolCall;
 use Laravel\Ai\Streaming\Events\ToolResult;
 use Packstub\Agents\Facades\Agents;
+use Packstub\Agents\Mcp\AgentTool;
 use Packstub\Agents\Models\AgentMessageFeedback;
 use Packstub\Agents\Support\AgentBudget;
 use Packstub\Agents\Support\AgentModels;
@@ -97,6 +99,7 @@ class Chat extends Page
         }
 
         $feedback = AgentMessageFeedback::query()->where('user_id', auth()->id())->pluck('rating', 'message_id');
+        $writeTools = self::writeToolNames();
 
         return ConversationMessage::query()
             ->where('conversation_id', $this->conversation)
@@ -104,9 +107,10 @@ class Chat extends Page
             ->orderByRaw("case when role = 'user' then 0 else 1 end") // a question and its answer can share a second
             ->orderBy('id')
             ->get()
-            ->map(function (ConversationMessage $m) use ($feedback) {
+            ->map(function (ConversationMessage $m) use ($feedback, $writeTools) {
                 $results = collect($m->tool_results ?? [])->keyBy('id');
-                $pending = collect($m->approval_state['pending'] ?? [])->keys()->reject(fn ($id) => $results->has($id));
+                $everPaused = collect($m->approval_state['pending'] ?? [])->keys();
+                $pending = $everPaused->reject(fn ($id) => $results->has($id));
                 $charts = $results->map(fn ($r) => self::chartFromResult($r['result'] ?? null))->filter()->values()->all();
                 $tables = $results->map(fn ($r) => self::tableFromResult($r['result'] ?? null))->filter()->values()->all();
 
@@ -114,13 +118,15 @@ class Chat extends Page
                     'id' => $m->id,
                     'role' => $m->role,
                     'html' => $m->role === 'assistant' ? self::markdown((string) $m->content) : e((string) $m->content),
+                    // A write tool stays a card (proposal / done / rejected) after the decision, when the paused list is empty again.
                     'tools' => collect($m->tool_calls ?? [])->map(fn ($call) => [
                         'id' => $call['id'] ?? null,
                         'name' => Str::headline((string) ($call['name'] ?? '')),
                         'arguments' => $call['arguments'] ?? [],
                         'pending' => $pending->contains($call['id'] ?? null),
                         'result' => $results->get($call['id'] ?? null)['result'] ?? null,
-                        'readOnly' => ! array_key_exists($call['id'] ?? '', $m->approval_state['pending'] ?? []),
+                        'rejected' => (bool) ($results->get($call['id'] ?? null)['denied'] ?? false),
+                        'readOnly' => ! in_array($call['name'] ?? '', $writeTools, true) && ! $everPaused->contains($call['id'] ?? null),
                     ])->values()->all(),
                     'charts' => $charts,
                     'tables' => $tables,
@@ -144,7 +150,32 @@ class Chat extends Page
 
     public function decide(string $callId, bool $approve): void
     {
-        $this->runTurn(Decisions::from([$callId => $approve]));
+        $this->runTurn(Decisions::from([$callId => $approve ? Decision::approve() : Decision::reject(self::rejectionResult())]));
+    }
+
+    /**
+     * What the model reads in place of the tool's result when the person rejects
+     * a proposal. A bare rejection would end the turn silently; with a reason
+     * laravel/ai carries on, so the model can acknowledge and offer the next step.
+     */
+    public static function rejectionResult(): string
+    {
+        return 'The person rejected this change, so it did not run. Do not retry it or propose it again unless asked; acknowledge in one sentence and, if useful, ask what they would like instead.';
+    }
+
+    /**
+     * The names of the tools that change data (the ones the chat wraps for approval), whatever the current role.
+     *
+     * @return list<string>
+     */
+    public static function writeToolNames(): array
+    {
+        return collect(Agents::toolClasses())
+            ->map(fn (string $class) => app($class))
+            ->reject(fn ($tool) => $tool instanceof AgentTool ? $tool->isReadOnly() : AgentTool::hasReadOnlyAnnotation($tool))
+            ->map(fn ($tool) => $tool->name())
+            ->values()
+            ->all();
     }
 
     public function feedback(string $messageId, string $rating): void
@@ -276,7 +307,7 @@ class Chat extends Page
     }
 
     /**
-     * A show_table result becomes an embedded resource table (AgentTable).
+     * A show-table result becomes an embedded resource table (AgentTable).
      *
      * @return array{resource: string, filters: array<string, mixed>, title: string}|null
      */

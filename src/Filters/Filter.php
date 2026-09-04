@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Builder;
  *   Filter::enum('status', OrderStatus::class)->multiple()
  *       ->apply(fn (Builder $q, array $status) => $q->whereIn('status', $status))
  *
- * The same object drives show_table (a live Filament table for the person)
+ * The same object drives show-table (a live Filament table for the person)
  * and the app's search tools (rows for the model), so "orders waiting for
  * a phone call" means the same thing in both.
  */
@@ -165,7 +165,7 @@ class Filter
         }
     }
 
-    /** The JSON schema entry. Loose mode (the union show_table schema) keeps enums as plain strings. */
+    /** The JSON schema entry. Loose mode (the union show-table schema) keeps enums as plain strings. */
     public function schema(JsonSchema $schema, bool $strict = true): mixed
     {
         $type = match ($this->type) {

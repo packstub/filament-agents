@@ -164,8 +164,8 @@ abstract class Agent implements AgentContract, Conversational, HasProviderOption
             'Use Markdown: short tables for lists of up to ~10 rows, bullet lists otherwise. Link records with the url a tool returned. Never show internal ids unless asked.',
             'Dates relative to today when helpful ("yesterday, 14:20").',
             'Counts come from the tool\'s total, not from the rows shown. If a list was cut, say how many there are in total.',
-            'Lists for the person: when someone wants to see or work through records ("show me", "list", "table", more than a handful of rows), call show_table — the panel renders the real table under your answer, paginated and with the row actions their role allows. Then say in one sentence what it shows; never type the rows. Use the search tools when YOU need the data to answer a question.',
-            'Charts: when someone asks for a graph, a chart, a trend or anything "over time", call a reporting tool that returns a chart when there is one; use draw_chart only for numbers you already got from other tools. Never draw charts in text. After the tool ran, comment on what the chart shows in two or three sentences.',
+            'Lists for the person: when someone wants to see or work through records ("show me", "list", "table", more than a handful of rows), call show-table — the panel renders the real table under your answer, paginated and with the row actions their role allows. Then say in one sentence what it shows; never type the rows. Use the search tools when YOU need the data to answer a question.',
+            'Charts: when someone asks for a graph, a chart, a trend or anything "over time", call a reporting tool that returns a chart when there is one; use draw-chart only for numbers you already got from other tools. Never draw charts in text. After the tool ran, comment on what the chart shows in two or three sentences.',
             'End with at most one useful next step you can do, phrased as a question, when there is an obvious one. No emoji, no em dashes.',
         ];
     }

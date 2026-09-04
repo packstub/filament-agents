@@ -102,7 +102,7 @@ it('builds the prompt from the persona, the domain, the generic rules and the li
     $dynamic = $agent->dynamicInstructions();
 
     expect($static)->toStartWith('You are Ask Widgets')
-        ->toContain('## What the workspace is', 'draft, live, retired', '## How to work', 'show_table', '## How to answer')
+        ->toContain('## What the workspace is', 'draft, live, retired', '## How to work', 'show-table', '## How to answer')
         ->and($dynamic)->toContain('## Now', 'Grace Hopper', 'role Owner', 'Answer language: English', 'Widgets in the catalogue: 3.')
         ->and($agent->instructions())->toBe($static."\n\n".$dynamic)
         ->and($agent->maxSteps())->toBe(12)

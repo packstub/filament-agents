@@ -48,7 +48,7 @@ it('applies the filters to a query the same way for search tools and the embedde
         ->and($rows(['created_from' => now()->addDay()->toDateString()]))->toBe([]);
 });
 
-it('generates the show_table schema from the resources and refuses tables the person cannot see', function () {
+it('generates the show-table schema from the resources and refuses tables the person cannot see', function () {
     actingAs($this->user());
     $this->widgets();
 

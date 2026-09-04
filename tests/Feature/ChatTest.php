@@ -124,3 +124,40 @@ it('carries the record being viewed into the chat as page context', function () 
 
     expect((new WidgetAgent(pageContext: 'widgets/'.$alpha->id))->dynamicInstructions())->toContain('opened this chat from Widget Alpha', '"name":"Alpha"');
 });
+
+it('keeps a decided proposal as a card and lets the model carry on after a rejection', function () {
+    $user = $this->user();
+    actingAs($user);
+    [$alpha] = $this->widgets();
+
+    $conversation = Conversation::query()->create(['id' => (string) Str::uuid(), 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id, 'title' => 'Renames']);
+    $at = now()->subMinutes(5);
+    $message = fn (array $attributes) => ConversationMessage::query()->create($attributes + [
+        'id' => (string) Str::uuid(), 'created_at' => $at = $at->addMinute(), 'conversation_id' => $conversation->id, 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id,
+        'agent' => WidgetAgent::class, 'role' => 'assistant', 'content' => '', 'attachments' => [], 'meta' => [], 'usage' => [],
+    ]);
+    $call = fn (string $id, string $name) => ['id' => $id, 'name' => 'rename-widget', 'arguments' => ['id' => $alpha->id, 'name' => $name]];
+
+    // Decided turns: laravel/ai empties the paused list and records the outcome with the tool results.
+    $message(['tool_calls' => [$call('c1', 'Alpha II')], 'tool_results' => [$call('c1', 'Alpha II') + ['result' => 'The user rejected this tool call.', 'denied' => true]], 'approval_state' => ['pending' => []]]);
+    $message(['tool_calls' => [$call('c2', 'Alpha III')], 'tool_results' => [$call('c2', 'Alpha III') + ['result' => '{"renamed":true}']], 'approval_state' => ['pending' => []]]);
+    // A proposal still waiting for the person.
+    $message(['tool_calls' => [$call('c3', 'Alpha IV')], 'tool_results' => [], 'approval_state' => ['pending' => ['c3' => ['name' => 'rename-widget']]]]);
+
+    expect(Chat::writeToolNames())->toBe(['rename-widget']);
+
+    livewire(Chat::class, ['conversation' => $conversation->id])
+        ->assertSeeInOrder(['Rename Widget', 'Rejected', 'Rename Widget', 'Done', 'Rename Widget', 'Approve', 'Reject'])
+        ->assertSee('Alpha II');
+
+    // Rejecting hands the model a reason instead of a bare "no", so the turn continues and the model can answer.
+    WidgetAgent::fake(['Understood, I left the name as it is.']);
+    livewire(Chat::class, ['conversation' => $conversation->id])->call('decide', 'c3', false);
+
+    WidgetAgent::assertPrompted(function ($prompt) {
+        $decision = $prompt->approvalDecisions?->get('c3');
+
+        return $decision?->isRejected() && $decision->result === Chat::rejectionResult();
+    });
+    expect(ConversationMessage::query()->where('conversation_id', $conversation->id)->where('content', 'like', '%left the name%')->exists())->toBeTrue();
+});

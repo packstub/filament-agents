@@ -2,6 +2,15 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## Unreleased
+
+### Fixed
+
+- Rejecting a proposed change now hands the model a reason instead of a bare "no", so the turn continues and the model can acknowledge and offer the next step; the decided proposal stays a card (Done / Rejected) instead of collapsing into a tool chip once the paused list is empty.
+- The prompt's generic rules name the tools as `laravel/mcp` registers them (`show-table`, `draw-chart`); docs and the fixtures follow.
+- An operator panel that switches the Agent access page off no longer resets the page's ability and group for the tenant panel.
+- The "Read" / "Write" ability badges are translated; the AI limits page keeps one casing ("AI limits").
+
 ## 1.0.0 — 2026-09-03
 
 First public release, under the MIT license.
