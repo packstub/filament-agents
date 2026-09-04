@@ -24,6 +24,7 @@ composer lint               # Pint
 ## Conventions
 
 - PHP 8.4+, Pint, Pest; every change needs a test. Keep `CHANGELOG.md` current.
+- Release = a `## <version> — <date>` heading in `CHANGELOG.md`, then a `v<version>` tag on `main`. Packagist picks up the tag, docs sync on the push to `main`, and `.github/workflows/release.yml` creates the GitHub release from that changelog section — no manual release step.
 - UI strings are `__()` keyed by the English text; keep `resources/lang/{de,es,ro,ru}.json` in sync.
 - Anything domain-specific (record shapes, filter vocabulary, the prompt's domain block) belongs in the consuming app, behind the `AgentResource` hooks and the agent's slots — never in this package.
 - Apps that consume the package through a path repository should run their own agent suites after a change here.
