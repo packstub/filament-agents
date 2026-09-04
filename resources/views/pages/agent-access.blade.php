@@ -16,7 +16,8 @@
         <div class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
             <p>{{ __(':name is also an MCP server. An agent that connects with your token sees the same tools the in-panel chat has and acts with your role in this workspace only.', ['name' => \Packstub\Agents\Facades\Agents::name()]) }}</p>
             <p>{{ __('Server URL:') }} <code class="rounded bg-gray-100 px-1.5 py-0.5 text-xs dark:bg-white/10">{{ $this->mcpUrl() }}</code></p>
-            <p>{{ __('A read-only token can look but never change anything. A write token can change data through the tools — but only what your role could do by hand. Revoke a token here at any time.') }}</p>
+            <p>{{ __('A read-only token can look but never change anything. A write token can change data through the tools — but only what your role could do by hand.') }}</p>
+            <p>{{ __('Narrow a token to the tools an agent needs: it then sees only those, and nothing else, even if your role allows more. Give it an expiry when it lives on a machine you do not control. Revoke a token here at any time.') }}</p>
         </div>
     </x-filament::section>
 

@@ -4,6 +4,7 @@ use Laravel\Ai\Tools\McpServerTool;
 use Laravel\Mcp\Request;
 use Packstub\Agents\Ai\ApprovableTool;
 use Packstub\Agents\Facades\Agents;
+use Packstub\Agents\Mcp\AgentTool;
 use Packstub\Agents\Mcp\Tools\DrawChart;
 use Packstub\Agents\Mcp\Tools\ShowTable;
 use Packstub\Agents\Tests\Fixtures\Abilities;
@@ -70,18 +71,22 @@ it('serves MCP over HTTP with a read or write token', function () {
 
     postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 0, 'method' => 'tools/list'], $mcp)->assertStatus(401);
 
-    postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/list'], $headers($read))
+    // A read token lists the read tools only.
+    $listed = postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/list'], $headers($read))
         ->assertOk()
-        ->assertJsonPath('result.tools.0.name', 'list-widgets');
+        ->assertJsonPath('result.tools.0.name', 'list-widgets')
+        ->json('result.tools.*.name');
+    expect($listed)->toBe(['list-widgets', 'show-table', 'draw-chart']);
 
     postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 2, 'method' => 'tools/call', 'params' => ['name' => 'list-widgets', 'arguments' => ['limit' => 1]]], $headers($read))
         ->assertOk()
         ->assertJsonPath('result.isError', false);
 
-    // A read token cannot write, even for a person whose role could.
+    // A read token cannot write, even for a person whose role could: the write tool is not on its list.
     postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 3, 'method' => 'tools/call', 'params' => ['name' => 'rename-widget', 'arguments' => ['id' => 1, 'name' => 'Renamed']]], $headers($read))
         ->assertOk()
-        ->assertJsonPath('result.isError', true);
+        ->assertJsonPath('error.message', 'Tool [rename-widget] not found.');
+    expect(app(RenameWidget::class)->tokenRefusal())->toBe('This access token is read-only.');
 
     // Each MCP request is its own request in production; the test kernel keeps the resolved guard, so reset it.
     auth()->forgetGuards();
@@ -91,6 +96,48 @@ it('serves MCP over HTTP with a read or write token', function () {
         ->assertJsonPath('result.isError', false);
 
     expect(Widget::query()->find(1)->name)->toBe('Renamed');
+});
+
+it('limits a scoped token to the tools it names, in the list and by name', function () {
+    $user = $this->user();
+    $this->widgets();
+    $mcp = ['Accept' => 'application/json, text/event-stream', 'MCP-Protocol-Version' => '2025-06-18'];
+    $headers = fn (string $token) => ['Authorization' => 'Bearer '.$token] + $mcp;
+    $call = fn (int $id, string $tool, array $args, string $token) => postJson('/mcp', ['jsonrpc' => '2.0', 'id' => $id, 'method' => 'tools/call', 'params' => ['name' => $tool, 'arguments' => $args]], $headers($token));
+
+    $scoped = $user->createToken('queue', ['read', 'write', 'tool:rename-widget'])->plainTextToken;
+
+    expect(postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/list'], $headers($scoped))->assertOk()->json('result.tools.*.name'))
+        ->toBe(['rename-widget']);
+
+    $call(2, 'rename-widget', ['id' => 1, 'name' => 'Scoped'], $scoped)->assertOk()->assertJsonPath('result.isError', false);
+    expect(Widget::query()->find(1)->name)->toBe('Scoped');
+
+    // A tool outside the scope is unknown to the server, even though the role allows it.
+    $call(3, 'list-widgets', [], $scoped)->assertOk()->assertJsonPath('error.message', 'Tool [list-widgets] not found.');
+
+    // The gate itself, as an app's own tool would see it.
+    $refusal = app(ListWidgets::class)->tokenRefusal();
+    expect($refusal)->toBe('This access token does not include list-widgets.')
+        ->and(app(RenameWidget::class)->tokenRefusal())->toBeNull()
+        ->and(AgentTool::tokenTools(AgentTool::accessToken()))->toBe(['rename-widget']);
+
+    // A scope on a read token cannot smuggle a write tool in.
+    auth()->forgetGuards();
+    $readScoped = $user->createToken('report', ['read', 'tool:rename-widget', 'tool:list-widgets'])->plainTextToken;
+    expect(postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 4, 'method' => 'tools/list'], $headers($readScoped))->assertOk()->json('result.tools.*.name'))
+        ->toBe(['list-widgets']);
+
+    // An expired token is refused before any tool runs.
+    auth()->forgetGuards();
+    $expired = $user->createToken('old', ['read'], now()->subMinute())->plainTextToken;
+    postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 5, 'method' => 'tools/list'], $headers($expired))->assertStatus(401);
+
+    // The chat has no token: every tool the role allows.
+    auth()->forgetGuards();
+    actingAs($user);
+    expect(app(RenameWidget::class)->tokenRefusal())->toBeNull()
+        ->and(collect((new WidgetAgent)->tools())->map(fn ($t) => $t->name())->all())->toContain('list-widgets', 'rename-widget');
 });
 
 it('builds the prompt from the persona, the domain, the generic rules and the live context', function () {
