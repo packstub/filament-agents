@@ -102,7 +102,7 @@ class AcmeServer extends AgentServer
     protected string $version = '1.0.0';
 
     protected string $instructions = <<<'MARKDOWN'
-        The back office of an online shop. Start with search_orders; confirm_order and ship_order change data.
+        The back office of an online shop. Start with search-orders; confirm-order and ship-order change data.
         MARKDOWN;
 
     protected array $tools = [
@@ -159,4 +159,4 @@ return [
 ];
 ```
 
-`type` is one of `bar`, `line`, `pie` or `doughnut`. Prefer this over `draw_chart` for anything over time: the numbers come straight from the query.
+`type` is one of `bar`, `line`, `pie` or `doughnut`. Prefer this over `draw-chart` for anything over time: the numbers come straight from the query.

@@ -37,9 +37,9 @@
                                     <div class="flex items-center gap-2 text-sm font-semibold text-gray-950 dark:text-white">
                                         <x-filament::icon icon="heroicon-m-bolt" class="h-4 w-4 text-warning-600" />
                                         {{ $tool['name'] }}
-                                        @if (! $tool['pending'])
-                                            <x-filament::badge :color="str_contains((string) $tool['result'], 'denied') || str_contains((string) $tool['result'], 'rejected') ? 'gray' : 'success'" size="sm">
-                                                {{ str_contains((string) $tool['result'], 'denied') || str_contains((string) $tool['result'], 'rejected') ? __('Rejected') : __('Done') }}
+                                        @if (! $tool['pending'] && $tool['result'] !== null)
+                                            <x-filament::badge :color="$tool['rejected'] ? 'gray' : 'success'" size="sm">
+                                                {{ $tool['rejected'] ? __('Rejected') : __('Done') }}
                                             </x-filament::badge>
                                         @endif
                                     </div>

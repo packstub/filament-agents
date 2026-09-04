@@ -69,7 +69,7 @@ AgentsPlugin::make()
 | `agent(class)` | your `Agent` subclass (default: the package's `DefaultAgent`) |
 | `server(class)` | the `AgentServer` subclass with the tool list, name and instructions |
 | `tools(array)` | the tool list when there is no server class |
-| `resources(array)` | explicit `AgentResource` classes for `show_table` and page context (default: every panel resource implementing the contract) |
+| `resources(array)` | explicit `AgentResource` classes for `show-table` and page context (default: every panel resource implementing the contract) |
 | `authorizeUsing(fn (string $ability): bool)` | how a tool's ability is checked for the current person (default: the `Gate` when it has that ability, otherwise allowed) |
 | `roleLabelUsing(fn (): ?string)` | the person's role label for the prompt and refusals |
 | `credentialsUsing(fn (): ?WorkspaceCredentials)` | where a workspace's own provider, key and model come from |

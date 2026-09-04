@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Packstub\Agents\Filters\Filter;
 
 /**
- * A Filament resource the assistant may show as a live table (show_table)
+ * A Filament resource the assistant may show as a live table (show-table)
  * and use as page context ("the person opened this chat from Order
  * RO-00012"). Use the InteractsWithAgent trait for sensible defaults and
  * override what the domain needs.
@@ -28,7 +28,7 @@ interface AgentResource
     public static function agentContextLabel(Model $record): string;
 
     /**
-     * The filter vocabulary the model may pass to show_table (and to the
+     * The filter vocabulary the model may pass to show-table (and to the
      * app's own search tools).
      *
      * @return list<Filter>

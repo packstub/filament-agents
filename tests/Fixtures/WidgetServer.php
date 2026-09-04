@@ -12,7 +12,7 @@ class WidgetServer extends AgentServer
 {
     protected string $name = 'Widgets';
 
-    protected string $instructions = 'A catalogue of widgets. Start with list_widgets.';
+    protected string $instructions = 'A catalogue of widgets. Start with list-widgets.';
 
     protected array $tools = [
         ListWidgets::class,

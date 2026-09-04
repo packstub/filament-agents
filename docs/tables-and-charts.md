@@ -1,6 +1,6 @@
 # Tables and charts
 
-An answer that says "here are the 37 orders waiting for a call" and then renders the real Orders table under itself is more useful than one that types 37 rows. That is what `show_table` does, and it works from your resources.
+An answer that says "here are the 37 orders waiting for a call" and then renders the real Orders table under itself is more useful than one that types 37 rows. That is what `show-table` does, and it works from your resources.
 
 ## AgentResource
 
@@ -21,7 +21,7 @@ class OrderResource extends Resource implements AgentResource
 | `agentKey()` | the resource slug with underscores (`orders`) | you want a different name in the model's vocabulary |
 | `agentSummary(Model $record, bool $full = false)` | `id`, the record title and the record's panel url | the model should see domain fields (number, status, total); `$full` is for one record, compact for lists |
 | `agentContextLabel(Model $record)` | the model label plus the record title ("Order RO-00012") | the label should read differently |
-| `agentFilters()` | none | you want `show_table` and your search tools to accept filters |
+| `agentFilters()` | none | you want `show-table` and your search tools to accept filters |
 
 `agentRecordUrl()` returns the view page, else the edit page, else the list, and is what the summary's `url` should carry so answers can link to records.
 
@@ -72,13 +72,13 @@ $query = AgentResources::apply('orders', Order::query(), $filters);
 $schema = AgentResources::filterSchema($schema, 'orders');   // for the tool's schema()
 ```
 
-## show_table
+## show-table
 
 Add `Packstub\Agents\Mcp\Tools\ShowTable` to the tool list. Its description and schema are generated from the resources: the `table` argument is an enum of the agent keys, `filters` is the union of every table's vocabulary (each key described per table), and `title` is an optional caption.
 
 When the model calls it, the tool checks `canViewAny()` on the resource, normalizes the filters, counts the rows and returns the total plus a note telling the model that an interactive table is rendered under the answer. The chat then embeds the resource's own `table()`, with the resource's query narrowed by the filters as the base query, so the person gets the same columns, search, sorting, pagination and row actions their role allows on the list page.
 
-The generic answering rules tell the model to use `show_table` whenever someone wants to see or work through records ("show me", "list", more than a handful of rows) and to use the search tools when it needs the data itself.
+The generic answering rules tell the model to use `show-table` whenever someone wants to see or work through records ("show me", "list", more than a handful of rows) and to use the search tools when it needs the data itself.
 
 ## Charts
 

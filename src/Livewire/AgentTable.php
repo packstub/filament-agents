@@ -17,7 +17,7 @@ use Livewire\Component;
 use Packstub\Agents\Support\AgentResources;
 
 /**
- * A resource's table, embedded in a chat answer (show_table). It IS the
+ * A resource's table, embedded in a chat answer (show-table). It IS the
  * resource's table() — same columns, filters, sorting and row actions, so
  * every role gate the resource declares applies here too — with the agent's
  * filters as the base query and a smaller page size. Rows link to the

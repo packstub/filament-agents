@@ -106,7 +106,7 @@ class AgentsPlugin implements Plugin
         return $this;
     }
 
-    /** Explicit resources for show_table and page context (default: every panel resource implementing AgentResource). */
+    /** Explicit resources for show-table and page context (default: every panel resource implementing AgentResource). */
     public function resources(array $resources): static
     {
         $this->resources = $resources;
@@ -217,7 +217,11 @@ class AgentsPlugin implements Plugin
             $manager->limitsAuthorizeUsing($this->limitsAuthorize);
         }
 
-        $manager->agentAccess($this->agentAccessAbility, $this->agentAccessGroup);
+        // Only the panel that shows the page decides its ability and group; an operator panel that switches the page
+        // off (agentAccess(false)) must not reset them on the shared manager.
+        if ($this->agentAccess) {
+            $manager->agentAccess($this->agentAccessAbility, $this->agentAccessGroup);
+        }
 
         if ($this->askButtonHiddenOn !== []) {
             $manager->hideAskButtonOn($this->askButtonHiddenOn);

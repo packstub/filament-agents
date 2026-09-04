@@ -12,7 +12,7 @@ use Packstub\Agents\Filters\Filter;
 
 /**
  * The panel's resources as the assistant sees them: keyed by agentKey(),
- * with their filter vocabulary. Backs show_table, the embedded table and
+ * with their filter vocabulary. Backs show-table, the embedded table and
  * the page context.
  */
 class AgentResources
