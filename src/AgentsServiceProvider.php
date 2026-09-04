@@ -10,6 +10,7 @@ use Laravel\Mcp\Facades\Mcp;
 use Livewire\Livewire;
 use Packstub\Agents\Commands\MakeAgentCommand;
 use Packstub\Agents\Commands\MakeToolCommand;
+use Packstub\Agents\Http\Middleware\AcceptJson;
 use Packstub\Agents\Livewire\AgentTable;
 use Spatie\LaravelPackageTools\Commands\InstallCommand;
 use Spatie\LaravelPackageTools\Package;
@@ -87,8 +88,9 @@ class AgentsServiceProvider extends PackageServiceProvider
         // Resolving the panels runs every plugin's register(), which mirrors the server class into config.
         Filament::getPanels();
 
+        // Whatever the app configures, a client that fails authentication gets a JSON 401, never a login redirect.
         Mcp::web('/'.trim((string) config('packstub-agents.mcp.path', 'mcp'), '/'), app(AgentsManager::class)->serverClass())
             ->where('tenant', '[A-Za-z0-9-]+')
-            ->middleware(config('packstub-agents.mcp.middleware', []));
+            ->middleware([AcceptJson::class, ...config('packstub-agents.mcp.middleware', [])]);
     }
 }
