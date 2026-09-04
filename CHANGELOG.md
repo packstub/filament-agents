@@ -2,6 +2,12 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## Unreleased
+
+### Fixed
+
+- A request to the MCP endpoint without a valid token is answered with a JSON `401` whatever `Accept` header the client sent. Before, a client that did not ask for JSON was redirected to the app's `login` route, which a panel-only app does not define, so it got a `500` and an error in the log.
+
 ## 1.0.1 — 2026-09-04
 
 ### Fixed

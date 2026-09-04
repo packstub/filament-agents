@@ -36,6 +36,8 @@ Below, a table lists the person's tokens (label, abilities, last used, created) 
 'middleware' => ['throttle:60,1', 'auth:sanctum', AuthenticateAgent::class],
 ```
 
+Ahead of that stack the package always runs `AcceptJson`, which makes the request one that accepts JSON: a request that fails authentication (no token, a revoked or expired one) gets a JSON `401 {"message": "Unauthenticated."}` whatever `Accept` header the client sent, never the framework's redirect to a login route.
+
 `AuthenticateAgent` puts the request into the same shape as a panel request: the assistant's panel is made current, the person's locale is applied, and, when the path carries `{tenant}`, the workspace is resolved and set (see [Tenancy](tenancy.md)). Every tool then behaves exactly as it does in the chat.
 
 Set `AGENT_MCP_ENABLED=false` to remove the route and the Agent access page.
