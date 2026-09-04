@@ -17,6 +17,12 @@
     ],
     "type": "library",
     "license": "MIT",
+    "funding": [
+        {
+            "type": "github",
+            "url": "https://github.com/sponsors/icaliman"
+        }
+    ],
     "authors": [
         {
             "name": "Packstub",

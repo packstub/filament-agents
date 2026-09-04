@@ -8,6 +8,7 @@
 [![Tests](https://img.shields.io/github/actions/workflow/status/packstub/filament-agents/tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/packstub/filament-agents/actions/workflows/tests.yml)
 [![Total Downloads](https://img.shields.io/packagist/dt/packstub/filament-agents.svg?style=flat-square)](https://packagist.org/packages/packstub/filament-agents)
 [![License](https://img.shields.io/packagist/l/packstub/filament-agents.svg?style=flat-square)](https://github.com/packstub/filament-agents/blob/main/LICENSE.md)
+[![Sponsor](https://img.shields.io/badge/sponsor-%E2%9D%A4-ea4aaa?style=flat-square&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/icaliman)
 
 </div>
 
