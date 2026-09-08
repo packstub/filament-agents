@@ -169,13 +169,13 @@ it('keeps a question the provider could not answer and answers it on retry', fun
 
     WidgetAgent::fake([fn () => throw new RuntimeException('AI provider [gemini] is overloaded.')]);
 
-    livewire(Chat::class)
-        ->set('prompt', 'How many widgets are live?')
-        ->call('send')
+    $component = livewire(Chat::class)
+        ->call('send', 'How many widgets are live?')
         ->assertNotified()
-        ->assertRedirect();
+        ->assertNoRedirect();
 
     $conversation = Conversation::query()->where('participant_id', $user->id)->firstOrFail();
+    $component->assertSet('conversation', $conversation->id);
     $messages = ConversationMessage::query()->where('conversation_id', $conversation->id)->get();
 
     expect($messages)->toHaveCount(1)
@@ -224,7 +224,7 @@ it('records the question before the provider answers, without storing it twice',
         },
     ]);
 
-    livewire(Chat::class)->set('prompt', 'Which statuses exist?')->call('send')->assertRedirect();
+    livewire(Chat::class)->call('send', 'Which statuses exist?')->assertNoRedirect();
 
     $conversation = Conversation::query()->where('participant_id', $user->id)->firstOrFail();
     $roles = ConversationMessage::query()->where('conversation_id', $conversation->id)->orderBy('id')->pluck('role')->all();
@@ -238,4 +238,26 @@ it('records the question before the provider answers, without storing it twice',
 
     expect(ConversationMessage::query()->where('conversation_id', $conversation->id)->orderBy('id')->pluck('role')->all())
         ->toBe(['user', 'assistant', 'user', 'assistant']);
+});
+
+it('sends the question the composer passes along and keeps the page for a new chat', function () {
+    $user = $this->user();
+    actingAs($user);
+
+    WidgetAgent::fake(['Hello!']);
+
+    // The composer sends the text as an argument; a question from the URL is sent from the component's prompt.
+    $component = livewire(Chat::class)
+        ->set('prompt', 'stale draft')
+        ->call('send', 'Hi there')
+        ->assertNoRedirect()
+        ->assertSet('prompt', '');
+
+    $conversation = Conversation::query()->where('participant_id', $user->id)->firstOrFail();
+    $component->assertSet('conversation', $conversation->id)->assertSee('Hi there')->assertSee('Hello!');
+
+    expect(ConversationMessage::query()->where('conversation_id', $conversation->id)->where('role', 'user')->value('content'))->toBe('Hi there');
+
+    livewire(Chat::class)->call('send', '   ');
+    expect(Conversation::query()->where('participant_id', $user->id)->count())->toBe(1);
 });

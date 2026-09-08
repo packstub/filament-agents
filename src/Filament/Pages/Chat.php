@@ -158,9 +158,10 @@ class Chat extends Page
         $this->runTurn((string) $last->content, answering: $last->id);
     }
 
-    public function send(): void
+    /** The composer passes the question along (agent-chat.js); $prompt on the component is the auto-sent one from the URL or session. */
+    public function send(?string $prompt = null): void
     {
-        $prompt = trim($this->prompt);
+        $prompt = trim($prompt ?? $this->prompt);
         if ($prompt === '') {
             return;
         }
@@ -240,10 +241,7 @@ class Chat extends Page
                 $this->conversation = $started = $store->startConversation($user, $input);
             }
 
-            if ($answering === null) {
-                $answering = $store->storeQuestion($this->conversation, $user, $agent::class, $input);
-                $this->emit('pending-user', e($input), replace: true);
-            }
+            $answering ??= $store->storeQuestion($this->conversation, $user, $agent::class, $input);
         }
 
         $agent = $this->conversation ? $agent->continue($this->conversation, as: $user) : $agent->forUser($user);
@@ -299,14 +297,12 @@ class Chat extends Page
             $store->titleConversation($started, $input, app(AiManager::class)->textProviderFor($agent, $resolved['provider']));
         }
 
+        // A new chat keeps the page (queued questions would not survive a reload) and takes the conversation's URL.
         if ($started !== null) {
-            $this->redirect(static::getUrl(['conversation' => $started]));
-
-            return;
+            $this->js('window.history.replaceState({}, "", '.json_encode(static::getUrl(['conversation' => $started])).')');
         }
 
-        // Same conversation: the re-render reads the persisted messages, so the stream buffers are cleared.
-        $this->emit('pending-user', '', replace: true);
+        // The re-render reads the persisted messages, so the stream buffers are cleared.
         $this->emit('answer', '', replace: true);
         $this->emit('status', '', replace: true);
     }

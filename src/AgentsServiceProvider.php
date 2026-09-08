@@ -3,6 +3,7 @@
 namespace Packstub\Agents;
 
 use Filament\Facades\Filament;
+use Filament\Support\Assets\AlpineComponent;
 use Filament\Support\Assets\Css;
 use Filament\Support\Facades\FilamentAsset;
 use Illuminate\Support\Facades\Blade;
@@ -68,6 +69,7 @@ class AgentsServiceProvider extends PackageServiceProvider
 
         FilamentAsset::register([
             Css::make('packstub-agents', __DIR__.'/../resources/css/agents.css'),
+            AlpineComponent::make('agent-chat', __DIR__.'/../resources/js/agent-chat.js'),
         ], 'packstub/filament-agents');
 
         // Livewire and the panels may boot after this provider; both registrations wait for the whole app.

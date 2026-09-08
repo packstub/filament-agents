@@ -4,6 +4,10 @@ All notable changes to `packstub/filament-agents` are documented here.
 
 ## Unreleased
 
+### Changed
+
+- **The composer never locks.** A question shows in the transcript the moment it is sent (client-side, handed over to the persisted message on re-render). Anything typed while an answer is still streaming is queued and sent next, one turn at a time; a queued question can be edited or removed, and ↑ in an empty composer pulls the last queued question back for editing (or the last one sent). The textarea grows with the text; the page follows the streaming answer unless you scroll up, with a "Jump to latest" button; the answer shows a caret while it streams. A new chat no longer reloads the page after the first answer — it takes the conversation's URL in place. The composer sends the text as an argument (`send(string $prompt)`); `send()` without one still sends the component's `prompt` (a question from the URL or session). Assets: run `php artisan filament:assets` after updating — the page's Alpine component is a registered asset like the stylesheet.
+
 ### Fixed
 
 - **A question the provider could not answer is no longer lost.** The chat records the question before calling the provider (laravel/ai stores a question and its answer together, once the answer is in), so a provider error, a timeout or a closed tab leaves the question in the conversation with a Retry link under it; the error notification says so. Retry sends the same recorded question again without storing it twice or repeating it to the model as history. The conversation store binding is `Packstub\Agents\Support\AgentConversationStore` (extends laravel/ai's database store); a new chat is titled after the question until the first answer arrives, then titled by the provider as before.
