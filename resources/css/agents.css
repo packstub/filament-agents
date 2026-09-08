@@ -33,6 +33,11 @@
 .fi-chat-context-fill { display: block; height: 100%; border-radius: 9999px; background: var(--color-primary-500); transition: width 0.3s; }
 .fi-chat-context-fill-high { background: var(--color-warning-500); }
 
+/* Controls on the last exchange (edit the question, regenerate the answer) show on hover, always on touch screens. */
+.fi-chat-exchange-tools { opacity: 0; transition: opacity 0.15s; }
+.fi-chat-exchange:hover .fi-chat-exchange-tools, .fi-chat-exchange:focus-within .fi-chat-exchange-tools { opacity: 1; }
+@media (hover: none) { .fi-chat-exchange-tools { opacity: 1; } }
+
 /* A caret at the end of the answer while it streams. */
 .fi-chat-streaming::after { content: ''; display: inline-block; width: 0.5rem; height: 1em; margin-inline-start: 0.125rem; vertical-align: text-bottom; background: currentColor; opacity: 0.6; animation: fi-chat-blink 1s steps(2) infinite; }
 @keyframes fi-chat-blink { to { opacity: 0; } }

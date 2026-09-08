@@ -192,7 +192,8 @@ it('keeps a question the provider could not answer and answers it on retry', fun
 
     $component = livewire(Chat::class, ['conversation' => $conversation->id])
         ->assertSee('How many widgets are live?')
-        ->assertSee(__('The assistant did not answer.'))
+        ->assertSee(__('The assistant could not answer.'))
+        ->assertSee('AI provider [gemini] is overloaded.')
         ->assertSee(__('Retry'));
 
     expect($component->instance()->messages()->last()['unanswered'])->toBeTrue();
@@ -210,7 +211,7 @@ it('keeps a question the provider could not answer and answers it on retry', fun
 
     livewire(Chat::class, ['conversation' => $conversation->id])
         ->assertSee('Two widgets are live')
-        ->assertDontSee(__('The assistant did not answer.'));
+        ->assertDontSee(__('The assistant could not answer.'));
 
     // Nothing to retry once the question is answered.
     livewire(Chat::class, ['conversation' => $conversation->id])->call('retry');
@@ -267,4 +268,18 @@ it('sends the question the composer passes along and keeps the page for a new ch
 
     livewire(Chat::class)->call('send', '   ');
     expect(Conversation::query()->where('participant_id', $user->id)->count())->toBe(1);
+});
+
+it('keeps the chat script off a click handler context for deferred work', function () {
+    // Alpine evaluates a click handler with `this` bound to the clicked element, and Livewire's $wire follows that
+    // element: once the morph has removed it (Retry, Regenerate, Approve, a queued question's Edit) $wire is a silent
+    // no-op. So timers, the pump and continuations after an await must go through the root context (`self`).
+    $script = file_get_contents(__DIR__.'/../../resources/js/agent-chat.js');
+
+    expect($script)
+        ->toContain('self = this')
+        ->not->toMatch('/setTimeout\(\(\) => this\./')
+        ->not->toContain('this.$wire.$refresh()')
+        ->toContain('self.$wire.$refresh()')
+        ->toContain('self.timer = setTimeout(() => self.poll(), delay)');
 });

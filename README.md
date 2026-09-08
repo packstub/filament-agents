@@ -120,7 +120,7 @@ class AcmeServer extends \Packstub\Agents\Mcp\AgentServer
 
 ## The chat
 
-The assistant lives on a chat page with an "Ask …" button in the topbar and the recent conversations in the sidebar. Answers stream in while the agent calls tools; a proposed change shows up as a card with Approve and Reject, and the turn resumes with the decision. Conversations are stored with laravel/ai's models, so a reload never loses anything, and every answer can be rated with a thumbs up or down. A model picker next to the composer offers Auto, Fast and Deep, remembered per session.
+The assistant lives on a chat page with an "Ask …" button in the topbar and the recent conversations in the sidebar. Answers are produced by a queued job and stream into the page while the agent calls tools — a reload, a closed tab or a second tab picks the answer up where it is, and Stop cuts it short (run `php artisan queue:work`, or set `AGENT_TURN_DRIVER=sync` to run the job inside the request). Long chats replay a token-budgeted window with a rolling summary, with a context meter and a Continue in a new chat action. A proposed change shows up as a card with Approve and Reject, and the turn resumes with the decision. Conversations are stored with laravel/ai's models, follow-ups wait their turn per conversation, the last exchange can be regenerated or edited and sent again, and every answer can be rated with a thumbs up or down. A model picker next to the composer offers Auto, Fast and Deep, remembered per session.
 
 Ask for records and the answer comes with the resource's own table under it, filtered the way the answer says, with the row actions the person's role allows:
 

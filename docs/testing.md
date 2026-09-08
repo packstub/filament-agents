@@ -27,6 +27,22 @@ it('answers in the chat', function () {
 
 `Assistant::fake([...])` comes from laravel/ai's `Promptable` trait: each entry is one answer, in order.
 
+A turn runs in a queued job. On the `sync` queue driver (the default in a test environment), or with `chat.driver` set to `sync`, it runs inside `call('send')`, so the answer is stored when the call returns, as above. To test what happens while the job waits — the page attaching to a running turn, Stop, the follow-ups waiting per conversation — fake the queue and run the pushed job yourself:
+
+```php
+use Illuminate\Support\Facades\Queue;
+use Packstub\Agents\Jobs\RunAgentTurn;
+use Packstub\Agents\Support\AgentTurns;
+
+Queue::fake();
+livewire(Chat::class)->call('send', 'What needs attention?');
+
+Assistant::fake(['Two orders are waiting for a call.']);
+Queue::pushed(RunAgentTurn::class)->first()->handle(app(AgentTurns::class));
+```
+
+`Queue::pushed(...)->first()` is the job the chat dispatched; `handle()` runs it as a worker would, with the panel, workspace, person and locale of the request restored.
+
 ## Driving a tool
 
 ```php

@@ -1,10 +1,14 @@
 <x-filament-panels::page>
+    @php($live = $this->live())
     <div
         class="fi-chat mx-auto flex w-full max-w-3xl flex-col gap-6"
         x-load
         x-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('agent-chat', 'packstub/filament-agents') }}"
-        x-data="agentChat({ prompt: @js($prompt), autoSend: @js($autoSend) })"
+        x-data="agentChat()"
     >
+        {{-- What the component reads per render. Kept out of x-data on purpose: a changed x-data expression makes the
+             morph re-initialise the component, which would drop the outbox and the polling state. --}}
+        <div x-ref="state" hidden data-prompt="{{ $prompt }}" data-auto-send="{{ $autoSend ? '1' : '' }}" data-poll="{{ $this->pollUrl() }}" data-active="{{ $live['active']['id'] ?? '' }}" data-interval="{{ \Packstub\Agents\Support\AgentTurns::pollInterval() }}"></div>
         <div class="flex items-center justify-between gap-3">
             <div class="min-w-0">
                 <h1 class="truncate text-xl font-semibold text-gray-950 dark:text-white">{{ $this->getTitle() }}</h1>
@@ -31,19 +35,33 @@
 
             @foreach ($this->messages() as $message)
                 @if ($message['role'] === 'user')
-                    <div class="flex justify-end">
+                    <div class="fi-chat-exchange flex items-end justify-end gap-2">
+                        @if ($message['editable'])
+                            {{-- The last question: edit it and send it again (the answer is replaced). --}}
+                            <button type="button" class="fi-chat-exchange-tools rounded p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" title="{{ __('Edit and send again') }}" x-show="! busy" x-on:click="editLast(@js($message['text']))">
+                                <x-filament::icon icon="heroicon-m-pencil-square" class="h-4 w-4" />
+                            </button>
+                        @endif
                         <div class="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-primary-600 px-4 py-2.5 text-sm text-white shadow-sm">{!! $message['html'] !!}</div>
                     </div>
                     @if ($message['unanswered'])
-                        {{-- Recorded before the provider was called, but never answered: offer to send it again. --}}
-                        <div class="flex items-center justify-end gap-2 text-xs text-gray-500" wire:loading.remove wire:target="send,decide,retry">
+                        {{-- Recorded but never answered (the provider failed, or the person stopped it): offer to send it again. --}}
+                        <div class="flex items-center justify-end gap-2 text-xs text-gray-500" x-show="! busy">
                             <x-filament::icon icon="heroicon-m-exclamation-circle" class="h-4 w-4 text-danger-500" />
-                            <span>{{ __('The assistant did not answer.') }}</span>
-                            <x-filament::link tag="button" wire:click="retry" size="sm" icon="heroicon-m-arrow-path">{{ __('Retry') }}</x-filament::link>
+                            <span>
+                                @if (($live['ended']['status'] ?? null) === \Packstub\Agents\Models\AgentTurn::STOPPED)
+                                    {{ __('Stopped before an answer.') }}
+                                @elseif (($live['ended']['status'] ?? null) === \Packstub\Agents\Models\AgentTurn::FAILED)
+                                    {{ __('The assistant could not answer.') }} {{ $live['ended']['error'] }}
+                                @else
+                                    {{ __('The assistant did not answer.') }}
+                                @endif
+                            </span>
+                            <x-filament::link tag="button" size="sm" icon="heroicon-m-arrow-path" x-on:click="retry()">{{ __('Retry') }}</x-filament::link>
                         </div>
                     @endif
                 @else
-                    <div class="flex flex-col gap-2">
+                    <div class="fi-chat-exchange flex flex-col gap-2">
                         @if ($message['tools'])
                             <div class="flex flex-wrap gap-1.5">
                                 @foreach ($message['tools'] as $tool)
@@ -73,9 +91,9 @@
                                         @endforeach
                                     </dl>
                                     @if ($tool['pending'])
-                                        <div class="mt-3 flex gap-2">
-                                            <x-filament::button size="sm" icon="heroicon-m-check" wire:click="decide('{{ $tool['id'] }}', true)">{{ __('Approve') }}</x-filament::button>
-                                            <x-filament::button size="sm" color="gray" outlined wire:click="decide('{{ $tool['id'] }}', false)">{{ __('Reject') }}</x-filament::button>
+                                        <div class="mt-3 flex gap-2" x-show="! busy">
+                                            <x-filament::button size="sm" icon="heroicon-m-check" x-on:click="decide(@js($tool['id']), true)">{{ __('Approve') }}</x-filament::button>
+                                            <x-filament::button size="sm" color="gray" outlined x-on:click="decide(@js($tool['id']), false)">{{ __('Reject') }}</x-filament::button>
                                         </div>
                                     @endif
                                 </div>
@@ -118,7 +136,7 @@
                             </div>
                         @endforeach
 
-                        @if (trim($message['html']) !== '')
+                        @if (trim($message['html']) !== '' || $message['stopped'])
                             <div class="flex items-center gap-1 text-gray-400">
                                 <button type="button" wire:click="feedback('{{ $message['id'] }}', 'up')" class="rounded p-1 hover:text-success-600 {{ $message['rating'] === 'up' ? 'text-success-600' : '' }}" title="{{ __('Helpful') }}">
                                     <x-filament::icon icon="heroicon-m-hand-thumb-up" class="h-4 w-4" />
@@ -126,29 +144,57 @@
                                 <button type="button" wire:click="feedback('{{ $message['id'] }}', 'down')" class="rounded p-1 hover:text-danger-600 {{ $message['rating'] === 'down' ? 'text-danger-600' : '' }}" title="{{ __('Not helpful') }}">
                                     <x-filament::icon icon="heroicon-m-hand-thumb-down" class="h-4 w-4" />
                                 </button>
+                                @if ($message['regenerable'])
+                                    {{-- The last answer: produce it again. --}}
+                                    <button type="button" class="fi-chat-exchange-tools rounded p-1 hover:text-gray-700 dark:hover:text-gray-200" title="{{ __('Regenerate') }}" x-show="! busy" x-on:click="regenerate()">
+                                        <x-filament::icon icon="heroicon-m-arrow-path" class="h-4 w-4" />
+                                    </button>
+                                @endif
                                 <span class="ml-1 text-xs">{{ $message['at']?->format('H:i') }}</span>
+                                @if ($message['stopped'])
+                                    <span class="ml-1 text-xs">· {{ __('(stopped)') }}</span>
+                                @endif
+                                @if ($message['cutShort'])
+                                    {{-- The provider ended the answer early; Regenerate (above, on the last answer) produces it again. --}}
+                                    <span class="ml-1 text-xs" title="{{ \Packstub\Agents\Filament\Pages\Chat::cutShortText($message['cutShort']) }}">· {{ __('(cut short)') }}</span>
+                                @endif
                             </div>
                         @endif
                     </div>
                 @endif
             @endforeach
 
-            {{-- Live areas. The question being answered is drawn client-side the moment it is sent (agent-chat.js) and
-                 handed over to the persisted transcript on re-render; the answer and the tool status stream in. --}}
+            {{-- Live areas. The question being sent is drawn client-side the moment it is sent (agent-chat.js) and
+                 handed over to the persisted transcript on re-render; the answer and the tool status come from the
+                 turn endpoint while the job produces them. --}}
             <div wire:ignore class="flex justify-end empty:hidden">
                 <template x-if="sending">
                     <div class="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-primary-600 px-4 py-2.5 text-sm text-white shadow-sm" x-text="sending.text"></div>
                 </template>
             </div>
-            <div wire:stream="answer" class="fi-chat-md max-w-none text-sm text-gray-800 empty:hidden dark:text-gray-200" :class="{ 'fi-chat-streaming': busy }"></div>
-            <div wire:loading wire:target="send,decide,retry" class="flex items-center gap-2 text-xs text-gray-500">
+            <div wire:ignore class="fi-chat-md max-w-none text-sm text-gray-800 empty:hidden dark:text-gray-200" :class="{ 'fi-chat-streaming': turn !== null }" x-html="live.html" x-show="live.html !== ''"></div>
+            <div wire:ignore class="flex items-center gap-2 text-xs text-gray-500" x-show="turn !== null" x-cloak>
                 <x-filament::loading-indicator class="h-4 w-4" />
-                <span wire:stream="status">{{ __('Thinking…') }}</span>
+                <span x-text="live.status || @js(__('Thinking…'))"></span>
             </div>
 
-            {{-- Questions typed while an answer was still streaming: sent next, one at a time; editable until then. --}}
+            {{-- Questions waiting their turn on the server (kept per conversation): sent next, one at a time; editable until then. --}}
+            <div class="flex flex-col gap-5 empty:hidden" x-ref="queued" data-turns="{{ json_encode(array_column($live['queued'], 'id')) }}">
+                @foreach ($live['queued'] as $queued)
+                    <div class="flex flex-col items-end gap-1" wire:key="queued-{{ $queued['id'] }}">
+                        <div class="fi-chat-queued max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm px-4 py-2.5 text-sm">{{ $queued['text'] }}</div>
+                        <div class="flex items-center gap-3 text-xs text-gray-400">
+                            <span>{{ __('Queued') }}</span>
+                            <button type="button" class="hover:text-gray-600 hover:underline dark:hover:text-gray-200" x-on:click="editQueued(@js($queued['id']))">{{ __('Edit') }}</button>
+                            <button type="button" class="hover:text-gray-600 hover:underline dark:hover:text-gray-200" x-on:click="removeQueued(@js($queued['id']))">{{ __('Remove') }}</button>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+
+            {{-- Questions on their way to the server (a moment, while an earlier send is in flight). --}}
             <div wire:ignore class="flex flex-col gap-5 empty:hidden">
-                <template x-for="queued in queue" :key="queued.id">
+                <template x-for="queued in outbox" :key="queued.id">
                     <div class="flex flex-col items-end gap-1">
                         <div class="fi-chat-queued max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm px-4 py-2.5 text-sm" x-text="queued.text"></div>
                         <div class="flex items-center gap-3 text-xs text-gray-400">
@@ -177,7 +223,7 @@
 
         @if ($context && $context['tokens'] > 0)
             {{-- How much of the history window this chat uses: what does not fit is summarized for the model. --}}
-            <div class="fi-chat-context flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500" wire:loading.remove wire:target="send,decide,retry">
+            <div class="fi-chat-context flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
                 <span class="fi-chat-context-bar" title="{{ __(':used of :budget tokens of history', ['used' => number_format($context['tokens']), 'budget' => number_format($context['budget'])]) }}">
                     <span class="fi-chat-context-fill {{ $context['notice'] ? 'fi-chat-context-fill-high' : '' }}" style="width: {{ (int) round($context['share'] * 100) }}%"></span>
                 </span>
@@ -187,11 +233,11 @@
                 @endif
                 @if ($context['notice'])
                     <span class="text-gray-700 dark:text-gray-300">· {{ __('This chat is getting long — answers stay sharpest in a new one.') }}</span>
-                    <x-filament::link tag="button" wire:click="continueInNewChat" size="sm" icon="heroicon-m-arrow-right-circle">{{ __('Continue in a new chat') }}</x-filament::link>
+                    <x-filament::link tag="button" wire:click="continueInNewChat" size="sm" icon="heroicon-m-arrow-right-circle" x-show="! busy">{{ __('Continue in a new chat') }}</x-filament::link>
                 @endif
             </div>
         @endif
 
-        <x-packstub-agents::composer method="send" targets="send,decide,retry" class="sticky bottom-4 shadow-lg" />
+        <x-packstub-agents::composer method="send" class="sticky bottom-4 shadow-lg" />
     </div>
 </x-filament-panels::page>

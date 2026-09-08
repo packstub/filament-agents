@@ -21,7 +21,13 @@ php artisan packstub-agents:install
 php artisan filament:assets
 ```
 
-The install command publishes `config/packstub-agents.php`, offers to run the migrations and scaffolds `app/Ai/Agents/Assistant.php`. The migrations create the `agent_limits` table and the chat tables (`agent_conversations`, `agent_conversation_messages`, `agent_message_feedback`). They run from the package by default; a database-per-tenant app publishes and splits them, see [Tenancy](tenancy.md).
+The install command publishes `config/packstub-agents.php`, offers to run the migrations and scaffolds `app/Ai/Agents/Assistant.php`. The migrations create the `agent_limits` table and the chat tables (`agent_conversations`, `agent_conversation_messages`, `agent_message_feedback`, `agent_conversation_summaries`, `agent_turns`). They run from the package by default; a database-per-tenant app publishes and splits them, see [Tenancy](tenancy.md).
+
+## A queue worker
+
+The chat produces every answer in a queued job (`Packstub\Agents\Jobs\RunAgentTurn`), so the page never holds a request open while the model works and an answer keeps coming after a reload or in a second tab. Run a worker as you would for any queued job (`php artisan queue:work`, Horizon, Laravel Cloud's workers); `chat.queue_connection` and `chat.queue` pick where the jobs go.
+
+No worker? Set `chat.driver` to `sync` (`AGENT_TURN_DRIVER=sync`, or `AgentsPlugin::make()->chat(driver: 'sync')`) and the job runs inside the request that asked, whatever the app's queue connection is — everything else the same, except that an answer dies with the tab that asked for it. See [The assistant](assistant.md#how-a-turn-runs).
 
 ## Sanctum
 

@@ -74,6 +74,24 @@ return [
         'notice_share' => 0.7,
     ],
 
+    // How a chat turn runs. The answer is produced by the RunAgentTurn job, which writes what it has so far to the
+    // agent_turns table; the page polls it, so an answer survives a reload, a closed tab and shows in every tab of the
+    // chat, and Stop can cut it short.
+    'chat' => [
+        // 'queue' hands the job to a queue worker (the default; run one). 'sync' runs it inside the request that asked —
+        // no worker needed, everything else the same, except that an answer ends with the tab that asked for it.
+        // AgentsPlugin::make()->chat(driver: 'sync') sets it from the panel provider.
+        'driver' => env('AGENT_TURN_DRIVER', 'queue'),
+        // Where the job goes on the queue driver. A null connection or queue means the app's default.
+        'queue_connection' => env('AGENT_QUEUE_CONNECTION'),
+        'queue' => env('AGENT_QUEUE'),
+        // How long one turn may run on the worker, in seconds (every tool round-trip included). A turn whose job
+        // stopped writing for longer than this is shown as failed, with a Retry.
+        'job_timeout' => (int) env('AGENT_JOB_TIMEOUT', 600),
+        // How often the page asks for the answer so far while a turn runs, in milliseconds.
+        'poll_interval' => (int) env('AGENT_POLL_INTERVAL', 600),
+    ],
+
     // Spending guard rails, enforced before a turn calls the provider (this file is the platform's ceiling; the
     // operator's AI limits page overrides it per workspace and per user; the provider's own hard spend limit is
     // the real backstop). null disables a limit.
