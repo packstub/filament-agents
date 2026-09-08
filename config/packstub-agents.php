@@ -64,6 +64,16 @@ return [
     // Long chats replay fewer messages: the answers are short and every replayed message is billed again.
     'max_conversation_messages' => 40,
 
+    // What a long chat replays: the most recent messages that fit the token budget (estimated from what is stored),
+    // cut on turn boundaries so a tool call keeps its result. Older tool results are replaced by a one-line placeholder,
+    // and what falls out of the window is folded into a rolling summary the model reads first. The chat page shows a
+    // context meter and, from notice_share of the budget, suggests continuing in a new chat.
+    'history' => [
+        'max_tokens' => (int) env('AGENT_HISTORY_MAX_TOKENS', 24000),
+        'keep_tool_results_turns' => 3,
+        'notice_share' => 0.7,
+    ],
+
     // Spending guard rails, enforced before a turn calls the provider (this file is the platform's ceiling; the
     // operator's AI limits page overrides it per workspace and per user; the provider's own hard spend limit is
     // the real backstop). null disables a limit.

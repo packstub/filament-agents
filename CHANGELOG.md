@@ -4,6 +4,10 @@ All notable changes to `packstub/filament-agents` are documented here.
 
 ## Unreleased
 
+### Added
+
+- **Long chats keep working.** A chat replays the most recent messages that fit a token budget (`history.max_tokens`, 24k estimated) instead of a flat 40 rows, cut on turn boundaries. Tool results older than `history.keep_tool_results_turns` turns are replaced by a placeholder when replayed. What falls out of the window is folded into a rolling summary written by the provider's cheapest model and stored in the new `agent_conversation_summaries` table (migration included); the model reads it first. The chat shows a context meter and, from `history.notice_share` of the budget, a **Continue in a new chat** action that opens a new chat seeded with a summary of the old one.
+
 ### Changed
 
 - **The composer never locks.** A question shows in the transcript the moment it is sent (client-side, handed over to the persisted message on re-render). Anything typed while an answer is still streaming is queued and sent next, one turn at a time; a queued question can be edited or removed, and ↑ in an empty composer pulls the last queued question back for editing (or the last one sent). The textarea grows with the text; the page follows the streaming answer unless you scroll up, with a "Jump to latest" button; the answer shows a caret while it streams. A new chat no longer reloads the page after the first answer — it takes the conversation's URL in place. The composer sends the text as an argument (`send(string $prompt)`); `send()` without one still sends the component's `prompt` (a question from the URL or session). Assets: run `php artisan filament:assets` after updating — the page's Alpine component is a registered asset like the stylesheet.
