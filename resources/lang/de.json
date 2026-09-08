@@ -79,6 +79,7 @@
   "Rejected": "Abgelehnt",
   "Resets at midnight.": "Zurückgesetzt um Mitternacht.",
   "Resets at midnight; counted inside each workspace.": "Wird um Mitternacht zurückgesetzt; je Arbeitsbereich gezählt.",
+  "Retry": "Erneut senden",
   "Revoke": "Widerrufen",
   "Scope": "Ebene",
   "Select all": "Alle auswählen",
@@ -88,6 +89,7 @@
   "That question is too long (max :n characters).": "Die Frage ist zu lang (maximal :n Zeichen).",
   "The action failed: :message": "Die Aktion ist fehlgeschlagen: :message",
   "The assistant could not answer": "Der Assistent konnte nicht antworten",
+  "The assistant did not answer.": "Der Assistent hat nicht geantwortet.",
   "The token acts as you, in this workspace, within your role. Narrow it to what the agent needs.": "Das Token handelt als du, in diesem Arbeitsbereich, im Rahmen deiner Rolle. Beschränke es auf das, was der Agent braucht.",
   "Thinking…": "Denkt nach…",
   "This access token does not include :tool.": "Dieses Zugangstoken umfasst :tool nicht.",
@@ -122,5 +124,6 @@
   "You used your AI budget for the month.": "Sie haben Ihr KI-Budget für diesen Monat aufgebraucht.",
   "You used your AI budget for today. It resets at midnight.": "Sie haben Ihr KI-Budget für heute aufgebraucht. Es wird um Mitternacht zurückgesetzt.",
   "Your new token": "Ihr neues Token",
+  "Your question is kept — use Retry to send it again.": "Ihre Frage bleibt erhalten – mit „Erneut senden“ schicken Sie sie noch einmal ab.",
   "Your role (:role) is not allowed to do this.": "Ihre Rolle (:role) darf das nicht."
 }

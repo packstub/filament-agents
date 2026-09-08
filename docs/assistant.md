@@ -16,7 +16,7 @@ An answer about numbers renders a chart, from `draw-chart` or from a reporting t
 
 ![A question about order value over four weeks answered with a sentence and a bar chart, Order value by week](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-chart.png)
 
-Conversations and messages are laravel/ai's `Conversation` and `ConversationMessage` models, stored in the `agent_conversations` and `agent_conversation_messages` tables, so a reload never loses anything and one person never sees another person's chats. Every answer can be rated with a thumbs up or down (`agent_message_feedback`), which your app can read to find the questions that go wrong.
+Conversations and messages are laravel/ai's `Conversation` and `ConversationMessage` models, stored in the `agent_conversations` and `agent_conversation_messages` tables, so a reload never loses anything and one person never sees another person's chats. A question is recorded before the provider is called: if the provider fails or times out, the question stays in the conversation with a Retry link under it. Every answer can be rated with a thumbs up or down (`agent_message_feedback`), which your app can read to find the questions that go wrong.
 
 ### Approvals
 

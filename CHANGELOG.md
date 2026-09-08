@@ -2,6 +2,12 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## Unreleased
+
+### Fixed
+
+- **A question the provider could not answer is no longer lost.** The chat records the question before calling the provider (laravel/ai stores a question and its answer together, once the answer is in), so a provider error, a timeout or a closed tab leaves the question in the conversation with a Retry link under it; the error notification says so. Retry sends the same recorded question again without storing it twice or repeating it to the model as history. The conversation store binding is `Packstub\Agents\Support\AgentConversationStore` (extends laravel/ai's database store); a new chat is titled after the question until the first answer arrives, then titled by the provider as before.
+
 ## 1.2.0 — 2026-09-08
 
 ### Added

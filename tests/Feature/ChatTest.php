@@ -13,6 +13,7 @@ use Packstub\Agents\Support\AgentModels;
 use Packstub\Agents\Support\PageContext;
 use Packstub\Agents\Tests\Fixtures\Filament\Resources\Widgets\WidgetResource;
 use Packstub\Agents\Tests\Fixtures\WidgetAgent;
+use RuntimeException;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
@@ -160,4 +161,81 @@ it('keeps a decided proposal as a card and lets the model carry on after a rejec
         return $decision?->isRejected() && $decision->result === Chat::rejectionResult();
     });
     expect(ConversationMessage::query()->where('conversation_id', $conversation->id)->where('content', 'like', '%left the name%')->exists())->toBeTrue();
+});
+
+it('keeps a question the provider could not answer and answers it on retry', function () {
+    $user = $this->user();
+    actingAs($user);
+
+    WidgetAgent::fake([fn () => throw new RuntimeException('AI provider [gemini] is overloaded.')]);
+
+    livewire(Chat::class)
+        ->set('prompt', 'How many widgets are live?')
+        ->call('send')
+        ->assertNotified()
+        ->assertRedirect();
+
+    $conversation = Conversation::query()->where('participant_id', $user->id)->firstOrFail();
+    $messages = ConversationMessage::query()->where('conversation_id', $conversation->id)->get();
+
+    expect($messages)->toHaveCount(1)
+        ->and($messages[0]->role)->toBe('user')
+        ->and($messages[0]->content)->toBe('How many widgets are live?')
+        ->and($conversation->title)->toBe('How many widgets are live?');
+
+    $component = livewire(Chat::class, ['conversation' => $conversation->id])
+        ->assertSee('How many widgets are live?')
+        ->assertSee(__('The assistant did not answer.'))
+        ->assertSee(__('Retry'));
+
+    expect($component->instance()->messages()->last()['unanswered'])->toBeTrue();
+
+    WidgetAgent::fake(['Two widgets are live.']);
+    $component->call('retry')->assertNotNotified();
+
+    $messages = ConversationMessage::query()->where('conversation_id', $conversation->id)->orderBy('id')->get();
+
+    expect($messages)->toHaveCount(2)
+        ->and($messages[0]->id)->toBe($messages->first()->id)
+        ->and($messages[0]->role)->toBe('user')
+        ->and($messages[1]->role)->toBe('assistant')
+        ->and($messages[1]->content)->toContain('Two widgets are live');
+
+    livewire(Chat::class, ['conversation' => $conversation->id])
+        ->assertSee('Two widgets are live')
+        ->assertDontSee(__('The assistant did not answer.'));
+
+    // Nothing to retry once the question is answered.
+    livewire(Chat::class, ['conversation' => $conversation->id])->call('retry');
+    expect(ConversationMessage::query()->where('conversation_id', $conversation->id)->count())->toBe(2);
+});
+
+it('records the question before the provider answers, without storing it twice', function () {
+    $user = $this->user();
+    actingAs($user);
+
+    $seenHistory = null;
+    WidgetAgent::fake([
+        function (string $prompt) use (&$seenHistory) {
+            // By now the question is on disk, and it is not repeated to the model as history.
+            $seenHistory = ConversationMessage::query()->pluck('role')->all();
+
+            return 'Draft, live and retired.';
+        },
+    ]);
+
+    livewire(Chat::class)->set('prompt', 'Which statuses exist?')->call('send')->assertRedirect();
+
+    $conversation = Conversation::query()->where('participant_id', $user->id)->firstOrFail();
+    $roles = ConversationMessage::query()->where('conversation_id', $conversation->id)->orderBy('id')->pluck('role')->all();
+
+    expect($seenHistory)->toBe(['user'])
+        ->and($roles)->toBe(['user', 'assistant']);
+
+    // A follow-up in the same conversation: one user row, one assistant row again.
+    WidgetAgent::fake(['Three of them.']);
+    livewire(Chat::class, ['conversation' => $conversation->id])->set('prompt', 'How many?')->call('send');
+
+    expect(ConversationMessage::query()->where('conversation_id', $conversation->id)->orderBy('id')->pluck('role')->all())
+        ->toBe(['user', 'assistant', 'user', 'assistant']);
 });

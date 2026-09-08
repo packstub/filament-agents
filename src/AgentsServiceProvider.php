@@ -6,12 +6,14 @@ use Filament\Facades\Filament;
 use Filament\Support\Assets\Css;
 use Filament\Support\Facades\FilamentAsset;
 use Illuminate\Support\Facades\Blade;
+use Laravel\Ai\Contracts\ConversationStore;
 use Laravel\Mcp\Facades\Mcp;
 use Livewire\Livewire;
 use Packstub\Agents\Commands\MakeAgentCommand;
 use Packstub\Agents\Commands\MakeToolCommand;
 use Packstub\Agents\Http\Middleware\AcceptJson;
 use Packstub\Agents\Livewire\AgentTable;
+use Packstub\Agents\Support\AgentConversationStore;
 use Spatie\LaravelPackageTools\Commands\InstallCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
@@ -56,6 +58,10 @@ class AgentsServiceProvider extends PackageServiceProvider
 
     public function packageBooted(): void
     {
+        // The chat records a question before the provider answers it (see AgentConversationStore).
+        $this->app->singleton(ConversationStore::class, fn (): AgentConversationStore => new AgentConversationStore(config('ai.conversations.connection')));
+        $this->app->alias(ConversationStore::class, AgentConversationStore::class);
+
         $this->loadJsonTranslationsFrom(__DIR__.'/../resources/lang');
 
         Blade::anonymousComponentPath(__DIR__.'/../resources/views/components', 'packstub-agents');

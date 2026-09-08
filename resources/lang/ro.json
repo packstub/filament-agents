@@ -79,6 +79,7 @@
   "Rejected": "Respins",
   "Resets at midnight.": "Se resetează la miezul nopții.",
   "Resets at midnight; counted inside each workspace.": "Se resetează la miezul nopții; numărați în fiecare spațiu.",
+  "Retry": "Reîncearcă",
   "Revoke": "Revocă",
   "Scope": "Nivel",
   "Select all": "Selectează tot",
@@ -88,6 +89,7 @@
   "That question is too long (max :n characters).": "Întrebarea e prea lungă (maximum :n caractere).",
   "The action failed: :message": "Acțiunea a eșuat: :message",
   "The assistant could not answer": "Asistentul nu a putut răspunde",
+  "The assistant did not answer.": "Asistentul nu a răspuns.",
   "The token acts as you, in this workspace, within your role. Narrow it to what the agent needs.": "Tokenul acționează ca tine, în acest spațiu de lucru, în limitele rolului tău. Restrânge-l la ce are nevoie agentul.",
   "Thinking…": "Se gândește…",
   "This access token does not include :tool.": "Acest token de acces nu include :tool.",
@@ -122,5 +124,6 @@
   "You used your AI budget for the month.": "Ți-ai consumat bugetul AI pe luna aceasta.",
   "You used your AI budget for today. It resets at midnight.": "Ți-ai consumat bugetul AI pe ziua de azi. Se resetează la miezul nopții.",
   "Your new token": "Noul tău token",
+  "Your question is kept — use Retry to send it again.": "Întrebarea ta este păstrată – folosește Reîncearcă pentru a o trimite din nou.",
   "Your role (:role) is not allowed to do this.": "Rolul tău (:role) nu are voie să facă asta."
 }

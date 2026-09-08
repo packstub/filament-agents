@@ -9,6 +9,7 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use Laravel\Ai\AiManager;
 use Laravel\Ai\Approvals\Decision;
 use Laravel\Ai\Approvals\Decisions;
 use Laravel\Ai\Models\Conversation;
@@ -21,6 +22,7 @@ use Packstub\Agents\Facades\Agents;
 use Packstub\Agents\Mcp\AgentTool;
 use Packstub\Agents\Models\AgentMessageFeedback;
 use Packstub\Agents\Support\AgentBudget;
+use Packstub\Agents\Support\AgentConversationStore;
 use Packstub\Agents\Support\AgentModels;
 use Packstub\Agents\Support\AgentResources;
 use Packstub\Agents\Support\PageContext;
@@ -101,7 +103,7 @@ class Chat extends Page
         $feedback = AgentMessageFeedback::query()->where('user_id', auth()->id())->pluck('rating', 'message_id');
         $writeTools = self::writeToolNames();
 
-        return ConversationMessage::query()
+        $list = ConversationMessage::query()
             ->where('conversation_id', $this->conversation)
             ->orderBy('created_at')
             ->orderByRaw("case when role = 'user' then 0 else 1 end") // a question and its answer can share a second
@@ -132,8 +134,28 @@ class Chat extends Page
                     'tables' => $tables,
                     'rating' => $feedback->get($m->id),
                     'at' => $m->created_at,
+                    'unanswered' => false,
                 ];
             });
+
+        // A question with nothing after it was recorded but never answered (the provider failed): it gets a Retry.
+        if ($list->isNotEmpty() && $list->last()['role'] === 'user') {
+            $list->push([...$list->pop(), 'unanswered' => true]);
+        }
+
+        return $list;
+    }
+
+    /** Send the last question again when it never got an answer. */
+    public function retry(): void
+    {
+        $last = $this->conversation ? ConversationMessage::query()->where('conversation_id', $this->conversation)->orderByDesc('id')->first() : null;
+
+        if (! $last || $last->role !== 'user') {
+            return;
+        }
+
+        $this->runTurn((string) $last->content, answering: $last->id);
     }
 
     public function send(): void
@@ -186,8 +208,13 @@ class Chat extends Page
         );
     }
 
-    /** Stream one turn — a question or a set of approval decisions — into the page. */
-    protected function runTurn(Decisions|string $input): void
+    /**
+     * Stream one turn — a question or a set of approval decisions — into the page.
+     *
+     * A question is recorded before the provider is called, so it survives a
+     * failed answer; $answering names an already recorded question (a retry).
+     */
+    protected function runTurn(Decisions|string $input, ?string $answering = null): void
     {
         if (! AgentModels::enabled()) {
             Notification::make()->title(__(':name is not connected to an AI provider yet.', ['name' => Agents::name()]))->warning()->send();
@@ -205,12 +232,25 @@ class Chat extends Page
         AgentModels::remember($this->model);
         $user = auth()->user();
         $agent = Agents::agent($this->context, $this->model);
-        $agent = $this->conversation ? $agent->continue($this->conversation, as: $user) : $agent->forUser($user);
+        $store = app(AgentConversationStore::class);
+        $started = null;
 
         if (is_string($input)) {
-            $this->emit('pending-user', e($input), replace: true);
+            if (! $this->conversation) {
+                $this->conversation = $started = $store->startConversation($user, $input);
+            }
+
+            if ($answering === null) {
+                $answering = $store->storeQuestion($this->conversation, $user, $agent::class, $input);
+                $this->emit('pending-user', e($input), replace: true);
+            }
         }
+
+        $agent = $this->conversation ? $agent->continue($this->conversation, as: $user) : $agent->forUser($user);
         $this->emit('status', e(__('Thinking…')), replace: true);
+
+        $store->answering($answering);
+        $answered = false;
 
         try {
             $resolved = AgentModels::resolve($this->model);
@@ -241,15 +281,26 @@ class Chat extends Page
                     throw new \RuntimeException($event->message);
                 }
             }
+
+            $answered = true;
         } catch (Throwable $e) {
             report($e);
-            Notification::make()->title(__('The assistant could not answer'))->body($e->getMessage())->danger()->persistent()->send();
+            Notification::make()
+                ->title(__('The assistant could not answer'))
+                ->body($e->getMessage().(is_string($input) ? ' '.__('Your question is kept — use Retry to send it again.') : ''))
+                ->danger()
+                ->persistent()
+                ->send();
+        } finally {
+            $store->answering(null);
         }
 
-        $id = $agent->currentConversation();
+        if ($started !== null && $answered && is_string($input)) {
+            $store->titleConversation($started, $input, app(AiManager::class)->textProviderFor($agent, $resolved['provider']));
+        }
 
-        if ($id && $id !== $this->conversation) {
-            $this->redirect(static::getUrl(['conversation' => $id]));
+        if ($started !== null) {
+            $this->redirect(static::getUrl(['conversation' => $started]));
 
             return;
         }

@@ -19,6 +19,14 @@
                     <div class="flex justify-end">
                         <div class="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-primary-600 px-4 py-2.5 text-sm text-white shadow-sm">{!! $message['html'] !!}</div>
                     </div>
+                    @if ($message['unanswered'])
+                        {{-- Recorded before the provider was called, but never answered: offer to send it again. --}}
+                        <div class="flex items-center justify-end gap-2 text-xs text-gray-500" wire:loading.remove wire:target="send,decide,retry">
+                            <x-filament::icon icon="heroicon-m-exclamation-circle" class="h-4 w-4 text-danger-500" />
+                            <span>{{ __('The assistant did not answer.') }}</span>
+                            <x-filament::link tag="button" wire:click="retry" size="sm" icon="heroicon-m-arrow-path">{{ __('Retry') }}</x-filament::link>
+                        </div>
+                    @endif
                 @else
                     <div class="flex flex-col gap-2">
                         @if ($message['tools'])
@@ -115,12 +123,12 @@
                 <div wire:stream="pending-user" class="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-primary-600 px-4 py-2.5 text-sm text-white shadow-sm empty:hidden"></div>
             </div>
             <div wire:stream="answer" class="fi-chat-md max-w-none text-sm text-gray-800 empty:hidden dark:text-gray-200"></div>
-            <div wire:loading wire:target="send,decide" class="flex items-center gap-2 text-xs text-gray-500">
+            <div wire:loading wire:target="send,decide,retry" class="flex items-center gap-2 text-xs text-gray-500">
                 <x-filament::loading-indicator class="h-4 w-4" />
                 <span wire:stream="status">{{ __('Thinking…') }}</span>
             </div>
         </div>
 
-        <x-packstub-agents::composer method="send" targets="send,decide" class="sticky bottom-4 shadow-lg" />
+        <x-packstub-agents::composer method="send" targets="send,decide,retry" class="sticky bottom-4 shadow-lg" />
     </div>
 </x-filament-panels::page>

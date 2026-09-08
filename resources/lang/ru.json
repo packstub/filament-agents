@@ -79,6 +79,7 @@
   "Rejected": "Отклонено",
   "Resets at midnight.": "Сброс в полночь.",
   "Resets at midnight; counted inside each workspace.": "Сбрасывается в полночь; считаются внутри каждого пространства.",
+  "Retry": "Повторить",
   "Revoke": "Отозвать",
   "Scope": "Уровень",
   "Select all": "Выбрать все",
@@ -88,6 +89,7 @@
   "That question is too long (max :n characters).": "Вопрос слишком длинный (максимум :n символов).",
   "The action failed: :message": "Действие не удалось: :message",
   "The assistant could not answer": "Ассистент не смог ответить",
+  "The assistant did not answer.": "Ассистент не ответил.",
   "The token acts as you, in this workspace, within your role. Narrow it to what the agent needs.": "Токен действует от вашего имени, в этом рабочем пространстве, в рамках вашей роли. Ограничьте его тем, что нужно агенту.",
   "Thinking…": "Думает…",
   "This access token does not include :tool.": "Этот токен доступа не включает :tool.",
@@ -122,5 +124,6 @@
   "You used your AI budget for the month.": "Вы исчерпали свой AI-бюджет на месяц.",
   "You used your AI budget for today. It resets at midnight.": "Вы исчерпали свой AI-бюджет на сегодня. Он сбрасывается в полночь.",
   "Your new token": "Ваш новый токен",
+  "Your question is kept — use Retry to send it again.": "Ваш вопрос сохранён — нажмите «Повторить», чтобы отправить его снова.",
   "Your role (:role) is not allowed to do this.": "Вашей роли (:role) это не разрешено."
 }
