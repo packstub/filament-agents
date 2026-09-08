@@ -91,7 +91,7 @@ AgentsPlugin::make()
 | `authorizeUsing(fn (string $ability): bool)` | how a tool's ability is checked for the current person (default: the `Gate` when it has that ability, otherwise allowed) |
 | `roleLabelUsing(fn (): ?string)` | the person's role label for the prompt and refusals |
 | `credentialsUsing(fn (): ?WorkspaceCredentials)` | where a workspace's own provider, key and model come from |
-| `chat(bool)` | the Chat and Chats pages, the topbar button and the sidebar block |
+| `chat(bool $enabled, ?string $driver)` | the Chat and Chats pages, the topbar button and the sidebar block; `driver` is `queue` (a worker) or `sync` (inside the request), mirrored into `chat.driver` |
 | `agentAccess(bool $enabled, ?string $ability, Closure\|string\|null $group)` | the token page, its gate and navigation group |
 | `limits(bool $enabled, ?Closure $authorize)` | the operator's AI limits resource and who may edit it (default: any signed-in user of the panel) |
 | `hideAskButtonOn(array $routePatterns)` | route name patterns without the topbar button (the chat itself is always excluded) |

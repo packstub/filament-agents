@@ -38,6 +38,8 @@ AgentsPlugin::make()
 | One workspace | one tenant (only offered in a panel with tenancy) | all of them |
 | One user | one account, in every workspace | the per-user fields: on/off, questions per minute, tokens per day and per month, max question length |
 
+The table shows the workspace columns (Assistant, Answers / day, Tokens / month, Note) by default; the per-user detail (/ min, User tokens / day and / month, Max chars) is behind the column toggle, so the table fits a laptop screen.
+
 Empty fields inherit: user → workspace → everyone → the config defaults. The **Assistant** switch on a workspace row turns the chat off for that workspace entirely (the pages and buttons hide themselves); on a user row it does the same for one person.
 
 Rows live in the `agent_limits` table on `packstub-agents.limits_connection` (`AGENT_LIMITS_CONNECTION`), the central connection in a database-per-tenant app, since limits are the operator's, not the workspace's. Resolved limits are cached for the request; the resource flushes the cache after every edit.
