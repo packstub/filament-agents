@@ -2,7 +2,9 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
-## Unreleased
+## 1.3.0 — 2026-09-08
+
+Upgrading: run `php artisan filament:assets` (the chat page's Alpine component is a registered asset) and `php artisan migrate` (new `agent_conversation_summaries` table).
 
 ### Added
 
