@@ -21,7 +21,7 @@ An in-panel AI assistant and an MCP server for your Filament v5 panel, built on 
 - **[Writes are approved where the human is](#the-chat)** — in the chat, a write tool is a proposal with Approve and Reject buttons (laravel/ai approvals). Over MCP, a write token runs it directly with the person's role.
 - **[Answers that show the real thing](#live-tables-and-charts)** — `show-table` renders the resource's own Filament table under the answer, with its search, filters, sorting and row actions. A tool result with a `chart` key becomes a chart. Page context tells the assistant which record the person opened the chat from.
 - **[A bounded bill](#budgets-and-the-operator-page)** — a per-user burst limit, answers per day and tokens per month per workspace, tokens per day and per month per user, and a prompt length cap, all checked before a turn reaches the provider and editable per workspace and per user on an operator page.
-- **[Your assistant, your prompt](#the-assistant)** — a scaffolded agent class with two slots to fill (who it is, what the workspace is) on top of generic working and answering rules, provider-cached instructions and a model picker (Auto, Fast, Deep) for Anthropic or OpenAI.
+- **[Your assistant, your prompt](#the-assistant)** — a scaffolded agent class with two slots to fill (who it is, what the workspace is) on top of generic working and answering rules, provider-cached instructions and a model picker (Auto, Fast, Deep) for Anthropic, OpenAI, Gemini or xAI — any other laravel/ai provider, Ollama included, runs on its smartest and cheapest models.
 - **[Tenancy-aware](#tenancy)** — the MCP path can carry the workspace, tokens are bound to it, conversations can live in the tenant database and a workspace can bring its own provider key. Works without tenancy too.
 - **Translatable** — every string goes through `__()`, with German, Spanish, Romanian and Russian included.
 
@@ -45,7 +45,7 @@ The install command publishes the config, runs the migrations and scaffolds `app
 @source '../../../../vendor/packstub/filament-agents/resources/views';
 ```
 
-Register the plugin in your panel provider and put a provider key in `.env` (`ANTHROPIC_API_KEY` or `OPENAI_API_KEY`, with `AGENT_PROVIDER=anthropic|openai`):
+Register the plugin in your panel provider and put a provider key in `.env` (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` or `XAI_API_KEY`, with `AGENT_PROVIDER=anthropic|openai|gemini|xai`):
 
 ```php
 use Packstub\Agents\AgentsPlugin;
@@ -138,7 +138,7 @@ Read more: [The assistant](https://packstub.dev/docs/filament-agents/assistant).
 
 ## The assistant
 
-`packstub-agents:agent` scaffolds `App\Ai\Agents\Assistant`, a subclass of `Packstub\Agents\Ai\Agent` with two slots to fill: `persona()` (who it is) and `domain()` (what the workspace is). The base class supplies the generic working and answering rules, the dynamic context (date, workspace, person, role, language, page context) and the provider options (Anthropic prompt caching of the static block, reasoning effort per model). Append to any of them by overriding `workRules()`, `answerRules()` or `context()` and merging the parent's list.
+`packstub-agents:agent` scaffolds `App\Ai\Agents\Assistant`, a subclass of `Packstub\Agents\Ai\Agent` with two slots to fill: `persona()` (who it is) and `domain()` (what the workspace is). The base class supplies the generic working and answering rules, the dynamic context (date, workspace, person, role, language, page context) and the provider options (Anthropic prompt caching of the static block, reasoning effort or thinking level per model). Append to any of them by overriding `workRules()`, `answerRules()` or `context()` and merging the parent's list.
 
 ```php
 class Assistant extends Agent

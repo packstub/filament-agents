@@ -7,7 +7,7 @@ use Packstub\Agents\Http\Middleware\AuthenticateAgent;
 | Packstub Agents — the in-panel assistant and the MCP server
 |--------------------------------------------------------------------------
 |
-| Provider credentials live in config/ai.php (ANTHROPIC_API_KEY, OPENAI_API_KEY…).
+| Provider credentials live in config/ai.php (ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, XAI_API_KEY…).
 | This file says which provider the platform uses by default, which models the
 | picker offers and how much a workspace may spend. Most of it can also be set
 | fluently on AgentsPlugin in the panel provider; the plugin mirrors those
@@ -22,7 +22,8 @@ return [
     // The panel the assistant lives in. Set by AgentsPlugin when it registers; only set it here for a headless install.
     'panel' => null,
 
-    // 'anthropic' or 'openai' (any laravel/ai text provider works). The platform default; a workspace may bring its own.
+    // 'anthropic', 'openai', 'gemini' or 'xai' have picker entries below; any other laravel/ai text provider (ollama,
+    // openrouter, mistral, groq, deepseek…) runs on its smartest and cheapest models. A workspace may bring its own.
     'provider' => env('AGENT_PROVIDER', 'anthropic'),
 
     // null = enabled when a key exists for the provider (platform or workspace). AGENT_ENABLED=false hides the chat.
@@ -30,7 +31,9 @@ return [
 
     // What the model picker offers, per provider. A null model means "the provider's smartest" (auto, deep) or
     // "the provider's cheapest" (fast) as laravel/ai knows them; AGENT_MODEL* pin explicit names. Effort is
-    // passed as Anthropic output_config.effort / OpenAI reasoning.effort.
+    // passed as Anthropic output_config.effort, OpenAI and xAI reasoning.effort (reasoning models only) or
+    // Gemini's thinking level (low, medium, high; xhigh is sent as high). A provider without entries here gets
+    // Auto (smartest) and Fast (cheapest) with no effort.
     'models' => [
         'anthropic' => [
             'auto' => ['label' => 'Auto', 'model' => env('AGENT_MODEL', 'claude-opus-5'), 'effort' => 'medium'],
@@ -41,6 +44,16 @@ return [
             'auto' => ['label' => 'Auto', 'model' => env('AGENT_MODEL'), 'effort' => 'medium'],
             'fast' => ['label' => 'Fast', 'model' => env('AGENT_MODEL_FAST'), 'effort' => 'low'],
             'deep' => ['label' => 'Deep', 'model' => env('AGENT_MODEL_DEEP'), 'effort' => 'high'],
+        ],
+        'gemini' => [
+            'auto' => ['label' => 'Auto', 'model' => env('AGENT_MODEL', 'gemini-3.8-flash'), 'effort' => 'medium'],
+            'fast' => ['label' => 'Fast', 'model' => env('AGENT_MODEL_FAST', 'gemini-3.5-flash-lite'), 'effort' => 'low'],
+            'deep' => ['label' => 'Deep', 'model' => env('AGENT_MODEL_DEEP', 'gemini-3.8-flash'), 'effort' => 'high'],
+        ],
+        'xai' => [
+            'auto' => ['label' => 'Auto', 'model' => env('AGENT_MODEL', 'grok-4.6'), 'effort' => 'medium'],
+            'fast' => ['label' => 'Fast', 'model' => env('AGENT_MODEL_FAST', 'grok-4.6'), 'effort' => 'low'],
+            'deep' => ['label' => 'Deep', 'model' => env('AGENT_MODEL_DEEP', 'grok-4.6'), 'effort' => 'xhigh'],
         ],
     ],
 

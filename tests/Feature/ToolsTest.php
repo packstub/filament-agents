@@ -156,5 +156,7 @@ it('builds the prompt from the persona, the domain, the generic rules and the li
         ->and($agent->providerOptions('anthropic'))->toHaveKeys(['system', 'output_config'])
         ->and($agent->providerOptions('anthropic')['system'][0]['cache_control'])->toBe(['type' => 'ephemeral'])
         ->and(WidgetAgent::supportsReasoning('gpt-5.2'))->toBeTrue()
-        ->and(WidgetAgent::supportsReasoning('gpt-4o'))->toBeFalse();
+        ->and(WidgetAgent::supportsReasoning('gpt-4o'))->toBeFalse()
+        ->and($agent->providerOptions('gemini'))->toBe(['thinkingConfig' => ['thinkingLevel' => 'HIGH']])
+        ->and($agent->providerOptions('xai'))->toBe(['reasoning' => ['effort' => 'xhigh']]);
 });

@@ -33,7 +33,7 @@ use Packstub\Agents\Ai\WorkspaceCredentials;
 
 AgentsPlugin::make()->credentialsUsing(fn () => Filament::getTenant()
     ? new WorkspaceCredentials(
-        provider: $settings->assistant_provider,   // 'anthropic' | 'openai'
+        provider: $settings->assistant_provider,   // 'anthropic' | 'openai' | 'gemini' | 'xai' | any laravel/ai text provider
         apiKey: $settings->assistant_api_key,
         model: $settings->assistant_model,         // a picker key: 'auto' | 'fast' | 'deep'
     )
