@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | `name` | `Assistant` | `AGENT_NAME` | how the assistant introduces itself; `AgentsPlugin::name()` overrides it |
 | `panel` | `null` | | the panel the assistant lives in; set by the plugin when it registers |
-| `provider` | `anthropic` | `AGENT_PROVIDER` | `anthropic` or `openai` (any laravel/ai text provider); the platform default, a workspace may bring its own |
+| `provider` | `anthropic` | `AGENT_PROVIDER` | `anthropic`, `openai`, `gemini` or `xai` have picker entries; any other laravel/ai text provider (`ollama`, `openrouter`, `mistral`, `groq`, `deepseek`…) runs on its smartest and cheapest models. The platform default; a workspace may bring its own |
 | `enabled` | `null` | `AGENT_ENABLED` | `null` = enabled when a key exists for the provider; `false` hides the chat |
 | `models` | see below | `AGENT_MODEL`, `AGENT_MODEL_FAST`, `AGENT_MODEL_DEEP` | the picker entries per provider: label, model, effort |
 | `max_steps` | `12` | | tool round-trips one turn may take before the agent has to answer |
@@ -22,7 +22,7 @@
 | `mcp.middleware` | `['throttle:60,1', 'auth:sanctum', AuthenticateAgent::class]` | | the endpoint's middleware |
 | `run_migrations` | `true` | | run the package migrations from the vendor directory; `false` to publish and split them |
 
-The provider keys themselves live in laravel/ai's `config/ai.php` (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`).
+The provider keys themselves live in laravel/ai's `config/ai.php` (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `XAI_API_KEY`, and so on for the other providers).
 
 ### models
 
@@ -38,10 +38,20 @@ The provider keys themselves live in laravel/ai's `config/ai.php` (`ANTHROPIC_AP
         'fast' => ['label' => 'Fast', 'model' => env('AGENT_MODEL_FAST'), 'effort' => 'low'],
         'deep' => ['label' => 'Deep', 'model' => env('AGENT_MODEL_DEEP'), 'effort' => 'high'],
     ],
+    'gemini' => [
+        'auto' => ['label' => 'Auto', 'model' => env('AGENT_MODEL', 'gemini-3.8-flash'), 'effort' => 'medium'],
+        'fast' => ['label' => 'Fast', 'model' => env('AGENT_MODEL_FAST', 'gemini-3.5-flash-lite'), 'effort' => 'low'],
+        'deep' => ['label' => 'Deep', 'model' => env('AGENT_MODEL_DEEP', 'gemini-3.8-flash'), 'effort' => 'high'],
+    ],
+    'xai' => [
+        'auto' => ['label' => 'Auto', 'model' => env('AGENT_MODEL', 'grok-4.6'), 'effort' => 'medium'],
+        'fast' => ['label' => 'Fast', 'model' => env('AGENT_MODEL_FAST', 'grok-4.6'), 'effort' => 'low'],
+        'deep' => ['label' => 'Deep', 'model' => env('AGENT_MODEL_DEEP', 'grok-4.6'), 'effort' => 'xhigh'],
+    ],
 ],
 ```
 
-Rename, remove or add entries; the picker shows whatever is there. A `null` model resolves to the provider's smartest model (or cheapest for the `fast` key).
+Rename, remove or add entries; the picker shows whatever is there. A `null` model resolves to the provider's smartest model (or cheapest for the `fast` key). A provider with no entries at all (Ollama, OpenRouter, Mistral, Groq, DeepSeek…) gets Auto (smartest) and Fast (cheapest) with no effort; add an entry to pin models or to offer Deep. Effort is passed as Anthropic's `output_config.effort`, OpenAI's and xAI's `reasoning.effort` (reasoning models only) or Gemini's thinking level (`low`, `medium`, `high`; `xhigh` is sent as `high`). When you pin a model that rejects the parameter, set its effort to `null`.
 
 ## AgentsPlugin
 

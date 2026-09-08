@@ -106,7 +106,21 @@ class AgentModels
         $provider ??= self::provider();
         $models = config('packstub-agents.models', []);
 
-        return $models[$provider] ?? $models['anthropic'] ?? ['auto' => ['label' => 'Auto', 'model' => null, 'effort' => null]];
+        return $models[$provider] ?? self::genericCatalog();
+    }
+
+    /**
+     * A provider without entries in config (Ollama, OpenRouter, Mistral, Groq…): its smartest model as Auto and its
+     * cheapest as Fast, as laravel/ai knows them, with no effort since the knob differs per provider.
+     *
+     * @return array<string, array{label: string, model: ?string, effort: ?string}>
+     */
+    protected static function genericCatalog(): array
+    {
+        return [
+            'auto' => ['label' => 'Auto', 'model' => null, 'effort' => null],
+            'fast' => ['label' => 'Fast', 'model' => null, 'effort' => null],
+        ];
     }
 
     /** Provider name → Lab enum, for providerOptions() checks. */

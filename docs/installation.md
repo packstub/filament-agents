@@ -99,6 +99,22 @@ AGENT_PROVIDER=openai
 OPENAI_API_KEY=sk-…
 ```
 
+or
+
+```dotenv
+AGENT_PROVIDER=gemini
+GEMINI_API_KEY=AIza…
+```
+
+or
+
+```dotenv
+AGENT_PROVIDER=xai
+XAI_API_KEY=xai-…
+```
+
+Those four have model picker entries out of the box (Auto, Fast, Deep, see [Configuration](configuration.md#models)). Any other laravel/ai text provider works too — `AGENT_PROVIDER=ollama` for a local model, `openrouter`, `mistral`, `groq`, `deepseek` — with its key in `config/ai.php`; the picker then offers the provider's smartest model as Auto and its cheapest as Fast.
+
 Without a key the chat hides itself (the pages, the topbar button and the sidebar) and the MCP endpoint keeps answering, since it does not need a model. `AGENT_ENABLED=false` hides the chat regardless.
 
 ## Write a first tool

@@ -4,6 +4,11 @@ All notable changes to `packstub/filament-agents` are documented here.
 
 ## Unreleased
 
+### Added
+
+- **Gemini and xAI out of the box.** `AGENT_PROVIDER=gemini` (`GEMINI_API_KEY`) runs on Gemini 3.8 Flash with Gemini 3.5 Flash-Lite as Fast; `AGENT_PROVIDER=xai` (`XAI_API_KEY`) on Grok 4.6. The picker's effort becomes Gemini's thinking level (`generationConfig.thinkingConfig.thinkingLevel`) and xAI's `reasoning.effort`, as it already did for Anthropic and OpenAI. `Agent::supportsReasoning()` takes the provider as a second argument.
+- **Any other laravel/ai text provider** (Ollama, OpenRouter, Mistral, Groq, DeepSeek…) works without config: the picker offers the provider's smartest model as Auto and its cheapest as Fast. Before, a provider without `models` entries fell back to the Anthropic entries and asked the provider for a Claude model.
+
 ### Changed
 
 - The chat column is 48rem wide instead of 72rem, a reading width for the answers; embedded tables, charts and the composer share it.

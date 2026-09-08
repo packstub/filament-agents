@@ -107,13 +107,23 @@ abstract class Agent implements AgentContract, Conversational, HasProviderOption
             // OpenAI caches long prefixes on its own; reasoning effort is the equivalent knob (reasoning models only —
             // gpt-4.1 / gpt-4o reject the parameter).
             Lab::OpenAI => $effort && self::supportsReasoning($this->model ?? AgentModels::modelFor('openai', $this->modelKey)) ? ['reasoning' => ['effort' => $effort]] : [],
+            // Gemini 3 takes the effort as a thinking level (generationConfig.thinkingConfig.thinkingLevel); it knows
+            // no xhigh, so that is sent as high. Caching is implicit.
+            Lab::Gemini => $effort ? ['thinkingConfig' => ['thinkingLevel' => strtoupper($effort === 'xhigh' ? 'high' : $effort)]] : [],
+            // xAI speaks the Responses API: reasoning.effort (low … xhigh) on the reasoning Grok models; the
+            // "non-reasoning" variants reject it.
+            Lab::xAI => $effort && self::supportsReasoning($this->model ?? AgentModels::modelFor('xai', $this->modelKey), 'xai') ? ['reasoning' => ['effort' => $effort]] : [],
             default => [],
         };
     }
 
-    public static function supportsReasoning(string $model): bool
+    /** Whether a model takes a reasoning effort parameter (OpenAI: gpt-5 and the o-series; xAI: every Grok but the non-reasoning ones). */
+    public static function supportsReasoning(string $model, string $provider = 'openai'): bool
     {
-        return str_starts_with($model, 'gpt-5') || preg_match('/^o\d/', $model) === 1;
+        return match ($provider) {
+            'xai' => str_starts_with($model, 'grok-') && ! str_contains($model, 'non-reasoning'),
+            default => str_starts_with($model, 'gpt-5') || preg_match('/^o\d/', $model) === 1,
+        };
     }
 
     protected function maxConversationMessages(): int
