@@ -2,7 +2,7 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
-## Unreleased
+## 1.4.0 — 2026-09-08
 
 Upgrading: run `php artisan migrate` (new `agent_turns` table) and `php artisan filament:assets` (the chat page's Alpine component changed). Answers are now produced by a queued job: run a queue worker (`php artisan queue:work`), or set `AGENT_TURN_DRIVER=sync` (or `AgentsPlugin::make()->chat(driver: 'sync')`) to run them inside the request as before.
 
