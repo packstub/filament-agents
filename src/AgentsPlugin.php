@@ -14,6 +14,7 @@ use Packstub\Agents\Contracts\AgentResource;
 use Packstub\Agents\Filament\Pages\AgentAccess;
 use Packstub\Agents\Filament\Pages\Chat;
 use Packstub\Agents\Filament\Pages\Chats;
+use Packstub\Agents\Filament\Pages\TurnLog;
 use Packstub\Agents\Filament\Resources\AgentLimits\AgentLimitResource;
 use Packstub\Agents\Http\Controllers\TurnController;
 
@@ -68,6 +69,9 @@ class AgentsPlugin implements Plugin
     protected bool $limits = false;
 
     protected ?Closure $limitsAuthorize = null;
+
+    /** The AI turns page; null = shown wherever the limits resource is. */
+    protected ?bool $turnLog = null;
 
     /** @var list<string> */
     protected array $askButtonHiddenOn = [];
@@ -188,6 +192,18 @@ class AgentsPlugin implements Plugin
         return $this;
     }
 
+    /**
+     * The operator's AI turns page — every answer with who asked, the model, tokens, tools, duration and how it
+     * ended. Shown with the limits resource by default and gated the same way; register it on the tenant panel
+     * instead (limits(false, authorize: …)->turnLog()) when the turns live in a tenant database.
+     */
+    public function turnLog(bool $enabled = true): static
+    {
+        $this->turnLog = $enabled;
+
+        return $this;
+    }
+
     /** Route name patterns where the topbar "Ask …" button stays hidden, e.g. a home page that has its own composer. */
     public function hideAskButtonOn(array $routePatterns): static
     {
@@ -271,6 +287,10 @@ class AgentsPlugin implements Plugin
 
         if ($this->agentAccess) {
             $pages[] = AgentAccess::class;
+        }
+
+        if ($this->turnLog ?? $this->limits) {
+            $pages[] = TurnLog::class;
         }
 
         if ($pages !== []) {

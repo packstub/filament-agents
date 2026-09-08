@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 use Laravel\Ai\AiManager;
 use Laravel\Ai\Approvals\Decision;
 use Laravel\Ai\Approvals\Decisions;
+use Laravel\Ai\Responses\Data\Usage;
 use Laravel\Ai\Streaming\Events\Error;
 use Laravel\Ai\Streaming\Events\StreamEnd;
 use Laravel\Ai\Streaming\Events\TextDelta;
@@ -113,6 +114,22 @@ class RunAgentTurn implements ShouldQueue
         $buffer = '';
         $stopped = false;
 
+        // The turn's record: what answered, what it cost, what it called, how long it took, how it ended.
+        $startedAt = microtime(true);
+        $usage = new Usage;
+        $tools = [];
+        $resolved = null;
+        $measure = function (string $reason) use ($startedAt, &$usage, &$tools, &$resolved): array {
+            return [
+                'provider' => $resolved['provider'] ?? null,
+                'model_name' => $resolved['model'] ?? null,
+                'usage' => $usage->toArray(),
+                'tool_calls' => $tools,
+                'duration_ms' => (int) round((microtime(true) - $startedAt) * 1000),
+                'finish_reason' => $reason,
+            ];
+        };
+
         try {
             $resolved = AgentModels::resolve($turn->model);
             $provider = app(AiManager::class)->textProviderFor($agent, $resolved['provider']);
@@ -142,6 +159,7 @@ class RunAgentTurn implements ShouldQueue
                         $wrote = true;
                     }
                 } elseif ($event instanceof ToolCall) {
+                    $tools[] = $event->toolCall->name;
                     $status = __(':tool…', ['tool' => Str::headline($event->toolCall->name)]);
                     $turns->snapshot($turn, $buffer, $status);
                     $wrote = true;
@@ -156,6 +174,7 @@ class RunAgentTurn implements ShouldQueue
                     throw new RuntimeException($event->message);
                 } elseif ($event instanceof StreamEnd) {
                     $end = $event;
+                    $usage = $usage->add($event->usage);
                 }
 
                 if ($wrote || microtime(true) - $lastCheck >= 0.25) {
@@ -171,7 +190,7 @@ class RunAgentTurn implements ShouldQueue
                 if (trim($buffer) !== '') {
                     $store->storeStoppedAnswer($turn->conversation_id, $user, $agent::class, $buffer);
                 }
-                $turns->finish($turn, AgentTurn::STOPPED, text: $buffer);
+                $turns->finish($turn, AgentTurn::STOPPED, text: $buffer, metrics: $measure('stopped'));
 
                 return;
             }
@@ -186,13 +205,13 @@ class RunAgentTurn implements ShouldQueue
                 $store->titleConversation($turn->conversation_id, $turn->prompt(), $provider);
             }
 
-            $turns->finish($turn, AgentTurn::DONE, text: $buffer);
+            $turns->finish($turn, AgentTurn::DONE, text: $buffer, metrics: $measure($end?->reason ?? 'dropped'));
         } catch (Throwable $e) {
             // A refusal by a middleware (a budget spent, a guard) is the turn's outcome, not an error to report.
             if (! $e instanceof TurnRefused) {
                 report($e);
             }
-            $turns->finish($turn, AgentTurn::FAILED, $e->getMessage(), text: $buffer);
+            $turns->finish($turn, AgentTurn::FAILED, $e->getMessage(), text: $buffer, metrics: $measure($e instanceof TurnRefused ? 'refused' : 'failed'));
         } finally {
             // The store is a request-scoped singleton and must not carry a turn's state into the next one.
             $store->answering(null);

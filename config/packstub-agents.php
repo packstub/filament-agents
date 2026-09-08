@@ -96,6 +96,16 @@ return [
         'job_timeout' => (int) env('AGENT_JOB_TIMEOUT', 600),
         // How often the page asks for the answer so far while a turn runs, in milliseconds.
         'poll_interval' => (int) env('AGENT_POLL_INTERVAL', 600),
+        // Ended turns (the per-turn record: model, tokens, duration, how it ended) are kept this many days for the
+        // operator's AI turns page; null keeps them forever. Pruned by `model:prune --model=Packstub\\Agents\\Models\\AgentTurn`.
+        'keep_turns_days' => env('AGENT_KEEP_TURNS_DAYS', 90),
+    ],
+
+    // One log line per turn — who asked, the provider and model that answered, tokens in and out, the tools called,
+    // the wall time and how it ended — on this channel (a name from config/logging.php). null logs nothing; the same
+    // record is on the agent_turns row and on the operator's AI turns page either way.
+    'log' => [
+        'channel' => env('AGENT_LOG_CHANNEL'),
     ],
 
     // Spending guard rails, enforced before a turn calls the provider (this file is the platform's ceiling; the

@@ -4,7 +4,11 @@ All notable changes to `packstub/filament-agents` are documented here.
 
 ## Unreleased
 
+Upgrading: run `php artisan migrate` (new columns on `agent_turns`).
+
 ### Added
+
+- **Per-turn observability.** When a turn ends its `agent_turns` row keeps the record: the provider and model that answered, the token usage (prompt, completion, cache reads and writes, reasoning), the tools called in order, the wall time and how it ended (`stop`, `length`, `content_filter`, `dropped`, `stopped`, `refused`, `failed`). The operator panel that registers `limits()` gets an **AI turns** page listing them (who, workspace, status, model, tokens in and out, tools, duration, how it ended; filter by status or provider) — `AgentsPlugin::make()->turnLog(false)` hides it, `->turnLog()` shows it without the limits resource. Config `log.channel` (`AGENT_LOG_CHANNEL`) writes one info line per ended turn to a log channel, with the whole record in the context. Ended turns are pruned after `chat.keep_turns_days` (`AGENT_KEEP_TURNS_DAYS`, 90) by `model:prune --model=Packstub\Agents\Models\AgentTurn`.
 
 - **Agent middleware.** Every turn runs through laravel/ai's middleware pipeline. The package's budget check moved there (`Packstub\Agents\Ai\Middleware\EnforceBudget`), so the limits hold for every turn however it was started; an app adds its own with `AgentsPlugin::make()->middleware([...])` or the new `middleware` config key — classes with `handle(AgentPrompt $prompt, Closure $next)` that can revise the prompt, read the finished answer through `->then()`, or stop the turn by throwing `Packstub\Agents\Exceptions\TurnRefused` (the person reads the message under their question, with a Retry). `Agents::middleware()` reads the list back.
 
