@@ -154,6 +154,10 @@
                                 @if ($message['stopped'])
                                     <span class="ml-1 text-xs">· {{ __('(stopped)') }}</span>
                                 @endif
+                                @if ($message['cutShort'])
+                                    {{-- The provider ended the answer early; Regenerate (above, on the last answer) produces it again. --}}
+                                    <span class="ml-1 text-xs" title="{{ \Packstub\Agents\Filament\Pages\Chat::cutShortText($message['cutShort']) }}">· {{ __('(cut short)') }}</span>
+                                @endif
                             </div>
                         @endif
                     </div>

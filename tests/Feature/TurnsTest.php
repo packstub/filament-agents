@@ -4,11 +4,16 @@ use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Queue;
 use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Models\ConversationMessage;
+use Laravel\Ai\Responses\Data\FinishReason;
+use Laravel\Ai\Responses\Data\Usage;
+use Laravel\Ai\Streaming\Events\StreamEnd;
+use Packstub\Agents\AgentsPlugin;
 use Packstub\Agents\Facades\Agents;
 use Packstub\Agents\Filament\Pages\Chat;
 use Packstub\Agents\Jobs\RunAgentTurn;
 use Packstub\Agents\Models\AgentMessageFeedback;
 use Packstub\Agents\Models\AgentTurn;
+use Packstub\Agents\Support\AgentConversationStore;
 use Packstub\Agents\Support\AgentLimits;
 use Packstub\Agents\Support\AgentRuntime;
 use Packstub\Agents\Support\AgentTurns;
@@ -293,4 +298,82 @@ it('puts a worker into the shape of the panel request and cleans up after', func
 
     expect(auth()->user())->toBeNull()
         ->and(app()->getLocale())->toBe('en');
+});
+
+it('marks an answer the provider ended early so it can be produced again', function () {
+    $user = $this->user();
+    actingAs($user);
+    Queue::fake();
+
+    $end = fn (FinishReason $reason) => new StreamEnd('e', $reason->value, new Usage, time());
+
+    // A stream without its end event was dropped; the model's limit and the provider's filter end an answer early too.
+    expect(AgentTurns::cutShortReason(null))->toBe('dropped')
+        ->and(AgentTurns::cutShortReason($end(FinishReason::Length)))->toBe('length')
+        ->and(AgentTurns::cutShortReason($end(FinishReason::ContentFilter)))->toBe('content_filter')
+        ->and(AgentTurns::cutShortReason($end(FinishReason::Error)))->toBe('error')
+        ->and(AgentTurns::cutShortReason($end(FinishReason::Stop)))->toBeNull()
+        ->and(AgentTurns::cutShortReason($end(FinishReason::ToolCalls)))->toBeNull();
+
+    livewire(Chat::class)->call('send', 'How many widgets are live?');
+    $conversation = Conversation::query()->where('participant_id', $user->id)->firstOrFail();
+    $turn = AgentTurn::query()->forConversation($conversation->id)->sole();
+
+    WidgetAgent::fake(['Two widgets are']);
+    pushedJob($turn->id)->handle(app(AgentTurns::class));
+
+    // The faked stream ends properly: nothing is marked.
+    $answer = ConversationMessage::query()->where('conversation_id', $conversation->id)->where('role', 'assistant')->sole();
+    expect($turn->fresh()->status)->toBe(AgentTurn::DONE)
+        ->and(AgentConversationStore::cutShort($answer->meta))->toBeNull();
+
+    // The provider's length limit ended it: the stored answer is marked, the page says so and offers Regenerate.
+    app(AgentConversationStore::class)->markCutShort($conversation->id, 'length');
+
+    expect(AgentConversationStore::cutShort($answer->fresh()->meta))->toBe('length')
+        ->and(Chat::cutShortText('length'))->toBe(__('The answer hit the model\'s length limit.'))
+        ->and(Chat::cutShortText('dropped'))->toBe(__('The provider closed the stream before the answer was complete.'));
+
+    $page = livewire(Chat::class, ['conversation' => $conversation->id])
+        ->assertSee('Two widgets are')
+        ->assertSee(__('(cut short)'))
+        ->assertSee(__('The answer hit the model\'s length limit.'))
+        ->assertDontSee(__('Retry'));
+    expect($page->instance()->messages()->last())->toMatchArray(['cutShort' => 'length', 'stopped' => false, 'regenerable' => true]);
+});
+
+it('runs the turn inside the request on the sync driver, whatever the queue is', function () {
+    $user = $this->user();
+    actingAs($user);
+
+    // The app's queue would drop the job on the floor; the sync driver never hands it there.
+    config()->set('queue.connections.dropped', ['driver' => 'null']);
+    config()->set('queue.default', 'dropped');
+    config()->set('packstub-agents.chat.driver', 'sync');
+    WidgetAgent::fake(['Two widgets are live.', 'Live widgets']);
+
+    livewire(Chat::class)->call('send', 'How many widgets are live?');
+
+    $conversation = Conversation::query()->where('participant_id', $user->id)->firstOrFail();
+    $turn = AgentTurn::query()->forConversation($conversation->id)->sole();
+
+    // The job ran inside the request and the answer is already stored.
+    expect($turn->status)->toBe(AgentTurn::DONE)
+        ->and(ConversationMessage::query()->where('conversation_id', $conversation->id)->pluck('role')->all())->toBe(['user', 'assistant']);
+
+    livewire(Chat::class, ['conversation' => $conversation->id])->assertSee('Two widgets are live');
+});
+
+it('refuses a turn driver it does not know', function () {
+    actingAs($this->user());
+    config()->set('packstub-agents.chat.driver', 'thread');
+
+    livewire(Chat::class)->call('send', 'How many widgets are live?');
+})->throws(InvalidArgumentException::class, 'Unknown agent turn driver [thread]');
+
+it('takes the turn driver from the plugin', function () {
+    $plugin = AgentsPlugin::make()->chat(driver: 'sync');
+    $plugin->register(Filament::getPanel('admin'));
+
+    expect(config('packstub-agents.chat.driver'))->toBe('sync');
 });

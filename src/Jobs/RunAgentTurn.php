@@ -11,6 +11,7 @@ use Laravel\Ai\AiManager;
 use Laravel\Ai\Approvals\Decision;
 use Laravel\Ai\Approvals\Decisions;
 use Laravel\Ai\Streaming\Events\Error;
+use Laravel\Ai\Streaming\Events\StreamEnd;
 use Laravel\Ai\Streaming\Events\TextDelta;
 use Laravel\Ai\Streaming\Events\ToolCall;
 use Laravel\Ai\Streaming\Events\ToolResult;
@@ -30,8 +31,9 @@ use Throwable;
  * The person can stop it (the flag is checked between events; the partial
  * answer is stored with a marker), a provider failure keeps the question
  * with a Retry, and when the turn ends the next queued turn of the same
- * conversation is started. On a sync queue the whole thing runs inside the
- * request, as it did before — nothing else changes.
+ * conversation is started. On the sync driver (chat.driver, or a sync queue
+ * connection) the whole thing runs inside the request, as it did before —
+ * nothing else changes.
  */
 class RunAgentTurn implements ShouldQueue
 {
@@ -120,6 +122,7 @@ class RunAgentTurn implements ShouldQueue
             $sinceWrite = 0;
             $lastCheck = 0.0;
             $status = __('Thinking…');
+            $end = null;
 
             // The answer so far is written on every line (or every ~120 chars) and on every tool event, so the page
             // can render it as Markdown while it streams; Stop is a flag on the row, read whenever a snapshot is
@@ -150,6 +153,8 @@ class RunAgentTurn implements ShouldQueue
                     $wrote = true;
                 } elseif ($event instanceof Error && ! $event->recoverable) {
                     throw new RuntimeException($event->message);
+                } elseif ($event instanceof StreamEnd) {
+                    $end = $event;
                 }
 
                 if ($wrote || microtime(true) - $lastCheck >= 0.25) {
@@ -168,6 +173,12 @@ class RunAgentTurn implements ShouldQueue
                 $turns->finish($turn, AgentTurn::STOPPED, text: $buffer);
 
                 return;
+            }
+
+            // The provider ended the answer early (its length limit, its filter, a dropped stream): what arrived is
+            // stored as the answer; mark it so the page says so and offers Regenerate.
+            if (trim($buffer) !== '' && ($reason = AgentTurns::cutShortReason($end)) !== null) {
+                $store->markCutShort($turn->conversation_id, $reason);
             }
 
             if (($turn->input['title'] ?? false) && $turn->prompt() !== null) {

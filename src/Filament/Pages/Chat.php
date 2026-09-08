@@ -138,6 +138,7 @@ class Chat extends Page
                     'rating' => $feedback->get($m->id),
                     'at' => $m->created_at,
                     'stopped' => AgentConversationStore::wasStopped($m->meta),
+                    'cutShort' => AgentConversationStore::cutShort($m->meta),
                     'unanswered' => false,
                     'editable' => false,
                     'regenerable' => false,
@@ -466,7 +467,7 @@ class Chat extends Page
             $this->js('window.history.replaceState({}, "", '.json_encode(static::getUrl(['conversation' => $started])).')');
         }
 
-        // On a sync queue the turn already ran inside this request: say so now, as the page did before.
+        // On the sync driver the turn already ran inside this request: say so now, as the page did before.
         if ($turn->status === AgentTurn::FAILED) {
             Notification::make()
                 ->title(__('The assistant could not answer'))
@@ -482,6 +483,16 @@ class Chat extends Page
             'poll' => $this->pollUrl(),
             'active' => $turn->isActive(),
         ];
+    }
+
+    /** What to tell the person about an answer the provider ended early (AgentTurns::cutShortReason). */
+    public static function cutShortText(string $reason): string
+    {
+        return match ($reason) {
+            'length' => __('The answer hit the model\'s length limit.'),
+            'content_filter' => __('The provider\'s content filter stopped the answer.'),
+            default => __('The provider closed the stream before the answer was complete.'),
+        };
     }
 
     /** The last question of the conversation. */

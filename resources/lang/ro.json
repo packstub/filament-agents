@@ -1,4 +1,5 @@
 {
+  "(cut short)": "(întrerupt)",
   "(stopped)": "(oprit)",
   "/ min": "/ min",
   ":days days": ":days zile",
@@ -109,6 +110,7 @@
   "Summary of the earlier part of this conversation (those messages are not shown again):": "Rezumatul părții anterioare a acestei discuții (acele mesaje nu mai sunt afișate):",
   "That question is too long (max :n characters).": "Întrebarea e prea lungă (maximum :n caractere).",
   "The action failed: :message": "Acțiunea a eșuat: :message",
+  "The answer hit the model's length limit.": "Răspunsul a atins limita de lungime a modelului.",
   "The answer was interrupted — the worker stopped before it was done.": "Răspunsul a fost întrerupt – workerul s-a oprit înainte de final.",
   "The answer was interrupted.": "Răspunsul a fost întrerupt.",
   "The assistant could not answer": "Asistentul nu a putut răspunde",
@@ -117,6 +119,8 @@
   "the assistant starts from a summary of it.": "asistentul pornește de la un rezumat al ei.",
   "The chat could not be summarized": "Discuția nu a putut fi rezumată",
   "The person who asked could not be found.": "Persoana care a întrebat nu a fost găsită.",
+  "The provider closed the stream before the answer was complete.": "Furnizorul a închis fluxul înainte ca răspunsul să fie complet.",
+  "The provider's content filter stopped the answer.": "Filtrul de conținut al furnizorului a oprit răspunsul.",
   "The token acts as you, in this workspace, within your role. Narrow it to what the agent needs.": "Tokenul acționează ca tine, în acest spațiu de lucru, în limitele rolului tău. Restrânge-l la ce are nevoie agentul.",
   "Thinking…": "Se gândește…",
   "This access token does not include :tool.": "Acest token de acces nu include :tool.",

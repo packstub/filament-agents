@@ -25,7 +25,9 @@ The install command publishes `config/packstub-agents.php`, offers to run the mi
 
 ## A queue worker
 
-The chat produces every answer in a queued job (`Packstub\Agents\Jobs\RunAgentTurn`), so the page never holds a request open while the model works and an answer keeps coming after a reload or in a second tab. Run a worker as you would for any queued job (`php artisan queue:work`, Horizon, Laravel Cloud's workers); `chat.queue_connection` and `chat.queue` pick where the jobs go. With `QUEUE_CONNECTION=sync` the job runs inside the request instead — no worker needed, everything else the same, except that an answer dies with the tab that asked for it. See [The assistant](assistant.md#how-a-turn-runs).
+The chat produces every answer in a queued job (`Packstub\Agents\Jobs\RunAgentTurn`), so the page never holds a request open while the model works and an answer keeps coming after a reload or in a second tab. Run a worker as you would for any queued job (`php artisan queue:work`, Horizon, Laravel Cloud's workers); `chat.queue_connection` and `chat.queue` pick where the jobs go.
+
+No worker? Set `chat.driver` to `sync` (`AGENT_TURN_DRIVER=sync`, or `AgentsPlugin::make()->chat(driver: 'sync')`) and the job runs inside the request that asked, whatever the app's queue connection is — everything else the same, except that an answer dies with the tab that asked for it. See [The assistant](assistant.md#how-a-turn-runs).
 
 ## Sanctum
 

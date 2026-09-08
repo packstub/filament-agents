@@ -126,6 +126,38 @@ class AgentConversationStore extends DatabaseConversationStore
     }
 
     /**
+     * Mark the newest answer of the conversation as ended early by the provider (AgentTurns::cutShortReason),
+     * on the row laravel/ai stored for it.
+     */
+    public function markCutShort(string $conversationId, string $reason): void
+    {
+        $row = $this->table($this->messagesTable())
+            ->where('conversation_id', $conversationId)
+            ->where('role', 'assistant')
+            ->orderByDesc('id')
+            ->first(['id', 'meta']);
+
+        if (! $row) {
+            return;
+        }
+
+        $meta = is_string($row->meta) ? json_decode($row->meta, true) : $row->meta;
+
+        $this->table($this->messagesTable())
+            ->where('id', $row->id)
+            ->update(['meta' => json_encode([...(is_array($meta) ? $meta : []), 'cut_short' => $reason])]);
+    }
+
+    /** Why a stored answer was ended early by the provider, or null. */
+    public static function cutShort(mixed $meta): ?string
+    {
+        $meta = is_string($meta) ? json_decode($meta, true) : $meta;
+        $reason = is_array($meta) ? ($meta['cut_short'] ?? null) : null;
+
+        return is_string($reason) && $reason !== '' ? $reason : null;
+    }
+
+    /**
      * Forget everything after a question (its answer, a paused proposal, the feedback on them) so the question
      * can be answered again — Regenerate, and Edit on the last question. The rolling summary is not touched:
      * it only ever covers rows older than the last exchange.

@@ -17,7 +17,8 @@
 | `history.max_tokens` | `24000` | `AGENT_HISTORY_MAX_TOKENS` | the history window, in estimated tokens; what no longer fits is folded into a rolling summary the model reads first |
 | `history.keep_tool_results_turns` | `3` | | tool results older than this many turns are replaced by a one-line placeholder when replayed |
 | `history.notice_share` | `0.7` | | from this share of the window the chat suggests continuing in a new chat |
-| `chat.queue_connection` | `null` | `AGENT_QUEUE_CONNECTION` | the queue connection the turn job runs on; `null` = the app's default |
+| `chat.driver` | `queue` | `AGENT_TURN_DRIVER` | how a turn runs: `queue` hands the job to a worker, `sync` runs it inside the request (no worker; an answer ends with the tab that asked). Also `AgentsPlugin::make()->chat(driver: 'sync')` |
+| `chat.queue_connection` | `null` | `AGENT_QUEUE_CONNECTION` | the queue connection the turn job runs on with the `queue` driver; `null` = the app's default |
 | `chat.queue` | `null` | `AGENT_QUEUE` | the queue name; `null` = the connection's default |
 | `chat.job_timeout` | `600` | `AGENT_JOB_TIMEOUT` | how long one turn may run on the worker, in seconds; a turn whose job went quiet for longer is shown as failed, with a Retry |
 | `chat.poll_interval` | `600` | `AGENT_POLL_INTERVAL` | how often the page asks for the answer so far while a turn runs, in milliseconds |
@@ -74,7 +75,7 @@ AgentsPlugin::make()
     ->authorizeUsing(fn (string $ability): bool => auth()->user()->can($ability))
     ->roleLabelUsing(fn (): ?string => auth()->user()->role?->getLabel())
     ->credentialsUsing(fn (): ?WorkspaceCredentials => ...)
-    ->chat(true)
+    ->chat(true, driver: 'queue')
     ->agentAccess(enabled: true, ability: 'setup.view', group: 'Setup')
     ->limits(enabled: true, authorize: fn (): bool => auth()->user()->is_admin)
     ->hideAskButtonOn(['*.pages.dashboard']);

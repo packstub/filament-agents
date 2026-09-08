@@ -74,11 +74,15 @@ return [
         'notice_share' => 0.7,
     ],
 
-    // How a chat turn runs. The answer is produced by a queued job (RunAgentTurn) that writes what it has so far to the
+    // How a chat turn runs. The answer is produced by the RunAgentTurn job, which writes what it has so far to the
     // agent_turns table; the page polls it, so an answer survives a reload, a closed tab and shows in every tab of the
-    // chat, and Stop can cut it short. With QUEUE_CONNECTION=sync the job runs inside the request instead (no worker
-    // needed, but nothing survives a closed tab). A null connection or queue means the app's default.
+    // chat, and Stop can cut it short.
     'chat' => [
+        // 'queue' hands the job to a queue worker (the default; run one). 'sync' runs it inside the request that asked —
+        // no worker needed, everything else the same, except that an answer ends with the tab that asked for it.
+        // AgentsPlugin::make()->chat(driver: 'sync') sets it from the panel provider.
+        'driver' => env('AGENT_TURN_DRIVER', 'queue'),
+        // Where the job goes on the queue driver. A null connection or queue means the app's default.
         'queue_connection' => env('AGENT_QUEUE_CONNECTION'),
         'queue' => env('AGENT_QUEUE'),
         // How long one turn may run on the worker, in seconds (every tool round-trip included). A turn whose job

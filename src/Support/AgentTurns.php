@@ -5,7 +5,10 @@ namespace Packstub\Agents\Support;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 use Laravel\Ai\Models\Conversation;
+use Laravel\Ai\Responses\Data\FinishReason;
+use Laravel\Ai\Streaming\Events\StreamEnd;
 use Packstub\Agents\Facades\Agents;
 use Packstub\Agents\Jobs\RunAgentTurn;
 use Packstub\Agents\Models\AgentTurn;
@@ -14,7 +17,7 @@ use Packstub\Agents\Models\AgentTurn;
  * The turns of a conversation, from the composer to the stored answer.
  *
  * A turn is queued on its conversation; the oldest queued turn is handed to
- * the queue as soon as no other turn of that conversation is pending or
+ * the job as soon as no other turn of that conversation is pending or
  * running (a question is recorded in the transcript at that moment, not
  * before, so the order of the transcript is the order of the answers). The
  * RunAgentTurn job claims it, streams the answer into the row and marks how
@@ -92,11 +95,23 @@ class AgentTurns
             'locale' => $turn->locale,
         ]);
 
-        dispatch($job)
-            ->onConnection(config('packstub-agents.chat.queue_connection'))
-            ->onQueue(config('packstub-agents.chat.queue'));
+        $this->dispatch($job);
 
         return $turn->refresh();
+    }
+
+    /** Hand the job over as chat.driver says: to a worker, or run it here inside the request. */
+    protected function dispatch(RunAgentTurn $job): void
+    {
+        $driver = config('packstub-agents.chat.driver', 'queue');
+
+        match ($driver) {
+            'queue' => dispatch($job)
+                ->onConnection(config('packstub-agents.chat.queue_connection'))
+                ->onQueue(config('packstub-agents.chat.queue')),
+            'sync' => dispatch_sync($job),
+            default => throw new InvalidArgumentException("Unknown agent turn driver [{$driver}]: use 'queue' or 'sync'."),
+        };
     }
 
     /** The job takes the turn: pending → running. False when it was removed or already ran. */
@@ -184,6 +199,26 @@ class AgentTurns
                 'status_text' => null,
                 'finished_at' => now(),
             ]);
+    }
+
+    /**
+     * Why an answer that the provider ended is incomplete, or null when it ended properly. A stream that closes
+     * without its end event was dropped (an overloaded provider mid-answer); `length` is the model's output limit,
+     * `content_filter` the provider's filter, `error`/`unknown` the provider giving up. laravel/ai stores what
+     * arrived as the answer either way, so the page marks it and offers Regenerate.
+     */
+    public static function cutShortReason(?StreamEnd $end): ?string
+    {
+        if ($end === null) {
+            return 'dropped';
+        }
+
+        return in_array($end->reason, [
+            FinishReason::Length->value,
+            FinishReason::ContentFilter->value,
+            FinishReason::Error->value,
+            FinishReason::Unknown->value,
+        ], true) ? $end->reason : null;
     }
 
     public static function jobTimeout(): int

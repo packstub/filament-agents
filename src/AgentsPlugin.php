@@ -53,6 +53,9 @@ class AgentsPlugin implements Plugin
 
     protected bool $chat = true;
 
+    /** How a chat turn runs: 'queue' (a worker) or 'sync' (inside the request); null = config('packstub-agents.chat.driver'). */
+    protected ?string $chatDriver = null;
+
     protected bool $agentAccess = true;
 
     protected ?string $agentAccessAbility = null;
@@ -140,9 +143,11 @@ class AgentsPlugin implements Plugin
         return $this;
     }
 
-    public function chat(bool $enabled = true): static
+    /** The chat page. $driver picks how a turn runs: 'queue' hands the job to a worker, 'sync' runs it inside the request. */
+    public function chat(bool $enabled = true, ?string $driver = null): static
     {
         $this->chat = $enabled;
+        $this->chatDriver = $driver;
 
         return $this;
     }
@@ -184,6 +189,10 @@ class AgentsPlugin implements Plugin
 
         if ($this->name !== null) {
             config()->set('packstub-agents.name', $this->name);
+        }
+
+        if ($this->chatDriver !== null) {
+            config()->set('packstub-agents.chat.driver', $this->chatDriver);
         }
 
         if ($this->server !== null) {

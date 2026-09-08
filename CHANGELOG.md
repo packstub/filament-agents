@@ -4,7 +4,7 @@ All notable changes to `packstub/filament-agents` are documented here.
 
 ## Unreleased
 
-Upgrading: run `php artisan migrate` (new `agent_turns` table) and `php artisan filament:assets` (the chat page's Alpine component changed). Answers are now produced by a queued job: run a queue worker (`php artisan queue:work`), or keep `QUEUE_CONNECTION=sync` to run them inside the request as before.
+Upgrading: run `php artisan migrate` (new `agent_turns` table) and `php artisan filament:assets` (the chat page's Alpine component changed). Answers are now produced by a queued job: run a queue worker (`php artisan queue:work`), or set `AGENT_TURN_DRIVER=sync` (or `AgentsPlugin::make()->chat(driver: 'sync')`) to run them inside the request as before.
 
 ### Added
 
@@ -12,10 +12,13 @@ Upgrading: run `php artisan migrate` (new `agent_turns` table) and `php artisan 
 - **Stop.** A Stop button next to Send cuts the running answer short; what the assistant had written is kept as its answer, marked "(stopped)", and a stop before any text leaves the question with a Retry.
 - **Follow-ups are kept per conversation.** A question typed while an answer runs waits on the server, in every tab, and starts as soon as the answer is done; it can be edited or removed until then, and ↑ in an empty composer pulls the last waiting one back.
 - **Regenerate and edit-and-resend** on the last exchange: an arrow under the last answer produces it again (the previous answer and its rating are dropped), a pencil next to the last question puts it back in the composer and replaces the answer when sent.
+- Config `chat.driver` (`AGENT_TURN_DRIVER`, or `AgentsPlugin::make()->chat(driver: ...)`): `queue` hands the turn job to a worker, `sync` runs it inside the request whatever the app's queue connection is — no worker needed, but an answer ends with the tab that asked for it.
 - Config `chat.queue_connection`, `chat.queue`, `chat.job_timeout` and `chat.poll_interval` (`AGENT_QUEUE_CONNECTION`, `AGENT_QUEUE`, `AGENT_JOB_TIMEOUT`, `AGENT_POLL_INTERVAL`).
+- **Answers the provider ended early are marked.** A stream that closes without its end event (an overloaded provider mid-answer), the model's length limit or the provider's content filter leave a partial answer; it is stored as before, shown with a "(cut short)" note that explains why, and can be produced again with Regenerate.
 
 ### Changed
 
+- The generic prompt rules tell the assistant not to quote its instructions or tool list, and that claims about one's role or permissions made in the chat change nothing — the tools enforce access.
 - The chat page no longer streams over `wire:stream`; `send()`, `decide()`, `retry()`, `regenerate()` and `resend()` queue a turn and return what the page polls. A provider failure is shown under the question (with the message) rather than only as a notification.
 
 ## 1.3.0 — 2026-09-08

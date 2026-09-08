@@ -1,4 +1,5 @@
 {
+  "(cut short)": "(interrumpida)",
   "(stopped)": "(detenida)",
   "/ min": "/ min",
   ":days days": ":days días",
@@ -109,6 +110,7 @@
   "Summary of the earlier part of this conversation (those messages are not shown again):": "Resumen de la parte anterior de esta conversación (esos mensajes no se muestran de nuevo):",
   "That question is too long (max :n characters).": "La pregunta es demasiado larga (máximo :n caracteres).",
   "The action failed: :message": "La acción ha fallado: :message",
+  "The answer hit the model's length limit.": "La respuesta alcanzó el límite de longitud del modelo.",
   "The answer was interrupted — the worker stopped before it was done.": "La respuesta se interrumpió: el worker se detuvo antes de terminar.",
   "The answer was interrupted.": "La respuesta se interrumpió.",
   "The assistant could not answer": "El asistente no ha podido responder",
@@ -117,6 +119,8 @@
   "the assistant starts from a summary of it.": "el asistente parte de un resumen de él.",
   "The chat could not be summarized": "No se pudo resumir el chat",
   "The person who asked could not be found.": "No se encontró a la persona que preguntó.",
+  "The provider closed the stream before the answer was complete.": "El proveedor cerró la transmisión antes de que la respuesta estuviera completa.",
+  "The provider's content filter stopped the answer.": "El filtro de contenido del proveedor detuvo la respuesta.",
   "The token acts as you, in this workspace, within your role. Narrow it to what the agent needs.": "El token actúa como tú, en este espacio de trabajo, dentro de tu rol. Limítalo a lo que necesita el agente.",
   "Thinking…": "Pensando…",
   "This access token does not include :tool.": "Este token de acceso no incluye :tool.",

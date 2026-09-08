@@ -5,6 +5,13 @@
 // Questions typed while an answer runs wait on the server, per conversation. ↑ in an empty
 // composer pulls the last waiting question back for editing — or the last one sent.
 export default function agentChat() {
+    // The context of the component's root element, taken in init(). Alpine evaluates a click handler with `this`
+    // bound to the clicked element, and its $wire/$refs/$root follow that element: once a morph has removed it
+    // (Retry, Regenerate, Approve, a queued question's Edit), $wire becomes a silent no-op and $root is null. So
+    // nothing that runs later — the poll timer, the pump, a continuation after an await — may keep a click's
+    // `this`; it goes through `self`, whose element lives as long as the page.
+    let self = null
+
     return {
         outbox: [],
         sending: null,
@@ -27,6 +34,8 @@ export default function agentChat() {
         },
 
         init() {
+            self = this
+
             // Per-render values come from the state element (see the page): x-data itself stays constant.
             const state = this.$refs.state.dataset
             this.pollUrl = state.poll || null
@@ -80,11 +89,11 @@ export default function agentChat() {
             this.sending = next
             this.history.push(next.text)
             try {
-                this.started(await this.$wire.send(next.text))
+                self.started(await self.$wire.send(next.text))
             } finally {
-                this.sending = null
-                this.pumping = false
-                setTimeout(() => this.pump(), 0)
+                self.sending = null
+                self.pumping = false
+                setTimeout(() => self.pump(), 0)
             }
         },
 
@@ -140,8 +149,8 @@ export default function agentChat() {
             const typed = this.$refs.input.value.trim()
             const text = await this.$wire.editQueued(id)
             if (! text) return
-            if (typed !== '') setTimeout(() => this.enqueue(typed), 0)
-            this.draft(text)
+            if (typed !== '') setTimeout(() => self.enqueue(typed), 0)
+            self.draft(text)
         },
 
         async removeQueued(id) {
@@ -191,9 +200,9 @@ export default function agentChat() {
         },
 
         schedule(delay) {
-            clearTimeout(this.timer)
-            if (! this.pollUrl) return
-            this.timer = setTimeout(() => this.poll(), delay)
+            clearTimeout(self.timer)
+            if (! self.pollUrl) return
+            self.timer = setTimeout(() => self.poll(), delay)
         },
 
         // The turn endpoint: the answer so far while a turn runs, and a version stamp that changes when the
@@ -225,7 +234,7 @@ export default function agentChat() {
             if (changed || (hadTurn && this.turn === null)) {
                 // The stored transcript replaces the streamed answer in the same DOM update (onSync above).
                 this.clearOnSync = true
-                this.$wire.$refresh()
+                self.$wire.$refresh()
             }
         },
 
