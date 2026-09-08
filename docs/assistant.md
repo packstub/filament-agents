@@ -20,6 +20,12 @@ Conversations and messages are laravel/ai's `Conversation` and `ConversationMess
 
 The composer never locks. A question appears in the transcript the moment it is sent; Enter sends and Shift+Enter breaks the line. Anything typed while an answer is still streaming is queued and sent next, one turn at a time — a queued question can be edited or removed until then, and ↑ in an empty composer pulls the last queued question back for editing (or the last one sent, to send it again). The page follows the answer as it streams unless you scroll up to read, with a "Jump to latest" button to catch up. Every answer can be rated with a thumbs up or down (`agent_message_feedback`), which your app can read to find the questions that go wrong.
 
+## Long chats
+
+A chat can go on as long as you like; what changes is what the model reads. Each turn replays the most recent messages that fit the history window (`history.max_tokens`, estimated), cut on turn boundaries so a tool call keeps its result. Tool results older than a few turns (`history.keep_tool_results_turns`) are replaced by a one-line placeholder — the transcript, tables and charts on the page are untouched. Messages that fall out of the window are folded into a rolling summary written by the provider's cheapest model and stored per conversation (`agent_conversation_summaries`); the model reads it ahead of the verbatim tail, and the summary grows in place rather than being rewritten, so a provider's prompt cache keeps hitting.
+
+A meter under the transcript shows how full the window is. From `history.notice_share` the page suggests **Continue in a new chat**: it summarizes the chat, opens a new one that starts from that summary and says where it came from. There is no hard stop — compaction keeps every chat answerable — but a fresh chat per topic gives the sharpest answers and the smallest bills.
+
 ### Approvals
 
 When the agent calls a write tool, laravel/ai pauses the turn. The chat shows a card with the tool's title and arguments and two buttons, **Approve** and **Reject**; the turn resumes with the decision and the tool either runs or reports that it was rejected. The generic rules ask the model not to claim something was done until the tool result confirms it and never to chain destructive changes with anything else in one turn.

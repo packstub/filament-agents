@@ -146,6 +146,55 @@ class Chat extends Page
         return $list;
     }
 
+    /**
+     * How full the history window is, for the meter under the transcript (page context is the $context property).
+     *
+     * @return array{tokens: int, budget: int, share: float, summarized: bool, source: ?string, sourceTitle: ?string, notice: bool}|null
+     */
+    public function history(): ?array
+    {
+        if (! $this->conversation) {
+            return null;
+        }
+
+        $usage = app(AgentConversationStore::class)->contextUsage($this->conversation);
+
+        return [
+            ...$usage,
+            'sourceTitle' => $usage['source'] ? $this->ownConversations()->whereKey($usage['source'])->value('title') : null,
+            'notice' => $usage['share'] >= (float) config('packstub-agents.history.notice_share', 0.7),
+        ];
+    }
+
+    /** Open a new chat that starts from a summary of this one, and go there. */
+    public function continueInNewChat(): void
+    {
+        if (! $this->conversation || ! AgentModels::enabled()) {
+            return;
+        }
+
+        $resolved = AgentModels::resolve($this->model);
+        $agent = Agents::agent($this->context, $this->model);
+        $provider = app(AiManager::class)->textProviderFor($agent, $resolved['provider']);
+        $title = Str::limit((string) $this->ownConversations()->whereKey($this->conversation)->value('title'), 80);
+
+        try {
+            $id = app(AgentConversationStore::class)->continueConversation(
+                $this->conversation,
+                auth()->user(),
+                __(':title (continued)', ['title' => $title]),
+                AgentConversationStore::providerSummarizer($provider),
+            );
+        } catch (Throwable $e) {
+            report($e);
+            Notification::make()->title(__('The chat could not be summarized'))->body($e->getMessage())->danger()->send();
+
+            return;
+        }
+
+        $this->redirect(static::getUrl(['conversation' => $id]));
+    }
+
     /** Send the last question again when it never got an answer. */
     public function retry(): void
     {
@@ -252,6 +301,8 @@ class Chat extends Page
 
         try {
             $resolved = AgentModels::resolve($this->model);
+            // What no longer fits the history window is folded into the rolling summary by the provider's cheapest model.
+            $store->summarizeWith(AgentConversationStore::providerSummarizer(app(AiManager::class)->textProviderFor($agent, $resolved['provider'])));
             $response = $agent->withModel($resolved['model'])->stream($input, provider: $resolved['provider'], model: $resolved['model']);
 
             // The answer is re-rendered as Markdown while it streams (on every line, or every ~120 chars),
@@ -291,6 +342,7 @@ class Chat extends Page
                 ->send();
         } finally {
             $store->answering(null);
+            $store->summarizeWith(null);
         }
 
         if ($started !== null && $answered && is_string($input)) {

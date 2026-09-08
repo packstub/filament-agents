@@ -133,12 +133,19 @@ it('keeps a decided proposal as a card and lets the model carry on after a rejec
 
     $conversation = Conversation::query()->create(['id' => (string) Str::uuid(), 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id, 'title' => 'Renames']);
     $at = now()->subMinutes(5);
-    $message = fn (array $attributes) => ConversationMessage::query()->create($attributes + [
-        'id' => (string) Str::uuid(), 'created_at' => $at = $at->addMinute(), 'conversation_id' => $conversation->id, 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id,
-        'agent' => WidgetAgent::class, 'role' => 'assistant', 'content' => '', 'attachments' => [], 'meta' => [], 'usage' => [],
-    ]);
+    // Rows carry time-ordered (v7) ids: laravel/ai and the history window take "the latest rows" by id.
+    $message = function (array $attributes) use (&$at, $conversation, $user) {
+        usleep(1100);
+
+        return ConversationMessage::query()->create($attributes + [
+            'id' => (string) Str::uuid7(), 'created_at' => $at = $at->addMinute(), 'conversation_id' => $conversation->id, 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id,
+            'agent' => WidgetAgent::class, 'role' => 'assistant', 'content' => '', 'attachments' => [], 'meta' => [], 'usage' => [],
+        ]);
+    };
     $call = fn (string $id, string $name) => ['id' => $id, 'name' => 'rename-widget', 'arguments' => ['id' => $alpha->id, 'name' => $name]];
 
+    // The question the proposals answer (the history window is cut on a question, so it keeps all of these rows).
+    $message(['role' => 'user', 'content' => 'Rename Alpha, please.', 'tool_calls' => [], 'tool_results' => []]);
     // Decided turns: laravel/ai empties the paused list and records the outcome with the tool results.
     $message(['tool_calls' => [$call('c1', 'Alpha II')], 'tool_results' => [$call('c1', 'Alpha II') + ['result' => 'The user rejected this tool call.', 'denied' => true]], 'approval_state' => ['pending' => []]]);
     $message(['tool_calls' => [$call('c2', 'Alpha III')], 'tool_results' => [$call('c2', 'Alpha III') + ['result' => '{"renamed":true}']], 'approval_state' => ['pending' => []]]);

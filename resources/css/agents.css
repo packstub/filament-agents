@@ -27,6 +27,12 @@
 .fi-chat-queued { border: 1px dashed var(--color-primary-400); color: var(--color-primary-800); background: color-mix(in srgb, var(--color-primary-500) 8%, transparent); }
 .dark .fi-chat-queued { color: var(--color-primary-200); }
 
+/* The context meter under the transcript. */
+.fi-chat-context-bar { display: inline-block; width: 5rem; height: 0.375rem; border-radius: 9999px; background: rgb(0 0 0 / 0.08); overflow: hidden; vertical-align: middle; }
+.dark .fi-chat-context-bar { background: rgb(255 255 255 / 0.12); }
+.fi-chat-context-fill { display: block; height: 100%; border-radius: 9999px; background: var(--color-primary-500); transition: width 0.3s; }
+.fi-chat-context-fill-high { background: var(--color-warning-500); }
+
 /* A caret at the end of the answer while it streams. */
 .fi-chat-streaming::after { content: ''; display: inline-block; width: 0.5rem; height: 1em; margin-inline-start: 0.125rem; vertical-align: text-bottom; background: currentColor; opacity: 0.6; animation: fi-chat-blink 1s steps(2) infinite; }
 @keyframes fi-chat-blink { to { opacity: 0; } }

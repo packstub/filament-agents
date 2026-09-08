@@ -18,7 +18,17 @@
             </div>
         </div>
 
+        @php($context = $this->history())
+
         <div class="flex flex-col gap-5" x-ref="transcript">
+            @if ($context && $context['source'])
+                <p class="text-xs text-gray-500">
+                    {{ __('Continued from') }}
+                    <a href="{{ \Packstub\Agents\Filament\Pages\Chat::getUrl(['conversation' => $context['source']]) }}" class="font-medium text-primary-600 hover:underline">{{ $context['sourceTitle'] ?? __('an earlier chat') }}</a>
+                    — {{ __('the assistant starts from a summary of it.') }}
+                </p>
+            @endif
+
             @foreach ($this->messages() as $message)
                 @if ($message['role'] === 'user')
                     <div class="flex justify-end">
@@ -164,6 +174,23 @@
                 {{ __('Jump to latest') }}
             </button>
         </div>
+
+        @if ($context && $context['tokens'] > 0)
+            {{-- How much of the history window this chat uses: what does not fit is summarized for the model. --}}
+            <div class="fi-chat-context flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500" wire:loading.remove wire:target="send,decide,retry">
+                <span class="fi-chat-context-bar" title="{{ __(':used of :budget tokens of history', ['used' => number_format($context['tokens']), 'budget' => number_format($context['budget'])]) }}">
+                    <span class="fi-chat-context-fill {{ $context['notice'] ? 'fi-chat-context-fill-high' : '' }}" style="width: {{ (int) round($context['share'] * 100) }}%"></span>
+                </span>
+                <span>{{ __('Context :percent%', ['percent' => (int) round($context['share'] * 100)]) }}</span>
+                @if ($context['summarized'] && ! $context['source'])
+                    <span>· {{ __('older messages are summarized for the assistant') }}</span>
+                @endif
+                @if ($context['notice'])
+                    <span class="text-gray-700 dark:text-gray-300">· {{ __('This chat is getting long — answers stay sharpest in a new one.') }}</span>
+                    <x-filament::link tag="button" wire:click="continueInNewChat" size="sm" icon="heroicon-m-arrow-right-circle">{{ __('Continue in a new chat') }}</x-filament::link>
+                @endif
+            </div>
+        @endif
 
         <x-packstub-agents::composer method="send" targets="send,decide,retry" class="sticky bottom-4 shadow-lg" />
     </div>
