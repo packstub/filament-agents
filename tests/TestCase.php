@@ -80,6 +80,8 @@ abstract class TestCase extends Orchestra
         $app['config']->set('packstub-agents.enabled', true);
         $app['config']->set('packstub-agents.mcp.path', 'mcp');
         $app['config']->set('ai.providers.anthropic.key', 'sk-test');
+        // A turn runs in a queued job; on the sync driver it runs inside the request, as the suite expects.
+        $app['config']->set('queue.default', 'sync');
     }
 
     protected function defineDatabaseMigrations(): void

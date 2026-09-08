@@ -7,6 +7,7 @@ use Filament\Contracts\Plugin;
 use Filament\Panel;
 use Filament\Support\Facades\FilamentView;
 use Filament\View\PanelsRenderHook;
+use Illuminate\Support\Facades\Route;
 use Laravel\Mcp\Server\Tool;
 use Packstub\Agents\Ai\Agent;
 use Packstub\Agents\Contracts\AgentResource;
@@ -14,6 +15,7 @@ use Packstub\Agents\Filament\Pages\AgentAccess;
 use Packstub\Agents\Filament\Pages\Chat;
 use Packstub\Agents\Filament\Pages\Chats;
 use Packstub\Agents\Filament\Resources\AgentLimits\AgentLimitResource;
+use Packstub\Agents\Http\Controllers\TurnController;
 
 /**
  * Registers the assistant in a panel:
@@ -232,6 +234,9 @@ class AgentsPlugin implements Plugin
         if ($this->chat) {
             $pages[] = Chat::class;
             $pages[] = Chats::class;
+
+            // The chat page polls this while an answer is produced; it runs under the panel's auth and tenant middleware.
+            $panel->authenticatedTenantRoutes(fn () => Route::get('packstub-agents/chat/{conversation}/turn', TurnController::class)->name('packstub-agents.turn'));
         }
 
         if ($this->agentAccess) {

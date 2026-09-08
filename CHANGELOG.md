@@ -2,6 +2,22 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## Unreleased
+
+Upgrading: run `php artisan migrate` (new `agent_turns` table) and `php artisan filament:assets` (the chat page's Alpine component changed). Answers are now produced by a queued job: run a queue worker (`php artisan queue:work`), or keep `QUEUE_CONNECTION=sync` to run them inside the request as before.
+
+### Added
+
+- **Answers survive the page.** A turn runs in a queued job (`RunAgentTurn`) that writes the answer so far to the new `agent_turns` table; the chat page polls a small JSON route on the panel for it instead of holding the Livewire request open. Reloading, navigating away and back, or opening the chat in a second tab picks the running answer up where it is; a closed tab no longer kills it; there is no request-timeout risk on long tool chains. A queued job that never completes (a worker that died) shows the question with a Retry after `chat.job_timeout`.
+- **Stop.** A Stop button next to Send cuts the running answer short; what the assistant had written is kept as its answer, marked "(stopped)", and a stop before any text leaves the question with a Retry.
+- **Follow-ups are kept per conversation.** A question typed while an answer runs waits on the server, in every tab, and starts as soon as the answer is done; it can be edited or removed until then, and ↑ in an empty composer pulls the last waiting one back.
+- **Regenerate and edit-and-resend** on the last exchange: an arrow under the last answer produces it again (the previous answer and its rating are dropped), a pencil next to the last question puts it back in the composer and replaces the answer when sent.
+- Config `chat.queue_connection`, `chat.queue`, `chat.job_timeout` and `chat.poll_interval` (`AGENT_QUEUE_CONNECTION`, `AGENT_QUEUE`, `AGENT_JOB_TIMEOUT`, `AGENT_POLL_INTERVAL`).
+
+### Changed
+
+- The chat page no longer streams over `wire:stream`; `send()`, `decide()`, `retry()`, `regenerate()` and `resend()` queue a turn and return what the page polls. A provider failure is shown under the question (with the message) rather than only as a notification.
+
 ## 1.3.0 — 2026-09-08
 
 Upgrading: run `php artisan filament:assets` (the chat page's Alpine component is a registered asset) and `php artisan migrate` (new `agent_conversation_summaries` table).

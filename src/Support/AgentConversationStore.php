@@ -15,6 +15,7 @@ use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Prompts\AgentPrompt;
 use Laravel\Ai\Responses\Data\ToolResult;
 use Laravel\Ai\Storage\DatabaseConversationStore;
+use Packstub\Agents\Models\AgentMessageFeedback;
 use Packstub\Agents\Models\ConversationSummary;
 use Throwable;
 
@@ -81,6 +82,75 @@ class AgentConversationStore extends DatabaseConversationStore
         $this->touchConversation($conversationId, $now);
 
         return $messageId;
+    }
+
+    /**
+     * Store what the assistant had written when the person stopped it. laravel/ai stores an answer only once the
+     * stream has ended, so a stopped turn stores its own, marked in meta so the page can say so.
+     */
+    public function storeStoppedAnswer(string $conversationId, object $participant, string $agentClass, string $content): string
+    {
+        $messageId = (string) Str::uuid7();
+        $now = now();
+
+        $this->table($this->messagesTable())->insert($this->messageAttributes(
+            $messageId,
+            $conversationId,
+            Conversation::participantType($participant),
+            Conversation::participantKey($participant),
+            $now,
+            [
+                'agent' => $agentClass,
+                'role' => 'assistant',
+                'content' => $content,
+                'attachments' => '[]',
+                'tool_calls' => '[]',
+                'tool_results' => '[]',
+                'usage' => '[]',
+                'meta' => json_encode(['stopped' => true]),
+                'approval_state' => null,
+            ],
+        ));
+
+        $this->touchConversation($conversationId, $now);
+
+        return $messageId;
+    }
+
+    /** Whether a stored answer was cut short by the person. */
+    public static function wasStopped(mixed $meta): bool
+    {
+        $meta = is_string($meta) ? json_decode($meta, true) : $meta;
+
+        return (bool) (is_array($meta) ? ($meta['stopped'] ?? false) : false);
+    }
+
+    /**
+     * Forget everything after a question (its answer, a paused proposal, the feedback on them) so the question
+     * can be answered again — Regenerate, and Edit on the last question. The rolling summary is not touched:
+     * it only ever covers rows older than the last exchange.
+     */
+    public function dropMessagesAfter(string $conversationId, string $messageId): void
+    {
+        $ids = $this->table($this->messagesTable())
+            ->where('conversation_id', $conversationId)
+            ->where('id', '>', $messageId)
+            ->pluck('id');
+
+        if ($ids->isEmpty()) {
+            return;
+        }
+
+        AgentMessageFeedback::query()->whereIn('message_id', $ids)->delete();
+        $this->table($this->messagesTable())->whereIn('id', $ids)->delete();
+        $this->touchConversation($conversationId, now());
+    }
+
+    /** Replace the text of a recorded question (Edit on the last question). */
+    public function rewriteQuestion(string $conversationId, string $messageId, string $content): void
+    {
+        $this->table($this->messagesTable())->where('conversation_id', $conversationId)->where('id', $messageId)->where('role', 'user')->update(['content' => $content, 'updated_at' => now()]);
+        $this->touchConversation($conversationId, now());
     }
 
     /** The turn about to run answers this pre-stored question (null: none, the SDK stores the question itself). */

@@ -192,7 +192,8 @@ it('keeps a question the provider could not answer and answers it on retry', fun
 
     $component = livewire(Chat::class, ['conversation' => $conversation->id])
         ->assertSee('How many widgets are live?')
-        ->assertSee(__('The assistant did not answer.'))
+        ->assertSee(__('The assistant could not answer.'))
+        ->assertSee('AI provider [gemini] is overloaded.')
         ->assertSee(__('Retry'));
 
     expect($component->instance()->messages()->last()['unanswered'])->toBeTrue();
@@ -210,7 +211,7 @@ it('keeps a question the provider could not answer and answers it on retry', fun
 
     livewire(Chat::class, ['conversation' => $conversation->id])
         ->assertSee('Two widgets are live')
-        ->assertDontSee(__('The assistant did not answer.'));
+        ->assertDontSee(__('The assistant could not answer.'));
 
     // Nothing to retry once the question is answered.
     livewire(Chat::class, ['conversation' => $conversation->id])->call('retry');

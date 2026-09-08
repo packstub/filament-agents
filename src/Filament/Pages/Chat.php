@@ -3,6 +3,7 @@
 namespace Packstub\Agents\Filament\Pages;
 
 use BackedEnum;
+use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -10,30 +11,27 @@ use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Laravel\Ai\AiManager;
-use Laravel\Ai\Approvals\Decision;
-use Laravel\Ai\Approvals\Decisions;
 use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Models\ConversationMessage;
-use Laravel\Ai\Streaming\Events\Error;
-use Laravel\Ai\Streaming\Events\TextDelta;
-use Laravel\Ai\Streaming\Events\ToolCall;
-use Laravel\Ai\Streaming\Events\ToolResult;
 use Packstub\Agents\Facades\Agents;
 use Packstub\Agents\Mcp\AgentTool;
 use Packstub\Agents\Models\AgentMessageFeedback;
+use Packstub\Agents\Models\AgentTurn;
 use Packstub\Agents\Support\AgentBudget;
 use Packstub\Agents\Support\AgentConversationStore;
 use Packstub\Agents\Support\AgentModels;
 use Packstub\Agents\Support\AgentResources;
+use Packstub\Agents\Support\AgentTurns;
 use Packstub\Agents\Support\PageContext;
 use Throwable;
 
 /**
- * One conversation with the assistant. The answer streams into the page over
- * Livewire (wire:stream) while the agent calls tools; a proposed change shows
- * up as a card with Approve / Reject, and the turn resumes with the decision.
- * Messages are read back from the database on every render, so a reload
- * never loses anything.
+ * One conversation with the assistant. A question becomes a turn on the
+ * conversation (AgentTurns); the RunAgentTurn job produces the answer while
+ * the page polls the turn row, so the answer keeps coming when the page is
+ * reloaded, reopened or open in a second tab, and can be stopped. A proposed
+ * change shows up as a card with Approve / Reject, and the decision is a
+ * turn of its own. Messages are read back from the database on every render.
  */
 class Chat extends Page
 {
@@ -54,6 +52,9 @@ class Chat extends Page
     public ?string $context = null;
 
     public bool $autoSend = false;
+
+    /** @var array{active: ?array, queued: list<array>, ended: ?array}|null */
+    protected ?array $live = null;
 
     public static function canAccess(): bool
     {
@@ -102,6 +103,7 @@ class Chat extends Page
 
         $feedback = AgentMessageFeedback::query()->where('user_id', auth()->id())->pluck('rating', 'message_id');
         $writeTools = self::writeToolNames();
+        $idle = $this->idle();
 
         $list = ConversationMessage::query()
             ->where('conversation_id', $this->conversation)
@@ -119,6 +121,7 @@ class Chat extends Page
                 return [
                     'id' => $m->id,
                     'role' => $m->role,
+                    'text' => (string) $m->content,
                     'html' => $m->role === 'assistant' ? self::markdown((string) $m->content) : e((string) $m->content),
                     // A write tool stays a card (proposal / done / rejected) after the decision, when the paused list is empty again.
                     'tools' => collect($m->tool_calls ?? [])->map(fn ($call) => [
@@ -134,16 +137,92 @@ class Chat extends Page
                     'tables' => $tables,
                     'rating' => $feedback->get($m->id),
                     'at' => $m->created_at,
+                    'stopped' => AgentConversationStore::wasStopped($m->meta),
                     'unanswered' => false,
+                    'editable' => false,
+                    'regenerable' => false,
                 ];
             });
 
-        // A question with nothing after it was recorded but never answered (the provider failed): it gets a Retry.
-        if ($list->isNotEmpty() && $list->last()['role'] === 'user') {
-            $list->push([...$list->pop(), 'unanswered' => true]);
+        if ($list->isEmpty()) {
+            return $list;
+        }
+
+        // The last exchange: the last question can be edited and sent again, its answer produced again — while nothing runs.
+        $lastQuestion = null;
+        for ($i = $list->count() - 1; $i >= 0; $i--) {
+            if ($list[$i]['role'] === 'user') {
+                $lastQuestion = $i;
+                break;
+            }
+        }
+
+        if ($idle && $lastQuestion !== null) {
+            $list->put($lastQuestion, [...$list[$lastQuestion], 'editable' => true]);
+        }
+
+        $last = $list->last();
+
+        if ($last['role'] === 'user') {
+            // A question with nothing after it was recorded but not answered: while a turn runs it is being answered,
+            // otherwise the provider failed or the person stopped it and it gets a Retry.
+            $list->push([...$list->pop(), 'unanswered' => $idle]);
+        } elseif ($idle && ! collect($last['tools'])->contains('pending', true)) {
+            $list->push([...$list->pop(), 'regenerable' => true]);
         }
 
         return $list;
+    }
+
+    /**
+     * The turn that runs on this conversation, the questions waiting behind it, and how the last turn ended
+     * when the last question has no answer.
+     *
+     * @return array{active: ?array{id: string, status: string, statusText: string, html: string}, queued: list<array{id: string, text: string}>, ended: ?array{status: string, error: ?string}}
+     */
+    public function live(): array
+    {
+        if ($this->live !== null) {
+            return $this->live;
+        }
+
+        if (! $this->conversation) {
+            return $this->live = ['active' => null, 'queued' => [], 'ended' => null];
+        }
+
+        $turns = app(AgentTurns::class);
+        $turns->reconcile($this->conversation);
+        $active = $turns->active($this->conversation);
+        $latest = $turns->latest($this->conversation);
+
+        return $this->live = [
+            'active' => $active ? [
+                'id' => $active->id,
+                'status' => $active->status,
+                'statusText' => $active->status_text ?? __('Thinking…'),
+                'html' => filled($active->text) ? self::markdown((string) $active->text) : '',
+            ] : null,
+            'queued' => $turns->queued($this->conversation)->map(fn (AgentTurn $t) => ['id' => $t->id, 'text' => (string) $t->prompt()])->values()->all(),
+            'ended' => $latest && in_array($latest->status, [AgentTurn::FAILED, AgentTurn::STOPPED], true) ? ['status' => $latest->status, 'error' => $latest->error] : null,
+        ];
+    }
+
+    /** Nothing runs or waits on this conversation. */
+    public function idle(): bool
+    {
+        $live = $this->live();
+
+        return $live['active'] === null && $live['queued'] === [];
+    }
+
+    /** Where the page polls the running turn (null before the first question of a new chat). */
+    public function pollUrl(): ?string
+    {
+        if (! $this->conversation || ! ($panel = Agents::panel())) {
+            return null;
+        }
+
+        return $panel->route('packstub-agents.turn', array_filter(['conversation' => $this->conversation, 'tenant' => Filament::getTenant()]));
     }
 
     /**
@@ -195,34 +274,111 @@ class Chat extends Page
         $this->redirect(static::getUrl(['conversation' => $id]));
     }
 
-    /** Send the last question again when it never got an answer. */
-    public function retry(): void
-    {
-        $last = $this->conversation ? ConversationMessage::query()->where('conversation_id', $this->conversation)->orderByDesc('id')->first() : null;
-
-        if (! $last || $last->role !== 'user') {
-            return;
-        }
-
-        $this->runTurn((string) $last->content, answering: $last->id);
-    }
-
     /** The composer passes the question along (agent-chat.js); $prompt on the component is the auto-sent one from the URL or session. */
-    public function send(?string $prompt = null): void
+    public function send(?string $prompt = null): ?array
     {
         $prompt = trim($prompt ?? $this->prompt);
         if ($prompt === '') {
-            return;
+            return null;
         }
 
         $this->prompt = '';
         $this->autoSend = false;
-        $this->runTurn($prompt);
+
+        return $this->startTurn(['prompt' => $prompt]);
     }
 
-    public function decide(string $callId, bool $approve): void
+    public function decide(string $callId, bool $approve): ?array
     {
-        $this->runTurn(Decisions::from([$callId => $approve ? Decision::approve() : Decision::reject(self::rejectionResult())]));
+        if (! $this->conversation || ! $this->idle()) {
+            return null;
+        }
+
+        return $this->startTurn(['decisions' => [$callId => $approve]]);
+    }
+
+    /** Send the last question again when it never got an answer. */
+    public function retry(): ?array
+    {
+        $last = $this->lastQuestion();
+
+        if (! $last || ! $this->idle() || ConversationMessage::query()->where('conversation_id', $this->conversation)->where('id', '>', $last->id)->exists()) {
+            return null;
+        }
+
+        return $this->startTurn(['prompt' => (string) $last->content], answering: $last->id);
+    }
+
+    /** Answer the last question again: its answer is dropped and the same recorded question is sent once more. */
+    public function regenerate(): ?array
+    {
+        $last = $this->lastQuestion();
+
+        if (! $last || ! $this->idle()) {
+            return null;
+        }
+
+        app(AgentConversationStore::class)->dropMessagesAfter($this->conversation, $last->id);
+
+        return $this->startTurn(['prompt' => (string) $last->content], answering: $last->id);
+    }
+
+    /** Edit the last question and send it again: its answer is dropped, the recorded question rewritten. */
+    public function resend(string $prompt): ?array
+    {
+        $prompt = trim($prompt);
+        $last = $this->lastQuestion();
+
+        if ($prompt === '' || ! $last || ! $this->idle()) {
+            return null;
+        }
+
+        if ($refusal = AgentBudget::refusal($prompt)) {
+            Notification::make()->title($refusal)->warning()->send();
+
+            return null;
+        }
+
+        $store = app(AgentConversationStore::class);
+        $store->dropMessagesAfter($this->conversation, $last->id);
+        $store->rewriteQuestion($this->conversation, $last->id, $prompt);
+
+        return $this->startTurn(['prompt' => $prompt], answering: $last->id);
+    }
+
+    /** Stop the running turn; the job stores what it has so far. */
+    public function stop(): void
+    {
+        if (! $this->conversation) {
+            return;
+        }
+
+        $turns = app(AgentTurns::class);
+
+        if ($active = $turns->active($this->conversation)) {
+            $turns->requestStop($active);
+        }
+    }
+
+    /** Take a waiting question out of the line. */
+    public function removeQueued(string $turn): void
+    {
+        if ($queued = $this->queuedTurn($turn)) {
+            app(AgentTurns::class)->remove($queued);
+            $this->live = null;
+        }
+    }
+
+    /** Take a waiting question out of the line and hand its text back to the composer. */
+    public function editQueued(string $turn): ?string
+    {
+        if (! ($queued = $this->queuedTurn($turn)) || ! app(AgentTurns::class)->remove($queued)) {
+            return null;
+        }
+
+        $this->live = null;
+
+        return $queued->prompt();
     }
 
     /**
@@ -259,112 +415,92 @@ class Chat extends Page
     }
 
     /**
-     * Stream one turn — a question or a set of approval decisions — into the page.
+     * Queue one turn — a question or a set of approval decisions — on the conversation.
      *
-     * A question is recorded before the provider is called, so it survives a
-     * failed answer; $answering names an already recorded question (a retry).
+     * The budget is checked here, in the request, so the person hears about it at once. A question is recorded
+     * in the transcript when its turn starts; $answering names an already recorded question (a retry, a
+     * regenerate, an edit). What comes back tells the page what to poll.
+     *
+     * @return array{turn: string, conversation: string, poll: ?string, active: bool}|null
      */
-    protected function runTurn(Decisions|string $input, ?string $answering = null): void
+    protected function startTurn(array $input, ?string $answering = null): ?array
     {
         if (! AgentModels::enabled()) {
             Notification::make()->title(__(':name is not connected to an AI provider yet.', ['name' => Agents::name()]))->warning()->send();
 
-            return;
+            return null;
         }
 
-        if ($refusal = AgentBudget::refusal(is_string($input) ? $input : null)) {
+        $prompt = $input['prompt'] ?? null;
+
+        if ($refusal = AgentBudget::refusal($prompt)) {
             Notification::make()->title($refusal)->warning()->send();
 
-            return;
+            return null;
         }
         AgentBudget::hit();
 
         AgentModels::remember($this->model);
         $user = auth()->user();
-        $agent = Agents::agent($this->context, $this->model);
         $store = app(AgentConversationStore::class);
         $started = null;
 
-        if (is_string($input)) {
-            if (! $this->conversation) {
-                $this->conversation = $started = $store->startConversation($user, $input);
+        if (! $this->conversation) {
+            if ($prompt === null) {
+                return null;
             }
 
-            $answering ??= $store->storeQuestion($this->conversation, $user, $agent::class, $input);
+            $this->conversation = $started = $store->startConversation($user, $prompt);
         }
 
-        $agent = $this->conversation ? $agent->continue($this->conversation, as: $user) : $agent->forUser($user);
-        $this->emit('status', e(__('Thinking…')), replace: true);
-
-        $store->answering($answering);
-        $answered = false;
-
-        try {
-            $resolved = AgentModels::resolve($this->model);
-            // What no longer fits the history window is folded into the rolling summary by the provider's cheapest model.
-            $store->summarizeWith(AgentConversationStore::providerSummarizer(app(AiManager::class)->textProviderFor($agent, $resolved['provider'])));
-            $response = $agent->withModel($resolved['model'])->stream($input, provider: $resolved['provider'], model: $resolved['model']);
-
-            // The answer is re-rendered as Markdown while it streams (on every line, or every ~120 chars),
-            // so tables, lists and links take shape as they arrive instead of showing raw syntax.
-            $buffer = '';
-            $sinceRender = 0;
-
-            foreach ($response as $event) {
-                if ($event instanceof TextDelta) {
-                    $buffer .= $event->delta;
-                    $sinceRender += strlen($event->delta);
-                    if (str_contains($event->delta, "\n") || $sinceRender >= 120) {
-                        $this->emit('status', e(__('Writing…')), replace: true);
-                        $this->emit('answer', self::markdown($buffer), replace: true);
-                        $sinceRender = 0;
-                    }
-                } elseif ($event instanceof ToolCall) {
-                    $this->emit('status', e(__(':tool…', ['tool' => Str::headline($event->toolCall->name)])), replace: true);
-                } elseif ($event instanceof ToolResult) {
-                    $this->emit('status', e(__('Thinking…')), replace: true);
-                    if ($buffer !== '') {
-                        $buffer .= "\n\n";
-                    }
-                } elseif ($event instanceof Error && ! $event->recoverable) {
-                    throw new \RuntimeException($event->message);
-                }
-            }
-
-            $answered = true;
-        } catch (Throwable $e) {
-            report($e);
-            Notification::make()
-                ->title(__('The assistant could not answer'))
-                ->body($e->getMessage().(is_string($input) ? ' '.__('Your question is kept — use Retry to send it again.') : ''))
-                ->danger()
-                ->persistent()
-                ->send();
-        } finally {
-            $store->answering(null);
-            $store->summarizeWith(null);
+        // A new chat is titled by the provider once its first answer is in (the question is the title until then).
+        if ($prompt !== null && ! ConversationMessage::query()->where('conversation_id', $this->conversation)->where('role', 'assistant')->exists()) {
+            $input['title'] = true;
         }
 
-        if ($started !== null && $answered && is_string($input)) {
-            $store->titleConversation($started, $input, app(AiManager::class)->textProviderFor($agent, $resolved['provider']));
-        }
+        $this->live = null;
+        $turn = app(AgentTurns::class)->enqueue($this->conversation, $user, $input, $answering, $this->model, $this->context);
 
         // A new chat keeps the page (queued questions would not survive a reload) and takes the conversation's URL.
         if ($started !== null) {
             $this->js('window.history.replaceState({}, "", '.json_encode(static::getUrl(['conversation' => $started])).')');
         }
 
-        // The re-render reads the persisted messages, so the stream buffers are cleared.
-        $this->emit('answer', '', replace: true);
-        $this->emit('status', '', replace: true);
+        // On a sync queue the turn already ran inside this request: say so now, as the page did before.
+        if ($turn->status === AgentTurn::FAILED) {
+            Notification::make()
+                ->title(__('The assistant could not answer'))
+                ->body($turn->error.($prompt !== null ? ' '.__('Your question is kept — use Retry to send it again.') : ''))
+                ->danger()
+                ->persistent()
+                ->send();
+        }
+
+        return [
+            'turn' => $turn->id,
+            'conversation' => $this->conversation,
+            'poll' => $this->pollUrl(),
+            'active' => $turn->isActive(),
+        ];
     }
 
-    /** Livewire streaming needs a real HTTP response; in tests the deltas are simply dropped. */
-    protected function emit(string $to, string $content, bool $replace = false): void
+    /** The last question of the conversation. */
+    protected function lastQuestion(): ?ConversationMessage
     {
-        if (! app()->runningUnitTests()) {
-            $this->stream(to: $to, content: $content, replace: $replace);
+        if (! $this->conversation) {
+            return null;
         }
+
+        return ConversationMessage::query()->where('conversation_id', $this->conversation)->where('role', 'user')->orderByDesc('id')->first();
+    }
+
+    protected function queuedTurn(string $id): ?AgentTurn
+    {
+        if (! $this->conversation) {
+            return null;
+        }
+
+        return AgentTurn::query()->whereKey($id)->forConversation($this->conversation)->where('status', AgentTurn::QUEUED)->first();
     }
 
     /**
