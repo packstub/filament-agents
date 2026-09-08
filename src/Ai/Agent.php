@@ -5,11 +5,13 @@ namespace Packstub\Agents\Ai;
 use Laravel\Ai\Concerns\RemembersConversations;
 use Laravel\Ai\Contracts\Agent as AgentContract;
 use Laravel\Ai\Contracts\Conversational;
+use Laravel\Ai\Contracts\HasMiddleware;
 use Laravel\Ai\Contracts\HasProviderOptions;
 use Laravel\Ai\Contracts\HasTools;
 use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Promptable;
 use Laravel\Ai\Tools\McpServerTool;
+use Packstub\Agents\Ai\Middleware\EnforceBudget;
 use Packstub\Agents\Facades\Agents;
 use Packstub\Agents\Mcp\AgentTool;
 use Packstub\Agents\Support\AgentModels;
@@ -25,8 +27,12 @@ use Packstub\Agents\Support\PageContext;
  * look at). An app subclass fills two slots — persona() and domain() — and
  * may extend the generic rules and context lines. Provider and model come
  * from AgentModels; nothing here is provider-specific except the options.
+ *
+ * Every turn runs through a middleware pipeline (laravel/ai's): the package's
+ * guard rails first, then whatever the app registered with
+ * AgentsPlugin::middleware([...]). Override middleware() to take full control.
  */
-abstract class Agent implements AgentContract, Conversational, HasProviderOptions, HasTools
+abstract class Agent implements AgentContract, Conversational, HasMiddleware, HasProviderOptions, HasTools
 {
     use Promptable, RemembersConversations;
 
@@ -72,6 +78,18 @@ abstract class Agent implements AgentContract, Conversational, HasProviderOption
         }
 
         return $tools;
+    }
+
+    /**
+     * The pipeline a prompt goes through before the provider is called: the budget check first, so a refused
+     * turn costs nothing, then the app's own middleware (audit log, redaction, tenant checks…). Each entry is
+     * a class with handle(AgentPrompt $prompt, Closure $next), an instance of one, or a closure of that shape.
+     *
+     * @return list<object|Closure>
+     */
+    public function middleware(): array
+    {
+        return [app(EnforceBudget::class), ...Agents::middleware()];
     }
 
     public function maxSteps(): int

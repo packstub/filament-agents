@@ -35,6 +35,9 @@ class AgentsManager
     /** @var list<class-string<AgentResource>> */
     protected array $resources = [];
 
+    /** @var list<class-string|object|Closure> */
+    protected array $middleware = [];
+
     protected ?Closure $authorize = null;
 
     protected ?Closure $roleLabel = null;
@@ -168,6 +171,27 @@ class AgentsManager
         $panel = $this->panel();
 
         return $panel ? array_values(array_filter($panel->getResources(), fn (string $r) => is_subclass_of($r, AgentResource::class))) : [];
+    }
+
+    /** @param  list<class-string|object|Closure>  $middleware */
+    public function useMiddleware(array $middleware): void
+    {
+        $this->middleware = array_values($middleware);
+    }
+
+    /**
+     * The app's own agent middleware, in the order it runs after the package's guard rails: the classes in
+     * config('packstub-agents.middleware'), then what the plugin was given. Class names are resolved from the
+     * container on every call, so a middleware may take dependencies in its constructor.
+     *
+     * @return list<object|Closure>
+     */
+    public function middleware(): array
+    {
+        return collect([...(array) config('packstub-agents.middleware', []), ...$this->middleware])
+            ->map(fn (mixed $middleware) => is_string($middleware) ? app($middleware) : $middleware)
+            ->values()
+            ->all();
     }
 
     public function authorizeUsing(Closure $callback): void

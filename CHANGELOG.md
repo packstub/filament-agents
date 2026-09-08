@@ -2,6 +2,16 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## Unreleased
+
+### Added
+
+- **Agent middleware.** Every turn runs through laravel/ai's middleware pipeline. The package's budget check moved there (`Packstub\Agents\Ai\Middleware\EnforceBudget`), so the limits hold for every turn however it was started; an app adds its own with `AgentsPlugin::make()->middleware([...])` or the new `middleware` config key — classes with `handle(AgentPrompt $prompt, Closure $next)` that can revise the prompt, read the finished answer through `->then()`, or stop the turn by throwing `Packstub\Agents\Exceptions\TurnRefused` (the person reads the message under their question, with a Retry). `Agents::middleware()` reads the list back.
+
+### Changed
+
+- The per-minute turn counter is hit when a turn runs (by the middleware), not when the chat page queues it; the page still refuses over-limit questions before queueing them.
+
 ## 1.4.0 — 2026-09-08
 
 Upgrading: run `php artisan migrate` (new `agent_turns` table) and `php artisan filament:assets` (the chat page's Alpine component changed). Answers are now produced by a queued job: run a queue worker (`php artisan queue:work`), or set `AGENT_TURN_DRIVER=sync` (or `AgentsPlugin::make()->chat(driver: 'sync')`) to run them inside the request as before.

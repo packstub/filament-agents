@@ -14,6 +14,7 @@
 | `max_steps` | `12` | | tool round-trips one turn may take before the agent has to answer |
 | `max_tokens` | `4096` | | answer length |
 | `max_conversation_messages` | `40` | | how many earlier messages a long chat replays |
+| `middleware` | `[]` | | your own agent middleware, run on every turn after the package's guard rails; see [Middleware](assistant.md#middleware) |
 | `history.max_tokens` | `24000` | `AGENT_HISTORY_MAX_TOKENS` | the history window, in estimated tokens; what no longer fits is folded into a rolling summary the model reads first |
 | `history.keep_tool_results_turns` | `3` | | tool results older than this many turns are replaced by a one-line placeholder when replayed |
 | `history.notice_share` | `0.7` | | from this share of the window the chat suggests continuing in a new chat |
@@ -72,6 +73,7 @@ AgentsPlugin::make()
     ->server(AcmeServer::class)
     ->tools([SearchOrders::class, ShowTable::class])
     ->resources([OrderResource::class, CustomerResource::class])
+    ->middleware([AuditTurns::class])
     ->authorizeUsing(fn (string $ability): bool => auth()->user()->can($ability))
     ->roleLabelUsing(fn (): ?string => auth()->user()->role?->getLabel())
     ->credentialsUsing(fn (): ?WorkspaceCredentials => ...)
@@ -88,6 +90,7 @@ AgentsPlugin::make()
 | `server(class)` | the `AgentServer` subclass with the tool list, name and instructions |
 | `tools(array)` | the tool list when there is no server class |
 | `resources(array)` | explicit `AgentResource` classes for `show-table` and page context (default: every panel resource implementing the contract) |
+| `middleware(array)` | your own agent middleware — classes with `handle(AgentPrompt $prompt, Closure $next)`, instances or closures — run on every turn after the package's guard rails, after the ones in config; see [Middleware](assistant.md#middleware) |
 | `authorizeUsing(fn (string $ability): bool)` | how a tool's ability is checked for the current person (default: the `Gate` when it has that ability, otherwise allowed) |
 | `roleLabelUsing(fn (): ?string)` | the person's role label for the prompt and refusals |
 | `credentialsUsing(fn (): ?WorkspaceCredentials)` | where a workspace's own provider, key and model come from |
@@ -100,7 +103,7 @@ Two panels may register the plugin: the tenant panel with the chat and the token
 
 ## The Agents facade
 
-`Packstub\Agents\Facades\Agents` reads back what the app told the package: `name()`, `panel()`, `tenant()`, `toolClasses()`, `resourceClasses()`, `allows($ability)`, `roleLabel()`, `credentials()`, `canManageLimits()`. Tools and views use it; your own code may too.
+`Packstub\Agents\Facades\Agents` reads back what the app told the package: `name()`, `panel()`, `tenant()`, `toolClasses()`, `resourceClasses()`, `middleware()`, `allows($ability)`, `roleLabel()`, `credentials()`, `canManageLimits()`. Tools and views use it; your own code may too.
 
 ## Translations and views
 

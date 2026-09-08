@@ -45,6 +45,9 @@ class AgentsPlugin implements Plugin
     /** @var list<class-string<AgentResource>> */
     protected array $resources = [];
 
+    /** @var list<class-string|object|Closure> */
+    protected array $middleware = [];
+
     protected ?Closure $authorize = null;
 
     protected ?Closure $roleLabel = null;
@@ -115,6 +118,20 @@ class AgentsPlugin implements Plugin
     public function resources(array $resources): static
     {
         $this->resources = $resources;
+
+        return $this;
+    }
+
+    /**
+     * The app's own agent middleware, run on every turn after the package's guard rails: classes with
+     * handle(AgentPrompt $prompt, Closure $next), instances, or closures of that shape (see laravel/ai's
+     * make:agent-middleware). Throw Packstub\Agents\Exceptions\TurnRefused to stop a turn with a message.
+     *
+     * @param  list<class-string|object|Closure>  $middleware
+     */
+    public function middleware(array $middleware): static
+    {
+        $this->middleware = $middleware;
 
         return $this;
     }
@@ -210,6 +227,10 @@ class AgentsPlugin implements Plugin
 
         if ($this->resources !== []) {
             $manager->useResources($this->resources);
+        }
+
+        if ($this->middleware !== []) {
+            $manager->useMiddleware($this->middleware);
         }
 
         if ($this->authorize) {

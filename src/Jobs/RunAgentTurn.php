@@ -15,6 +15,7 @@ use Laravel\Ai\Streaming\Events\StreamEnd;
 use Laravel\Ai\Streaming\Events\TextDelta;
 use Laravel\Ai\Streaming\Events\ToolCall;
 use Laravel\Ai\Streaming\Events\ToolResult;
+use Packstub\Agents\Exceptions\TurnRefused;
 use Packstub\Agents\Facades\Agents;
 use Packstub\Agents\Filament\Pages\Chat;
 use Packstub\Agents\Models\AgentTurn;
@@ -187,7 +188,10 @@ class RunAgentTurn implements ShouldQueue
 
             $turns->finish($turn, AgentTurn::DONE, text: $buffer);
         } catch (Throwable $e) {
-            report($e);
+            // A refusal by a middleware (a budget spent, a guard) is the turn's outcome, not an error to report.
+            if (! $e instanceof TurnRefused) {
+                report($e);
+            }
             $turns->finish($turn, AgentTurn::FAILED, $e->getMessage(), text: $buffer);
         } finally {
             // The store is a request-scoped singleton and must not carry a turn's state into the next one.

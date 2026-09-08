@@ -418,9 +418,10 @@ class Chat extends Page
     /**
      * Queue one turn — a question or a set of approval decisions — on the conversation.
      *
-     * The budget is checked here, in the request, so the person hears about it at once. A question is recorded
-     * in the transcript when its turn starts; $answering names an already recorded question (a retry, a
-     * regenerate, an edit). What comes back tells the page what to poll.
+     * The budget is checked here, in the request, so the person hears about it at once; the EnforceBudget
+     * middleware checks it again (and counts the turn) when the turn runs. A question is recorded in the
+     * transcript when its turn starts; $answering names an already recorded question (a retry, a regenerate,
+     * an edit). What comes back tells the page what to poll.
      *
      * @return array{turn: string, conversation: string, poll: ?string, active: bool}|null
      */
@@ -439,7 +440,6 @@ class Chat extends Page
 
             return null;
         }
-        AgentBudget::hit();
 
         AgentModels::remember($this->model);
         $user = auth()->user();

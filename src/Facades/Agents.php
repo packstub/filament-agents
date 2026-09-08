@@ -16,6 +16,8 @@ use Packstub\Agents\AgentsManager;
  * @method static class-string<\Packstub\Agents\Mcp\AgentServer> serverClass()
  * @method static list<class-string<\Laravel\Mcp\Server\Tool>> toolClasses()
  * @method static list<class-string<\Packstub\Agents\Contracts\AgentResource>> resourceClasses()
+ * @method static void useMiddleware(array $middleware)
+ * @method static list<object|\Closure> middleware()
  * @method static bool allows(?string $ability)
  * @method static string|null roleLabel()
  * @method static \Packstub\Agents\Ai\WorkspaceCredentials|null credentials()

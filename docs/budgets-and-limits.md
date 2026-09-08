@@ -15,7 +15,7 @@ A chat that calls a frontier model on every question needs a ceiling. The packag
 
 `null` (or `0` in the environment) disables a limit. The values in `config/packstub-agents.php` are the platform's ceiling; the operator page below overrides them.
 
-When a turn is refused the person sees the reason in the chat ("This workspace reached today's limit of 150 answers. It resets at midnight.") and nothing is sent to the provider.
+When a turn is refused the person sees the reason in the chat ("This workspace reached today's limit of 150 answers. It resets at midnight.") and nothing is sent to the provider. The chat page checks before it queues a question, so the answer is immediate; the `EnforceBudget` [middleware](assistant.md#middleware) checks again when the turn runs, and counts it, so the limits hold for every turn however it was started — a follow-up that waited in the queue, a console command, an app that prompts the agent directly.
 
 ## The AI limits resource
 
@@ -57,3 +57,5 @@ AgentBudget::summary();            // turns today, tokens this month, per-user c
 ```
 
 `AgentBudget::summary()` is what a workspace settings page shows next to "your AI usage this month". Every counter comes from `agent_conversation_messages`, so no extra bookkeeping is needed.
+
+A guard rail of your own (a plan without the assistant, a frozen workspace) is a [middleware](assistant.md#middleware) that throws `TurnRefused` with the message the person should read.

@@ -64,6 +64,12 @@ return [
     // Long chats replay fewer messages: the answers are short and every replayed message is billed again.
     'max_conversation_messages' => 40,
 
+    // Your own agent middleware, run on every turn after the package's guard rails (the budget check): classes
+    // with handle(AgentPrompt $prompt, Closure $next) — an audit log, redaction, a tenant check. Throw
+    // Packstub\Agents\Exceptions\TurnRefused to stop a turn with a message the person reads under their
+    // question. AgentsPlugin::make()->middleware([...]) appends to this list.
+    'middleware' => [],
+
     // What a long chat replays: the most recent messages that fit the token budget (estimated from what is stored),
     // cut on turn boundaries so a tool call keeps its result. Older tool results are replaced by a one-line placeholder,
     // and what falls out of the window is folded into a rolling summary the model reads first. The chat page shows a
