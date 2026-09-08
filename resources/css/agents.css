@@ -19,8 +19,17 @@
 .fi-chat-md th { font-weight: 600; color: var(--color-gray-500); }
 .fi-chat-md strong { font-weight: 600; }
 
-/* The composer card highlights on focus, so the textarea must not draw the browser's own outline. */
+/* The composer card highlights on focus, so the textarea must not draw the browser's own outline. It grows with the text (agent-chat.js). */
 .fi-agent-composer textarea:focus { outline: none; box-shadow: none; }
+.fi-agent-composer textarea { min-height: 3.25rem; max-height: 15rem; overflow-y: auto; }
+
+/* A question waiting its turn behind the answer that is streaming. */
+.fi-chat-queued { border: 1px dashed var(--color-primary-400); color: var(--color-primary-800); background: color-mix(in srgb, var(--color-primary-500) 8%, transparent); }
+.dark .fi-chat-queued { color: var(--color-primary-200); }
+
+/* A caret at the end of the answer while it streams. */
+.fi-chat-streaming::after { content: ''; display: inline-block; width: 0.5rem; height: 1em; margin-inline-start: 0.125rem; vertical-align: text-bottom; background: currentColor; opacity: 0.6; animation: fi-chat-blink 1s steps(2) infinite; }
+@keyframes fi-chat-blink { to { opacity: 0; } }
 
 /* The skip-link target (<main tabindex="-1">) receives focus when a control inside it is disabled mid-request; never outline it. */
 .fi-main:focus, .fi-main:focus-visible, #fi-main-content:focus, #fi-main-content:focus-visible { outline: none; }

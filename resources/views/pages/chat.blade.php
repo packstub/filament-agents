@@ -1,5 +1,10 @@
 <x-filament-panels::page>
-    <div class="fi-chat mx-auto flex w-full max-w-3xl flex-col gap-6" x-data x-init="@if ($autoSend) $wire.send() @endif">
+    <div
+        class="fi-chat mx-auto flex w-full max-w-3xl flex-col gap-6"
+        x-load
+        x-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('agent-chat', 'packstub/filament-agents') }}"
+        x-data="agentChat({ prompt: @js($prompt), autoSend: @js($autoSend) })"
+    >
         <div class="flex items-center justify-between gap-3">
             <div class="min-w-0">
                 <h1 class="truncate text-xl font-semibold text-gray-950 dark:text-white">{{ $this->getTitle() }}</h1>
@@ -13,12 +18,20 @@
             </div>
         </div>
 
-        <div class="flex flex-col gap-5">
+        <div class="flex flex-col gap-5" x-ref="transcript">
             @foreach ($this->messages() as $message)
                 @if ($message['role'] === 'user')
                     <div class="flex justify-end">
                         <div class="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-primary-600 px-4 py-2.5 text-sm text-white shadow-sm">{!! $message['html'] !!}</div>
                     </div>
+                    @if ($message['unanswered'])
+                        {{-- Recorded before the provider was called, but never answered: offer to send it again. --}}
+                        <div class="flex items-center justify-end gap-2 text-xs text-gray-500" wire:loading.remove wire:target="send,decide,retry">
+                            <x-filament::icon icon="heroicon-m-exclamation-circle" class="h-4 w-4 text-danger-500" />
+                            <span>{{ __('The assistant did not answer.') }}</span>
+                            <x-filament::link tag="button" wire:click="retry" size="sm" icon="heroicon-m-arrow-path">{{ __('Retry') }}</x-filament::link>
+                        </div>
+                    @endif
                 @else
                     <div class="flex flex-col gap-2">
                         @if ($message['tools'])
@@ -110,17 +123,48 @@
                 @endif
             @endforeach
 
-            {{-- Live areas: the question just sent, the streaming answer and the tool status. Cleared by the re-render. --}}
-            <div class="flex justify-end empty:hidden">
-                <div wire:stream="pending-user" class="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-primary-600 px-4 py-2.5 text-sm text-white shadow-sm empty:hidden"></div>
+            {{-- Live areas. The question being answered is drawn client-side the moment it is sent (agent-chat.js) and
+                 handed over to the persisted transcript on re-render; the answer and the tool status stream in. --}}
+            <div wire:ignore class="flex justify-end empty:hidden">
+                <template x-if="sending">
+                    <div class="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-primary-600 px-4 py-2.5 text-sm text-white shadow-sm" x-text="sending.text"></div>
+                </template>
             </div>
-            <div wire:stream="answer" class="fi-chat-md max-w-none text-sm text-gray-800 empty:hidden dark:text-gray-200"></div>
-            <div wire:loading wire:target="send,decide" class="flex items-center gap-2 text-xs text-gray-500">
+            <div wire:stream="answer" class="fi-chat-md max-w-none text-sm text-gray-800 empty:hidden dark:text-gray-200" :class="{ 'fi-chat-streaming': busy }"></div>
+            <div wire:loading wire:target="send,decide,retry" class="flex items-center gap-2 text-xs text-gray-500">
                 <x-filament::loading-indicator class="h-4 w-4" />
                 <span wire:stream="status">{{ __('Thinking…') }}</span>
             </div>
+
+            {{-- Questions typed while an answer was still streaming: sent next, one at a time; editable until then. --}}
+            <div wire:ignore class="flex flex-col gap-5 empty:hidden">
+                <template x-for="queued in queue" :key="queued.id">
+                    <div class="flex flex-col items-end gap-1">
+                        <div class="fi-chat-queued max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm px-4 py-2.5 text-sm" x-text="queued.text"></div>
+                        <div class="flex items-center gap-3 text-xs text-gray-400">
+                            <span>{{ __('Queued') }}</span>
+                            <button type="button" class="hover:text-gray-600 hover:underline dark:hover:text-gray-200" x-on:click="edit(queued.id)">{{ __('Edit') }}</button>
+                            <button type="button" class="hover:text-gray-600 hover:underline dark:hover:text-gray-200" x-on:click="remove(queued.id)">{{ __('Remove') }}</button>
+                        </div>
+                    </div>
+                </template>
+            </div>
         </div>
 
-        <x-packstub-agents::composer method="send" targets="send,decide" class="sticky bottom-4 shadow-lg" />
+        <div wire:ignore>
+            <button
+                type="button"
+                x-show="busy && ! atBottom"
+                x-cloak
+                x-transition.opacity
+                x-on:click="scrollToBottom(true)"
+                class="fi-chat-jump fixed bottom-36 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-gray-900 px-3 py-1.5 text-xs font-medium text-white shadow-lg dark:bg-white dark:text-gray-900"
+            >
+                <x-filament::icon icon="heroicon-m-arrow-down" class="h-3.5 w-3.5" />
+                {{ __('Jump to latest') }}
+            </button>
+        </div>
+
+        <x-packstub-agents::composer method="send" targets="send,decide,retry" class="sticky bottom-4 shadow-lg" />
     </div>
 </x-filament-panels::page>
