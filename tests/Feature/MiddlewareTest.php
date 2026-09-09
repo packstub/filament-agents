@@ -4,10 +4,14 @@ use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use Laravel\Ai\AiManager;
+use Laravel\Ai\Approvals\Decision;
+use Laravel\Ai\Approvals\Decisions;
 use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Models\ConversationMessage;
 use Laravel\Ai\Prompts\AgentPrompt;
 use Packstub\Agents\AgentsPlugin;
+use Packstub\Agents\Ai\Middleware\AttachContext;
 use Packstub\Agents\Ai\Middleware\EnforceBudget;
 use Packstub\Agents\Exceptions\TurnRefused;
 use Packstub\Agents\Facades\Agents;
@@ -41,9 +45,10 @@ it('runs the app middleware on every turn: the prompt on the way in, the answer 
     config(['packstub-agents.middleware' => [RecordsTurns::class]]);
     RecordsTurns::$suffix = 'Answer in one line.';
 
-    expect(Agents::agent()->middleware())->toHaveCount(2)
+    expect(Agents::agent()->middleware())->toHaveCount(3)
         ->and(Agents::agent()->middleware()[0])->toBeInstanceOf(EnforceBudget::class)
-        ->and(Agents::agent()->middleware()[1])->toBeInstanceOf(RecordsTurns::class);
+        ->and(Agents::agent()->middleware()[1])->toBeInstanceOf(RecordsTurns::class)
+        ->and(Agents::agent()->middleware()[2])->toBeInstanceOf(AttachContext::class);
 
     [$turn, $job] = queuedTurn('How many widgets are live?');
 
@@ -59,6 +64,25 @@ it('runs the app middleware on every turn: the prompt on the way in, the answer 
 
     // The middleware revised the prompt for the model; the transcript keeps what the person typed.
     expect(ConversationMessage::query()->where('role', 'user')->value('content'))->toBe('How many widgets are live?');
+});
+
+it('attaches the dynamic block to the question, after the app middleware, and leaves an approval turn alone', function () {
+    actingAs($this->user(['name' => 'Grace Hopper']));
+    $agent = Agents::agent();
+    $provider = app(AiManager::class)->textProviderFor($agent, 'anthropic');
+    $through = fn (AgentPrompt $prompt) => (new AttachContext)->handle($prompt, fn (AgentPrompt $sent) => $sent);
+
+    $sent = $through(new AgentPrompt($agent, 'How many widgets are live?', [], $provider, 'claude-opus-5'));
+
+    // The block leads, the question closes the prompt; the system prompt stays static.
+    expect($sent->prompt)->toStartWith('## Now')
+        ->toContain('Person asking: Grace Hopper')
+        ->toEndWith("\n\nHow many widgets are live?")
+        ->and($agent->instructions())->not->toContain('## Now');
+
+    // An approval turn has no question to carry the block: the prompt goes through unchanged.
+    $decisions = new AgentPrompt($agent, '', [], $provider, 'claude-opus-5', approvalDecisions: Decisions::from(['call-1' => Decision::approve()]));
+    expect($through($decisions))->toBe($decisions);
 });
 
 it('lets a middleware refuse a turn: the question keeps a Retry, nothing is stored or billed', function () {

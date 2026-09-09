@@ -11,6 +11,7 @@ use Laravel\Ai\Contracts\HasTools;
 use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Promptable;
 use Laravel\Ai\Tools\McpServerTool;
+use Packstub\Agents\Ai\Middleware\AttachContext;
 use Packstub\Agents\Ai\Middleware\EnforceBudget;
 use Packstub\Agents\Facades\Agents;
 use Packstub\Agents\Mcp\AgentTool;
@@ -22,15 +23,20 @@ use Packstub\Agents\Support\PageContext;
  * MCP server exposes, answers in the person's language, and can only change
  * data through tools the person's role allows, each approved first.
  *
- * Instructions are split in two: a static block (cached by the provider
- * across turns) and a small dynamic block (date, who is asking, what they
- * look at). An app subclass fills two slots — persona() and domain() — and
- * may extend the generic rules and context lines. Provider and model come
- * from AgentModels; nothing here is provider-specific except the options.
+ * The prompt is split in two: the instructions — persona, domain, rules —
+ * are static and sit in the system prompt, byte-identical from one turn to
+ * the next so the provider caches them together with the tool list and the
+ * history behind them; the small dynamic block (date, who is asking, what
+ * they look at) rides with each question, attached by the AttachContext
+ * middleware. An app subclass fills two slots — persona() and domain() —
+ * and may extend the generic rules and context lines. Provider and model
+ * come from AgentModels; nothing here is provider-specific except the
+ * options.
  *
  * Every turn runs through a middleware pipeline (laravel/ai's): the package's
  * guard rails first, then whatever the app registered with
- * AgentsPlugin::middleware([...]). Override middleware() to take full control.
+ * AgentsPlugin::middleware([...]), then the context block. Override
+ * middleware() to take full control.
  */
 abstract class Agent implements AgentContract, Conversational, HasMiddleware, HasProviderOptions, HasTools
 {
@@ -56,9 +62,10 @@ abstract class Agent implements AgentContract, Conversational, HasMiddleware, Ha
     /** What the workspace is: the domain in a few bullets (records, pipeline, rules, roles). */
     abstract protected function domain(): string;
 
+    /** The system prompt: only the static block, so it caches across turns; the dynamic block goes with the question. */
     public function instructions(): string
     {
-        return $this->staticInstructions()."\n\n".$this->dynamicInstructions();
+        return $this->staticInstructions();
     }
 
     /** @return iterable<McpServerTool> */
@@ -82,14 +89,15 @@ abstract class Agent implements AgentContract, Conversational, HasMiddleware, Ha
 
     /**
      * The pipeline a prompt goes through before the provider is called: the budget check first, so a refused
-     * turn costs nothing, then the app's own middleware (audit log, redaction, tenant checks…). Each entry is
+     * turn costs nothing, then the app's own middleware (audit log, redaction, tenant checks…), then the
+     * dynamic block is attached to the question, last so the app's middleware reads it as typed. Each entry is
      * a class with handle(AgentPrompt $prompt, Closure $next), an instance of one, or a closure of that shape.
      *
      * @return list<object|Closure>
      */
     public function middleware(): array
     {
-        return [app(EnforceBudget::class), ...Agents::middleware()];
+        return [app(EnforceBudget::class), ...Agents::middleware(), app(AttachContext::class)];
     }
 
     public function maxSteps(): int
@@ -114,16 +122,16 @@ abstract class Agent implements AgentContract, Conversational, HasMiddleware, Ha
         $effort = AgentModels::catalog($lab?->value ?? (string) $provider)[$this->modelKey ?? AgentModels::current()]['effort'] ?? null;
 
         return match ($lab) {
-            // The static prefix is cached by Anthropic; the dynamic tail changes per turn and stays uncached.
+            // A cache breakpoint closes the static prefix (tools, then the instructions); the history gets its own
+            // from the conversation store, and the dynamic block rides with the question behind both.
             Lab::Anthropic => array_filter([
                 'system' => [
                     ['type' => 'text', 'text' => $this->staticInstructions(), 'cache_control' => ['type' => 'ephemeral']],
-                    ['type' => 'text', 'text' => $this->dynamicInstructions()],
                 ],
                 'output_config' => $effort ? ['effort' => $effort] : null,
             ]),
-            // OpenAI caches long prefixes on its own; reasoning effort is the equivalent knob (reasoning models only —
-            // gpt-4.1 / gpt-4o reject the parameter).
+            // OpenAI caches every prefix it has seen on its own — the static system prompt makes the history one;
+            // reasoning effort is the equivalent knob (reasoning models only — gpt-4.1 / gpt-4o reject the parameter).
             Lab::OpenAI => $effort && self::supportsReasoning($this->model ?? AgentModels::modelFor('openai', $this->modelKey)) ? ['reasoning' => ['effort' => $effort]] : [],
             // Gemini 3 takes the effort as a thinking level (generationConfig.thinkingConfig.thinkingLevel); it knows
             // no xhigh, so that is sent as high. Caching is implicit.
@@ -162,6 +170,7 @@ abstract class Agent implements AgentContract, Conversational, HasMiddleware, Ha
         ]));
     }
 
+    /** The per-turn block, prepended to the question by the AttachContext middleware. */
     public function dynamicInstructions(): string
     {
         return "## Now\n".implode("\n", array_map(fn (string $l) => '- '.$l, $this->context()));
