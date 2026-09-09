@@ -4,6 +4,7 @@ namespace Packstub\Agents\Support;
 
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Laravel\Ai\Models\Conversation;
@@ -147,9 +148,25 @@ class AgentTurns
         return AgentTurn::query()->whereKey($turn->id)->whereNotNull('stop_requested_at')->exists();
     }
 
-    public function finish(AgentTurn $turn, string $status, ?string $error = null, ?string $text = null): void
+    /**
+     * The turn ended: how, and what it cost. $metrics is what the job measured (provider, model_name, usage,
+     * tool_calls, duration_ms, finish_reason); what is missing is derived, so a turn that ended before anything
+     * ran (a refusal, a lost worker) still has a duration and a reason. Then one line goes to the log channel.
+     *
+     * @param  array{provider?: ?string, model_name?: ?string, usage?: ?array, tool_calls?: ?list<string>, duration_ms?: ?int, finish_reason?: ?string}  $metrics
+     */
+    public function finish(AgentTurn $turn, string $status, ?string $error = null, ?string $text = null, array $metrics = []): void
     {
-        $turn->forceFill([
+        $metrics += [
+            'duration_ms' => $turn->started_at ? max(0, (int) $turn->started_at->diffInMilliseconds(now())) : null,
+            'finish_reason' => match ($status) {
+                AgentTurn::STOPPED => 'stopped',
+                AgentTurn::FAILED => 'failed',
+                default => null,
+            },
+        ];
+
+        $turn->forceFill($metrics + [
             'status' => $status,
             'error' => $error,
             'text' => $text ?? $turn->text,
@@ -157,6 +174,52 @@ class AgentTurns
             'finished_at' => now(),
             'updated_at' => now(),
         ])->save();
+
+        $this->log($turn);
+    }
+
+    /** The turn's record as one log line, on packstub-agents.log.channel (nothing when it is null). */
+    protected function log(AgentTurn $turn): void
+    {
+        $channel = config('packstub-agents.log.channel');
+
+        if (! $channel) {
+            return;
+        }
+
+        $usage = $turn->usage ?? [];
+        $tools = $turn->tool_calls ?? [];
+
+        Log::channel($channel)->info(sprintf(
+            'Agent turn %s: %s, %s tokens in, %s out, %d tool call%s, %.1f s, ended %s',
+            $turn->status,
+            $turn->provider ? $turn->provider.'/'.$turn->model_name : 'no provider',
+            number_format((int) $turn->tokensIn()),
+            number_format((int) $turn->tokensOut()),
+            count($tools),
+            count($tools) === 1 ? '' : 's',
+            ($turn->duration_ms ?? 0) / 1000,
+            $turn->finish_reason ?? 'unknown',
+        ), [
+            'turn' => $turn->id,
+            'conversation' => $turn->conversation_id,
+            'user' => $turn->participant_id,
+            'tenant' => $turn->tenant,
+            'panel' => $turn->panel,
+            'status' => $turn->status,
+            'provider' => $turn->provider,
+            'model' => $turn->model_name,
+            'model_key' => $turn->model,
+            'prompt_tokens' => $usage['prompt_tokens'] ?? null,
+            'completion_tokens' => $usage['completion_tokens'] ?? null,
+            'cache_read_input_tokens' => $usage['cache_read_input_tokens'] ?? null,
+            'cache_write_input_tokens' => $usage['cache_write_input_tokens'] ?? null,
+            'reasoning_tokens' => $usage['reasoning_tokens'] ?? null,
+            'tool_calls' => $tools,
+            'duration_ms' => $turn->duration_ms,
+            'finish_reason' => $turn->finish_reason,
+            'error' => $turn->error,
+        ]);
     }
 
     /** The turn the page attaches to: pending or running, oldest first. */

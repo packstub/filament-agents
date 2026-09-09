@@ -63,17 +63,18 @@ it('mints tokens limited to named tools and with an expiry', function () {
 it('resolves operator limits from config, global, workspace and user rows and guards the resource', function () {
     $owner = $this->user();
     actingAs($owner);
-    config(['packstub-agents.limits' => ['turns_per_minute' => 6, 'turns_per_day' => 150, 'tokens_per_month' => 3000000, 'user_tokens_per_day' => 300000, 'user_tokens_per_month' => 1500000, 'prompt_max_chars' => 2000]]);
+    config(['packstub-agents.limits' => ['turns_per_minute' => 6, 'turns_per_day' => 150, 'tokens_per_day' => 600000, 'tokens_per_month' => 3000000, 'user_tokens_per_day' => 300000, 'user_tokens_per_month' => 1500000, 'prompt_max_chars' => 2000]]);
     AgentLimits::flush();
 
-    expect(AgentLimits::effective())->toMatchArray(['enabled' => true, 'turns_per_day' => 150, 'user_tokens_per_day' => 300000, 'user_tokens_per_month' => 1500000]);
+    expect(AgentLimits::effective())->toMatchArray(['enabled' => true, 'turns_per_day' => 150, 'tokens_per_day' => 600000, 'user_tokens_per_day' => 300000, 'user_tokens_per_month' => 1500000]);
 
     AgentLimit::query()->create(['scope' => 'global', 'turns_per_day' => 50, 'tokens_per_month' => 100000, 'user_tokens_per_day' => 1000]);
-    AgentLimit::query()->create(['scope' => 'user', 'scope_id' => (string) $owner->id, 'user_tokens_per_month' => 500, 'turns_per_day' => 999]);
+    AgentLimit::query()->create(['scope' => 'user', 'scope_id' => (string) $owner->id, 'user_tokens_per_month' => 500, 'turns_per_day' => 999, 'tokens_per_day' => 1]);
     AgentLimits::flush();
 
     $limits = AgentLimits::effective();
     expect($limits['turns_per_day'])->toBe(50)          // the user row may not set it
+        ->and($limits['tokens_per_day'])->toBe(600000)   // nor this one: config default
         ->and($limits['tokens_per_month'])->toBe(100000) // global row beats config
         ->and($limits['user_tokens_per_day'])->toBe(1000)
         ->and($limits['user_tokens_per_month'])->toBe(500)

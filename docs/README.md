@@ -28,10 +28,10 @@ An in-panel AI assistant and an MCP server for Filament v5 panels, built on lara
 | --- | --- |
 | [Installation](installation.md) | Requirements, the install command, the queue worker (or the sync driver), the theme `@source`, registering the plugin, the provider key |
 | [Tools](tools.md) | Writing an `AgentTool`, abilities, read-only versus write tools, the server class, errors, the scaffold command |
-| [The assistant](assistant.md) | The chat page, how a turn runs, Stop, Retry, regenerate and edit, long chats, approvals, feedback, the model picker, and the `Agent` class with its persona, domain, rules and context |
+| [The assistant](assistant.md) | The chat page, how a turn runs, Stop, Retry, regenerate and edit, long chats, approvals, feedback, the model picker, and the `Agent` class with its persona, domain, rules, context and middleware |
 | [Tables and charts](tables-and-charts.md) | `AgentResource`, `InteractsWithAgent`, the `Filter` vocabulary, `show-table`, `draw-chart`, page context |
 | [MCP clients](mcp-clients.md) | The Agent access page, tokens, abilities, tool scopes and expiry, connecting Claude Code, Claude Desktop and Cursor, the endpoint's middleware |
-| [Budgets and limits](budgets-and-limits.md) | The platform ceiling in config, the AI limits resource, inheritance, `AgentBudget` |
+| [Budgets and limits](budgets-and-limits.md) | The platform ceiling in config, the AI limits resource, inheritance, `AgentBudget`, what each turn cost: the AI turns page and the log line |
 | [Tenancy](tenancy.md) | The `{tenant}` path, workspace-bound tokens, per-workspace keys and limits, database-per-tenant migrations |
 | [Configuration](configuration.md) | Every config key and environment variable, the fluent `AgentsPlugin` API |
 | [Security](security.md) | The threat model: trust boundaries, prompt injection, what the package enforces and what stays yours |

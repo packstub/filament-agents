@@ -18,7 +18,7 @@ class AgentLimits
     /** @var array<string, array<string, mixed>> */
     protected static array $cache = [];
 
-    /** @return array{enabled: bool, turns_per_minute: ?int, turns_per_day: ?int, tokens_per_month: ?int, user_tokens_per_day: ?int, user_tokens_per_month: ?int, prompt_max_chars: ?int} */
+    /** @return array{enabled: bool, turns_per_minute: ?int, turns_per_day: ?int, tokens_per_day: ?int, tokens_per_month: ?int, user_tokens_per_day: ?int, user_tokens_per_month: ?int, prompt_max_chars: ?int} */
     public static function effective(?Model $tenant = null, ?Authenticatable $user = null): array
     {
         $tenant ??= Agents::tenant();
@@ -30,7 +30,7 @@ class AgentLimits
         }
 
         $limits = collect(config('packstub-agents.limits', []))->only(AgentLimit::FIELDS)->map(fn ($v) => $v ?: null)->all()
-            + ['enabled' => true, 'turns_per_minute' => null, 'turns_per_day' => null, 'tokens_per_month' => null,
+            + ['enabled' => true, 'turns_per_minute' => null, 'turns_per_day' => null, 'tokens_per_day' => null, 'tokens_per_month' => null,
                 'user_tokens_per_day' => null, 'user_tokens_per_month' => null, 'prompt_max_chars' => null];
 
         $rows = AgentLimit::query()

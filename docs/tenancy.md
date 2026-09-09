@@ -67,7 +67,7 @@ So:
 php artisan vendor:publish --tag=packstub-agents-migrations
 ```
 
-Keep `create_agent_limits_table` with your central migrations and move `create_agent_chat_tables`, `create_agent_conversation_summaries_table` and `create_agent_turns_table` next to your tenant migrations. `AgentLimit` reads `limits_connection`, so the operator page works from any panel.
+Keep `create_agent_limits_table` with your central migrations and move `create_agent_chat_tables`, `create_agent_conversation_summaries_table` and `create_agent_turns_table` next to your tenant migrations. `AgentLimit` reads `limits_connection`, so the operator page works from any panel. The **AI turns** page reads `agent_turns`, which is then a tenant table: register it on the tenant panel (`limits(false, authorize: …)->turnLog()`) rather than on the central one.
 
 ## What follows the workspace
 

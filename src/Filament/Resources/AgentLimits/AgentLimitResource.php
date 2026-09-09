@@ -104,6 +104,8 @@ class AgentLimitResource extends Resource
                     $number('turns_per_minute', __('Questions per minute, per user'), __('Burst protection.')),
                     $number('turns_per_day', __('Answers per day, per workspace'), __('Resets at midnight.'))
                         ->visible(fn ($get) => $get('scope') !== 'user'),
+                    $number('tokens_per_day', __('Tokens per day, per workspace'), __('Resets at midnight; all token kinds, as reported by the provider.'))
+                        ->visible(fn ($get) => $get('scope') !== 'user'),
                     $number('tokens_per_month', __('Tokens per month, per workspace'), __('All token kinds, as reported by the provider.'))
                         ->visible(fn ($get) => $get('scope') !== 'user'),
                     $number('user_tokens_per_day', __('Tokens per day, per user'), __('Resets at midnight; counted inside each workspace.')),
@@ -131,6 +133,7 @@ class AgentLimitResource extends Resource
                 TextColumn::make('target')->label(__('Applies to'))->state(fn (AgentLimit $r) => $r->targetLabel())->searchable(false),
                 TextColumn::make('enabled')->label(__('Assistant'))->formatStateUsing(fn ($state) => $state === null ? '—' : ($state ? __('On') : __('Off')))->placeholder('—'),
                 TextColumn::make('turns_per_day')->label(__('Answers / day'))->formatStateUsing($fmt)->placeholder('—'),
+                TextColumn::make('tokens_per_day')->label(__('Tokens / day'))->formatStateUsing($fmt)->placeholder('—'),
                 TextColumn::make('tokens_per_month')->label(__('Tokens / month'))->formatStateUsing($fmt)->placeholder('—'),
                 // The per-user detail fits a laptop screen only when toggled in.
                 TextColumn::make('turns_per_minute')->label(__('/ min'))->formatStateUsing($fmt)->placeholder('—')->toggleable(isToggledHiddenByDefault: true),

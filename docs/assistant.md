@@ -24,7 +24,7 @@ On the last exchange, a pencil next to the question puts it back in the composer
 
 ### How a turn runs
 
-A question (or an approval decision) becomes a row in `agent_turns`, and the `RunAgentTurn` job produces the answer: it restores the panel, the workspace, the person and the locale of the request, streams the answer from the provider and writes what it has so far to the row, then stores the answer as laravel/ai does. The page polls a small JSON route on the panel (`chat.poll_interval`) for the answer so far and re-renders the transcript from the database when the turn ends — so reloading, navigating away and back, or opening the same chat in a second tab shows the running answer where it is, and a closed tab does not stop it. Follow-ups wait as `queued` rows and start, in order, as soon as the previous turn is done; the question is recorded in the transcript at that moment.
+A question (or an approval decision) becomes a row in `agent_turns`, and the `RunAgentTurn` job produces the answer: it restores the panel, the workspace, the person and the locale of the request, streams the answer from the provider and writes what it has so far to the row, then stores the answer as laravel/ai does. The page polls a small JSON route on the panel (`chat.poll_interval`) for the answer so far and re-renders the transcript from the database when the turn ends — so reloading, navigating away and back, or opening the same chat in a second tab shows the running answer where it is, and a closed tab does not stop it. Follow-ups wait as `queued` rows and start, in order, as soon as the previous turn is done; the question is recorded in the transcript at that moment. When a turn ends its row keeps the record — provider and model, tokens, tools called, duration, how it ended — for the operator's AI turns page and, optionally, one log line (see [What each turn cost](budgets-and-limits.md#what-each-turn-cost)).
 
 Run a queue worker for the jobs (see [Installation](installation.md#a-queue-worker)). A job the queue never finishes — a worker that died mid-answer — is shown as failed after `chat.job_timeout`, with the question kept and a Retry under it. With `chat.driver` set to `sync` (`AGENT_TURN_DRIVER=sync`, or `AgentsPlugin::make()->chat(driver: 'sync')`) the job runs inside the request, whatever queue the app uses: the page still polls and Stop still works when the web server handles requests in parallel, but the answer ends with the tab that asked for it.
 
@@ -126,3 +126,47 @@ The generic working rules cover the things every assistant in a panel needs: nev
 ```
 
 A `null` model means "the provider's smartest" (Auto and Deep) or "the provider's cheapest" (Fast) as laravel/ai knows them; a provider without entries (Ollama, OpenRouter, Mistral…) gets exactly those two. Effort becomes Anthropic's `output_config.effort`, OpenAI's and xAI's `reasoning.effort` (reasoning models only) or Gemini's thinking level. `max_steps` caps the tool round-trips in one turn (12), `max_tokens` the answer length (4096), and `max_conversation_messages` how many earlier messages are replayed (40).
+
+### Middleware
+
+Every turn runs through a middleware pipeline before the provider is called, the same one laravel/ai gives its agents. The package puts its own guard rails there — `Packstub\Agents\Ai\Middleware\EnforceBudget` refuses a turn over a limit and counts one that may run — and your app adds its own after them: an audit log, redaction of what leaves the workspace, a tenant check, a note appended to the prompt.
+
+A middleware is a class with one method. `php artisan make:agent-middleware AuditTurns` (laravel/ai's command) scaffolds it:
+
+```php
+namespace App\Ai\Middleware;
+
+use Closure;
+use Laravel\Ai\Prompts\AgentPrompt;
+use Laravel\Ai\Responses\AgentResponse;
+use Packstub\Agents\Exceptions\TurnRefused;
+
+class AuditTurns
+{
+    public function handle(AgentPrompt $prompt, Closure $next)
+    {
+        if (Audit::frozen()) {
+            throw new TurnRefused('The assistant is paused while the audit runs.');
+        }
+
+        return $next($prompt->append('Mention the ticket number when there is one.'))
+            ->then(function (AgentResponse $response): void {
+                Audit::log(auth()->user(), $response->text, $response->usage);
+            });
+    }
+}
+```
+
+Register it on the plugin, or in `config/packstub-agents.php` under `middleware`:
+
+```php
+AgentsPlugin::make()->middleware([AuditTurns::class, RedactSecrets::class])
+```
+
+What you can do in there:
+
+- **Read and revise the prompt.** `$prompt->prompt` is what the person typed (empty on an approval turn — check `$prompt->hasApprovalDecisions()`); `$prompt->agent`, `$prompt->model` and `$prompt->provider` say what is about to run. `append()`, `prepend()` and `revise()` hand a new prompt to the next step; the transcript keeps the original.
+- **Read the answer.** `$next($prompt)->then(fn (AgentResponse $response) => …)` runs once the answer is complete, with its text, tool calls and token usage. It works the same for a streamed chat turn and a plain `prompt()` call.
+- **Stop the turn.** Throw `TurnRefused` with a message: nothing is sent to the provider, nothing is stored, and the person reads the message under their question with a Retry.
+
+Middleware runs inside the turn job, under the panel, tenant, user and locale of the request that asked, so `auth()->user()`, `Filament::getTenant()` and your abilities all read as they do on a page. The order is the package's guard rails, the classes in config, then the plugin's list; override `middleware()` on your `Agent` subclass to change it.

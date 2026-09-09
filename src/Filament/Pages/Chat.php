@@ -17,7 +17,6 @@ use Packstub\Agents\Facades\Agents;
 use Packstub\Agents\Mcp\AgentTool;
 use Packstub\Agents\Models\AgentMessageFeedback;
 use Packstub\Agents\Models\AgentTurn;
-use Packstub\Agents\Support\AgentBudget;
 use Packstub\Agents\Support\AgentConversationStore;
 use Packstub\Agents\Support\AgentModels;
 use Packstub\Agents\Support\AgentResources;
@@ -179,7 +178,7 @@ class Chat extends Page
      * The turn that runs on this conversation, the questions waiting behind it, and how the last turn ended
      * when the last question has no answer.
      *
-     * @return array{active: ?array{id: string, status: string, statusText: string, html: string}, queued: list<array{id: string, text: string}>, ended: ?array{status: string, error: ?string}}
+     * @return array{active: ?array{id: string, status: string, statusText: string, html: string}, queued: list<array{id: string, text: string}>, ended: ?array{status: string, reason: ?string, error: ?string}}
      */
     public function live(): array
     {
@@ -204,7 +203,7 @@ class Chat extends Page
                 'html' => filled($active->text) ? self::markdown((string) $active->text) : '',
             ] : null,
             'queued' => $turns->queued($this->conversation)->map(fn (AgentTurn $t) => ['id' => $t->id, 'text' => (string) $t->prompt()])->values()->all(),
-            'ended' => $latest && in_array($latest->status, [AgentTurn::FAILED, AgentTurn::STOPPED], true) ? ['status' => $latest->status, 'error' => $latest->error] : null,
+            'ended' => $latest && in_array($latest->status, [AgentTurn::FAILED, AgentTurn::STOPPED], true) ? ['status' => $latest->status, 'reason' => $latest->finish_reason, 'error' => $latest->error] : null,
         ];
     }
 
@@ -334,12 +333,6 @@ class Chat extends Page
             return null;
         }
 
-        if ($refusal = AgentBudget::refusal($prompt)) {
-            Notification::make()->title($refusal)->warning()->send();
-
-            return null;
-        }
-
         $store = app(AgentConversationStore::class);
         $store->dropMessagesAfter($this->conversation, $last->id);
         $store->rewriteQuestion($this->conversation, $last->id, $prompt);
@@ -418,9 +411,10 @@ class Chat extends Page
     /**
      * Queue one turn — a question or a set of approval decisions — on the conversation.
      *
-     * The budget is checked here, in the request, so the person hears about it at once. A question is recorded
-     * in the transcript when its turn starts; $answering names an already recorded question (a retry, a
-     * regenerate, an edit). What comes back tells the page what to poll.
+     * The budget is not checked here: the EnforceBudget middleware refuses the turn when it runs, so the
+     * question is recorded first and the refusal is read under it, with a Retry, like any other failed turn.
+     * $answering names an already recorded question (a retry, a regenerate, an edit). What comes back tells
+     * the page what to poll.
      *
      * @return array{turn: string, conversation: string, poll: ?string, active: bool}|null
      */
@@ -433,13 +427,6 @@ class Chat extends Page
         }
 
         $prompt = $input['prompt'] ?? null;
-
-        if ($refusal = AgentBudget::refusal($prompt)) {
-            Notification::make()->title($refusal)->warning()->send();
-
-            return null;
-        }
-        AgentBudget::hit();
 
         AgentModels::remember($this->model);
         $user = auth()->user();
@@ -469,12 +456,18 @@ class Chat extends Page
 
         // On the sync driver the turn already ran inside this request: say so now, as the page did before.
         if ($turn->status === AgentTurn::FAILED) {
-            Notification::make()
-                ->title(__('The assistant could not answer'))
-                ->body($turn->error.($prompt !== null ? ' '.__('Your question is kept — use Retry to send it again.') : ''))
-                ->danger()
-                ->persistent()
-                ->send();
+            $kept = $prompt !== null ? ' '.__('Your question is kept — use Retry to send it again.') : '';
+
+            if ($turn->finish_reason === 'refused') {
+                Notification::make()->title($turn->error)->body(trim($kept) ?: null)->warning()->send();
+            } else {
+                Notification::make()
+                    ->title(__('The assistant could not answer'))
+                    ->body($turn->error.$kept)
+                    ->danger()
+                    ->persistent()
+                    ->send();
+            }
         }
 
         return [

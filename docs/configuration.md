@@ -14,6 +14,7 @@
 | `max_steps` | `12` | | tool round-trips one turn may take before the agent has to answer |
 | `max_tokens` | `4096` | | answer length |
 | `max_conversation_messages` | `40` | | how many earlier messages a long chat replays |
+| `middleware` | `[]` | | your own agent middleware, run on every turn after the package's guard rails; see [Middleware](assistant.md#middleware) |
 | `history.max_tokens` | `24000` | `AGENT_HISTORY_MAX_TOKENS` | the history window, in estimated tokens; what no longer fits is folded into a rolling summary the model reads first |
 | `history.keep_tool_results_turns` | `3` | | tool results older than this many turns are replaced by a one-line placeholder when replayed |
 | `history.notice_share` | `0.7` | | from this share of the window the chat suggests continuing in a new chat |
@@ -22,6 +23,8 @@
 | `chat.queue` | `null` | `AGENT_QUEUE` | the queue name; `null` = the connection's default |
 | `chat.job_timeout` | `600` | `AGENT_JOB_TIMEOUT` | how long one turn may run on the worker, in seconds; a turn whose job went quiet for longer is shown as failed, with a Retry |
 | `chat.poll_interval` | `600` | `AGENT_POLL_INTERVAL` | how often the page asks for the answer so far while a turn runs, in milliseconds |
+| `chat.keep_turns_days` | `90` | `AGENT_KEEP_TURNS_DAYS` | how long ended turns (the per-turn record) are kept for the AI turns page; `null` keeps them; pruned by `model:prune --model=Packstub\Agents\Models\AgentTurn` |
+| `log.channel` | `null` | `AGENT_LOG_CHANNEL` | the log channel that gets one line per ended turn (provider, model, tokens, tools, duration, how it ended); `null` logs nothing. See [What each turn cost](budgets-and-limits.md#what-each-turn-cost) |
 | `limits.*` | see [Budgets and limits](budgets-and-limits.md) | `AGENT_TURNS_PER_MINUTE` … | the platform ceiling |
 | `limits_connection` | `null` | `AGENT_LIMITS_CONNECTION` | the connection of the `agent_limits` table (the central one in a database-per-tenant app) |
 | `mcp.enabled` | `true` | `AGENT_MCP_ENABLED` | the MCP endpoint and the Agent access page |
@@ -72,12 +75,14 @@ AgentsPlugin::make()
     ->server(AcmeServer::class)
     ->tools([SearchOrders::class, ShowTable::class])
     ->resources([OrderResource::class, CustomerResource::class])
+    ->middleware([AuditTurns::class])
     ->authorizeUsing(fn (string $ability): bool => auth()->user()->can($ability))
     ->roleLabelUsing(fn (): ?string => auth()->user()->role?->getLabel())
     ->credentialsUsing(fn (): ?WorkspaceCredentials => ...)
     ->chat(true, driver: 'queue')
     ->agentAccess(enabled: true, ability: 'setup.view', group: 'Setup')
     ->limits(enabled: true, authorize: fn (): bool => auth()->user()->is_admin)
+    ->turnLog()
     ->hideAskButtonOn(['*.pages.dashboard']);
 ```
 
@@ -88,19 +93,21 @@ AgentsPlugin::make()
 | `server(class)` | the `AgentServer` subclass with the tool list, name and instructions |
 | `tools(array)` | the tool list when there is no server class |
 | `resources(array)` | explicit `AgentResource` classes for `show-table` and page context (default: every panel resource implementing the contract) |
+| `middleware(array)` | your own agent middleware — classes with `handle(AgentPrompt $prompt, Closure $next)`, instances or closures — run on every turn after the package's guard rails, after the ones in config; see [Middleware](assistant.md#middleware) |
 | `authorizeUsing(fn (string $ability): bool)` | how a tool's ability is checked for the current person (default: the `Gate` when it has that ability, otherwise allowed) |
 | `roleLabelUsing(fn (): ?string)` | the person's role label for the prompt and refusals |
 | `credentialsUsing(fn (): ?WorkspaceCredentials)` | where a workspace's own provider, key and model come from |
 | `chat(bool $enabled, ?string $driver)` | the Chat and Chats pages, the topbar button and the sidebar block; `driver` is `queue` (a worker) or `sync` (inside the request), mirrored into `chat.driver` |
 | `agentAccess(bool $enabled, ?string $ability, Closure\|string\|null $group)` | the token page, its gate and navigation group |
 | `limits(bool $enabled, ?Closure $authorize)` | the operator's AI limits resource and who may edit it (default: any signed-in user of the panel) |
+| `turnLog(bool $enabled)` | the operator's AI turns page (one row per turn: who, model, tokens, tools, duration, how it ended), gated like the limits; default: shown wherever `limits()` is |
 | `hideAskButtonOn(array $routePatterns)` | route name patterns without the topbar button (the chat itself is always excluded) |
 
 Two panels may register the plugin: the tenant panel with the chat and the token page, the operator panel with `chat(false)->agentAccess(false)->limits()`.
 
 ## The Agents facade
 
-`Packstub\Agents\Facades\Agents` reads back what the app told the package: `name()`, `panel()`, `tenant()`, `toolClasses()`, `resourceClasses()`, `allows($ability)`, `roleLabel()`, `credentials()`, `canManageLimits()`. Tools and views use it; your own code may too.
+`Packstub\Agents\Facades\Agents` reads back what the app told the package: `name()`, `panel()`, `tenant()`, `toolClasses()`, `resourceClasses()`, `middleware()`, `allows($ability)`, `roleLabel()`, `credentials()`, `canManageLimits()`. Tools and views use it; your own code may too.
 
 ## Translations and views
 
