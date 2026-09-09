@@ -28,4 +28,5 @@ composer lint               # Pint
 - UI strings are `__()` keyed by the English text; keep `resources/lang/{de,es,ro,ru}.json` in sync.
 - Anything domain-specific (record shapes, filter vocabulary, the prompt's domain block) belongs in the consuming app, behind the `AgentResource` hooks and the agent's slots — never in this package.
 - Apps that consume the package through a path repository should run their own agent suites after a change here.
+- Schema changes are additive and land twice: the column goes into the table's `create_*` migration (fresh installs get the final shape in one step) **and** into a guarded `add_*` migration (`Schema::hasColumn(...)` around every column) for installs that already ran the create. Never rename or drop a column inside a major. At the next major, delete the `add_*` migrations and tell the upgrade notes that an install must be on the latest previous minor, migrated, before upgrading.
 - Listing assets/copy: use the `filament-plugin-listing` skill from the workspace root.

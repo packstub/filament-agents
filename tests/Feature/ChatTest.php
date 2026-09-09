@@ -7,6 +7,7 @@ use Packstub\Agents\Filament\Pages\Chat;
 use Packstub\Agents\Filament\Pages\Chats;
 use Packstub\Agents\Models\AgentLimit;
 use Packstub\Agents\Models\AgentMessageFeedback;
+use Packstub\Agents\Models\AgentTurn;
 use Packstub\Agents\Support\AgentBudget;
 use Packstub\Agents\Support\AgentLimits;
 use Packstub\Agents\Support\AgentModels;
@@ -89,18 +90,44 @@ it('stops a turn before the provider when the budget is spent', function () {
         ->and(AgentBudget::tokensThisMonth())->toBe(1100)
         ->and(AgentBudget::refusal('hi'))->toContain("today's limit");
 
+    // The question is recorded and the refusal read under it, with a Retry, like any other turn that got no answer.
     WidgetAgent::fake(['Should never be produced.']);
-    livewire(Chat::class)->set('prompt', 'hi')->call('send')->assertNotified();
-    expect(ConversationMessage::query()->where('content', 'Should never be produced.')->exists())->toBeFalse();
+    $component = livewire(Chat::class)->set('prompt', 'hi')->call('send')->assertNotified();
+    $refused = Conversation::query()->where('participant_id', $user->id)->where('title', 'hi')->firstOrFail();
+    expect(ConversationMessage::query()->where('content', 'Should never be produced.')->exists())->toBeFalse()
+        ->and(ConversationMessage::query()->where('conversation_id', $refused->id)->pluck('content')->all())->toBe(['hi'])
+        ->and(AgentTurn::query()->where('conversation_id', $refused->id)->value('finish_reason'))->toBe('refused');
+
+    livewire(Chat::class, ['conversation' => $refused->id])
+        ->assertSee('hi')
+        ->assertSee("today's limit")
+        ->assertDontSee(__('The assistant could not answer.'))
+        ->assertSee(__('Retry'));
+
+    // Retry answers it once the limit allows.
+    config(['packstub-agents.limits.turns_per_day' => 100]);
+    AgentLimits::flush();
+    livewire(Chat::class, ['conversation' => $refused->id])->call('retry')->assertNotNotified();
+    expect(ConversationMessage::query()->where('conversation_id', $refused->id)->orderBy('id')->pluck('content')->all())->toBe(['hi', 'Should never be produced.']);
+    ConversationMessage::query()->where('conversation_id', $refused->id)->delete();
+
+    // The workspace's daily token budget, before the monthly one; a global row overrides config.
+    config(['packstub-agents.limits.turns_per_day' => 100, 'packstub-agents.limits.tokens_per_day' => 1000]);
+    AgentLimits::flush();
+    expect(AgentBudget::refusal('hi'))->toContain('its AI budget for today')
+        ->and(AgentBudget::summary())->toMatchArray(['tokens_today' => 1100, 'tokens_per_day' => 1000]);
+
+    AgentLimit::query()->create(['scope' => 'global', 'tokens_per_day' => 2000]);
+    AgentLimits::flush();
+    expect(AgentBudget::refusal('hi'))->toBeNull();
 
     // A per-user monthly budget from the operator's rows.
-    config(['packstub-agents.limits.turns_per_day' => 100]);
     AgentLimit::query()->create(['scope' => 'user', 'scope_id' => (string) $user->id, 'user_tokens_per_month' => 500]);
     AgentLimits::flush();
     expect(AgentBudget::refusal('hi'))->toContain('your AI budget for the month')
         ->and(AgentBudget::summary())->toMatchArray(['user_tokens_month' => 1100, 'user_tokens_per_month' => 500]);
 
-    AgentLimit::query()->create(['scope' => 'global', 'enabled' => false]);
+    AgentLimit::query()->where('scope', 'global')->update(['enabled' => false]);
     AgentLimits::flush();
     expect(AgentBudget::refusal('hi'))->toContain('Ask Widgets is switched off');
 });

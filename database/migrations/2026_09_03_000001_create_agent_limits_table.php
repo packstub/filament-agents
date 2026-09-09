@@ -26,6 +26,7 @@ return new class extends Migration
             $table->boolean('enabled')->nullable();
             $table->unsignedInteger('turns_per_minute')->nullable();
             $table->unsignedInteger('turns_per_day')->nullable();
+            $table->unsignedBigInteger('tokens_per_day')->nullable();
             $table->unsignedBigInteger('tokens_per_month')->nullable();
             $table->unsignedBigInteger('user_tokens_per_day')->nullable();
             $table->unsignedBigInteger('user_tokens_per_month')->nullable();

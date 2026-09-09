@@ -114,6 +114,7 @@ return [
     'limits' => [
         'turns_per_minute' => (int) env('AGENT_TURNS_PER_MINUTE', 6),      // per user
         'turns_per_day' => (int) env('AGENT_TURNS_PER_DAY', 150),          // per workspace
+        'tokens_per_day' => (int) env('AGENT_TOKENS_PER_DAY', 600000),      // per workspace, all token kinds
         'tokens_per_month' => (int) env('AGENT_TOKENS_PER_MONTH', 3000000), // per workspace, all token kinds
         'user_tokens_per_day' => (int) env('AGENT_USER_TOKENS_PER_DAY', 100000),      // per user, inside a workspace
         'user_tokens_per_month' => (int) env('AGENT_USER_TOKENS_PER_MONTH', 1500000), // per user, inside a workspace

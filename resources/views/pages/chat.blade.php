@@ -45,12 +45,14 @@
                         <div class="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-primary-600 px-4 py-2.5 text-sm text-white shadow-sm">{!! $message['html'] !!}</div>
                     </div>
                     @if ($message['unanswered'])
-                        {{-- Recorded but never answered (the provider failed, or the person stopped it): offer to send it again. --}}
+                        {{-- Recorded but never answered (refused by a middleware, the provider failed, or the person stopped it): offer to send it again. --}}
                         <div class="flex items-center justify-end gap-2 text-xs text-gray-500" x-show="! busy">
-                            <x-filament::icon icon="heroicon-m-exclamation-circle" class="h-4 w-4 text-danger-500" />
+                            <x-filament::icon icon="heroicon-m-exclamation-circle" class="h-4 w-4 {{ ($live['ended']['reason'] ?? null) === 'refused' ? 'text-warning-500' : 'text-danger-500' }}" />
                             <span>
                                 @if (($live['ended']['status'] ?? null) === \Packstub\Agents\Models\AgentTurn::STOPPED)
                                     {{ __('Stopped before an answer.') }}
+                                @elseif (($live['ended']['reason'] ?? null) === 'refused')
+                                    {{ $live['ended']['error'] }}
                                 @elseif (($live['ended']['status'] ?? null) === \Packstub\Agents\Models\AgentTurn::FAILED)
                                     {{ __('The assistant could not answer.') }} {{ $live['ended']['error'] }}
                                 @else

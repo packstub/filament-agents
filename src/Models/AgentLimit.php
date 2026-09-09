@@ -15,7 +15,7 @@ class AgentLimit extends Model
 {
     public const array SCOPES = ['global', 'tenant', 'user'];
 
-    public const array FIELDS = ['enabled', 'turns_per_minute', 'turns_per_day', 'tokens_per_month', 'user_tokens_per_day', 'user_tokens_per_month', 'prompt_max_chars'];
+    public const array FIELDS = ['enabled', 'turns_per_minute', 'turns_per_day', 'tokens_per_day', 'tokens_per_month', 'user_tokens_per_day', 'user_tokens_per_month', 'prompt_max_chars'];
 
     /** Fields a per-user row may override (the rest are workspace-wide by nature). */
     public const array USER_FIELDS = ['enabled', 'turns_per_minute', 'user_tokens_per_day', 'user_tokens_per_month', 'prompt_max_chars'];

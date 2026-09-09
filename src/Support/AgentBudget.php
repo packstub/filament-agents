@@ -9,10 +9,10 @@ use Packstub\Agents\Facades\Agents;
 
 /**
  * Keeps the bill bounded: a burst limit per user, a daily number of turns per
- * workspace, a monthly token budget per workspace and a daily + monthly token
- * budget per user, all counted from what laravel/ai already stores with every
- * assistant message. Checked before a turn reaches the provider; the
- * provider's own spend limit stays the backstop.
+ * workspace, a daily + monthly token budget per workspace and per user, all
+ * counted from what laravel/ai already stores with every assistant message.
+ * Checked before a turn reaches the provider; the provider's own spend limit
+ * stays the backstop.
  */
 class AgentBudget
 {
@@ -35,6 +35,10 @@ class AgentBudget
 
         if (($perDay = $limits['turns_per_day'] ?? null) && self::turnsToday() >= $perDay) {
             return __('This workspace reached today\'s limit of :n answers. It resets at midnight.', ['n' => $perDay]);
+        }
+
+        if (($perDay = $limits['tokens_per_day'] ?? null) && self::tokensToday() >= $perDay) {
+            return __('This workspace used its AI budget for today. It resets at midnight.');
         }
 
         if (($perMonth = $limits['tokens_per_month'] ?? null) && self::tokensThisMonth() >= $perMonth) {
@@ -85,7 +89,7 @@ class AgentBudget
     }
 
     /**
-     * @return array{turns_today: int, turns_per_day: ?int, tokens_month: int, tokens_per_month: ?int,
+     * @return array{turns_today: int, turns_per_day: ?int, tokens_today: int, tokens_per_day: ?int, tokens_month: int, tokens_per_month: ?int,
      *               user_tokens_today: int, user_tokens_per_day: ?int, user_tokens_month: int, user_tokens_per_month: ?int}
      */
     public static function summary(): array
@@ -95,6 +99,8 @@ class AgentBudget
         return [
             'turns_today' => self::turnsToday(),
             'turns_per_day' => $limits['turns_per_day'],
+            'tokens_today' => self::tokensToday(),
+            'tokens_per_day' => $limits['tokens_per_day'],
             'tokens_month' => self::tokensThisMonth(),
             'tokens_per_month' => $limits['tokens_per_month'],
             'user_tokens_today' => self::tokensToday(auth()->id()),

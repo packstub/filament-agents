@@ -270,12 +270,13 @@ it('regenerates the last answer and resends an edited question', function () {
         ->and($edited[1]->content)->toContain('Three');
     WidgetAgent::assertPrompted(fn ($prompt) => $prompt->prompt === 'Which statuses exist?');
 
-    // A question the budget refuses leaves the exchange as it is.
+    // An edit the budget refuses is kept as the question, with the reason under it and a Retry — nothing typed is lost.
     config(['packstub-agents.limits.prompt_max_chars' => 5]);
     AgentLimits::flush();
     $component->call('resend', 'far too long')->assertNotified();
     expect(ConversationMessage::query()->where('conversation_id', $conversation->id)->orderBy('id')->pluck('content')->all())
-        ->toBe(['Which statuses exist?', 'Three: draft, live and retired.']);
+        ->toBe(['far too long']);
+    livewire(Chat::class, ['conversation' => $conversation->id])->assertSee('too long')->assertSee(__('Retry'));
 });
 
 it('puts a worker into the shape of the panel request and cleans up after', function () {

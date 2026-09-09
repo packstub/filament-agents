@@ -4,7 +4,7 @@ All notable changes to `packstub/filament-agents` are documented here.
 
 ## Unreleased
 
-Upgrading: run `php artisan migrate` (new columns on `agent_turns`).
+Upgrading: run `php artisan migrate` (new columns on `agent_turns` and `agent_limits`).
 
 ### Added
 
@@ -12,9 +12,11 @@ Upgrading: run `php artisan migrate` (new columns on `agent_turns`).
 
 - **Agent middleware.** Every turn runs through laravel/ai's middleware pipeline. The package's budget check moved there (`Packstub\Agents\Ai\Middleware\EnforceBudget`), so the limits hold for every turn however it was started; an app adds its own with `AgentsPlugin::make()->middleware([...])` or the new `middleware` config key — classes with `handle(AgentPrompt $prompt, Closure $next)` that can revise the prompt, read the finished answer through `->then()`, or stop the turn by throwing `Packstub\Agents\Exceptions\TurnRefused` (the person reads the message under their question, with a Retry). `Agents::middleware()` reads the list back.
 
+- **A daily token budget per workspace.** Config `limits.tokens_per_day` (`AGENT_TOKENS_PER_DAY`, 600,000) next to the monthly one, with a field and column on the AI limits page (global and workspace rows). A busy day now locks a workspace out until midnight ("This workspace used its AI budget for today.") instead of spending the whole month; `AgentBudget::summary()` reports `tokens_today` and `tokens_per_day`.
+
 ### Changed
 
-- The per-minute turn counter is hit when a turn runs (by the middleware), not when the chat page queues it; the page still refuses over-limit questions before queueing them.
+- **A refused question is kept.** The chat page no longer checks the budget before queueing a question and drops it with a notification; the question is recorded, the `EnforceBudget` middleware refuses the turn when it runs, and the reason is read under the question with a Retry (and the pencil to edit it first), like a question the provider could not answer. The per-minute turn counter is hit when a turn runs, not when it is queued.
 
 ## 1.4.0 — 2026-09-08
 

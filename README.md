@@ -204,7 +204,7 @@ Read more: [MCP clients](https://packstub.dev/docs/filament-agents/mcp-clients).
 
 ## Budgets and the operator page
 
-`config/packstub-agents.php` holds the platform ceiling (`AGENT_TURNS_PER_MINUTE`, `AGENT_TURNS_PER_DAY`, `AGENT_TOKENS_PER_MONTH`, `AGENT_USER_TOKENS_PER_DAY`, `AGENT_USER_TOKENS_PER_MONTH`, `AGENT_PROMPT_MAX_CHARS`). An operator panel registers
+`config/packstub-agents.php` holds the platform ceiling (`AGENT_TURNS_PER_MINUTE`, `AGENT_TURNS_PER_DAY`, `AGENT_TOKENS_PER_DAY`, `AGENT_TOKENS_PER_MONTH`, `AGENT_USER_TOKENS_PER_DAY`, `AGENT_USER_TOKENS_PER_MONTH`, `AGENT_PROMPT_MAX_CHARS`). An operator panel registers
 
 ```php
 ->plugin(AgentsPlugin::make()->chat(false)->agentAccess(false)->limits(authorize: fn () => auth()->user()?->is_admin))

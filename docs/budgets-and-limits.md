@@ -8,6 +8,7 @@ A chat that calls a frontier model on every question needs a ceiling. The packag
 | --- | --- | --- |
 | Questions per minute | per user | `turns_per_minute` / `AGENT_TURNS_PER_MINUTE` (6) |
 | Answers per day | per workspace | `turns_per_day` / `AGENT_TURNS_PER_DAY` (150) |
+| Tokens per day | per workspace, all token kinds | `tokens_per_day` / `AGENT_TOKENS_PER_DAY` (600,000) |
 | Tokens per month | per workspace, all token kinds | `tokens_per_month` / `AGENT_TOKENS_PER_MONTH` (3,000,000) |
 | Tokens per day | per user, inside the workspace | `user_tokens_per_day` / `AGENT_USER_TOKENS_PER_DAY` (100,000) |
 | Tokens per month | per user, inside the workspace | `user_tokens_per_month` / `AGENT_USER_TOKENS_PER_MONTH` (1,500,000) |
@@ -15,7 +16,7 @@ A chat that calls a frontier model on every question needs a ceiling. The packag
 
 `null` (or `0` in the environment) disables a limit. The values in `config/packstub-agents.php` are the platform's ceiling; the operator page below overrides them.
 
-When a turn is refused the person sees the reason in the chat ("This workspace reached today's limit of 150 answers. It resets at midnight.") and nothing is sent to the provider. The chat page checks before it queues a question, so the answer is immediate; the `EnforceBudget` [middleware](assistant.md#middleware) checks again when the turn runs, and counts it, so the limits hold for every turn however it was started — a follow-up that waited in the queue, a console command, an app that prompts the agent directly.
+When a turn is refused nothing is sent to the provider. The question stays in the chat with the reason under it ("This workspace reached today's limit of 150 answers. It resets at midnight.") and a Retry, like a question the provider could not answer, so nothing typed is lost and it can be sent again — or edited first — once the limit allows. The `EnforceBudget` [middleware](assistant.md#middleware) makes the check when the turn runs, and counts it, so the limits hold for every turn however it was started — a follow-up that waited in the queue, a console command, an app that prompts the agent directly.
 
 ## The AI limits resource
 

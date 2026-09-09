@@ -24,6 +24,8 @@ return new class extends Migration
             $table->string('status', 16); // queued | pending | running | done | stopped | failed
             $table->text('input'); // {"prompt": "…"} or {"decisions": {"call-id": true}}
             $table->string('model', 32)->nullable(); // the picker key
+            $table->string('provider', 32)->nullable(); // the provider that answered
+            $table->string('model_name')->nullable(); // the model that answered (`model` is the picker key)
             $table->string('context')->nullable(); // the page context the chat was opened from
             $table->string('panel')->nullable();
             $table->string('tenant')->nullable(); // the workspace key, when the panel has tenancy
@@ -31,6 +33,10 @@ return new class extends Migration
             $table->text('text')->nullable(); // the answer so far
             $table->string('status_text')->nullable(); // Thinking… / the tool being called / Writing…
             $table->text('error')->nullable();
+            $table->json('usage')->nullable(); // laravel/ai's Usage as an array
+            $table->json('tool_calls')->nullable(); // the tool names, in call order
+            $table->unsignedInteger('duration_ms')->nullable();
+            $table->string('finish_reason', 24)->nullable(); // stop | length | content_filter | dropped | stopped | refused | failed | …
             $table->timestamp('stop_requested_at')->nullable();
             $table->timestamp('started_at')->nullable();
             $table->timestamp('finished_at')->nullable();
