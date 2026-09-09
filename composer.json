@@ -1,6 +1,6 @@
 {
     "name": "packstub/filament-agents",
-    "description": "An in-panel AI assistant and an MCP server for Filament v5 panels, built on laravel/ai and laravel/mcp: one tool list for both, the panel's own authorization, approve-in-chat writes, live tables and charts in answers, per-workspace budgets and an operator limits page.",
+    "description": "An in-panel AI assistant and an MCP server for Filament v5 panels, built on laravel/ai and laravel/mcp through packstub/agents: one tool list for both, the panel's own authorization, approve-in-chat writes, live tables and charts in answers, per-workspace budgets and an operator limits page.",
     "keywords": [
         "filament",
         "filament-plugin",
@@ -32,14 +32,11 @@
     ],
     "require": {
         "php": "^8.4",
-        "laravel/ai": "^0.11",
-        "laravel/framework": "^13.0",
-        "laravel/mcp": "^0.9",
-        "laravel/sanctum": "^4.0",
+        "filament/filament": "^5.0",
+        "packstub/agents": "^1.0",
         "spatie/laravel-package-tools": "^1.93"
     },
     "require-dev": {
-        "filament/filament": "^5.0",
         "orchestra/testbench": "^11.2",
         "phpunit/phpunit": "^13.3",
         "laravel/pint": "^1.13",
@@ -67,11 +64,8 @@
     "extra": {
         "laravel": {
             "providers": [
-                "Packstub\\Agents\\AgentsServiceProvider"
-            ],
-            "aliases": {
-                "Agents": "Packstub\\Agents\\Facades\\Agents"
-            }
+                "Packstub\\Agents\\Filament\\FilamentAgentsServiceProvider"
+            ]
         },
         "branch-alias": {
             "dev-main": "1.x-dev"
@@ -86,12 +80,17 @@
         "docs": "https://packstub.dev/docs/filament-agents"
     },
     "suggest": {
-        "filament/filament": "The chat pages, the Agent access page, the operator's limits and turns pages, live tables in answers (^5.0). Without it the package serves the MCP endpoint, the turn job, budgets and limits in a plain Laravel app.",
         "packstub/filament-tenancy": "Database-per-tenant panels: the MCP endpoint and the chat follow the workspace automatically."
     },
     "config": {
         "allow-plugins": {
             "pestphp/pest-plugin": true
         }
-    }
+    },
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/packstub/agents"
+        }
+    ]
 }

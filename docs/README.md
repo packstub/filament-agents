@@ -4,6 +4,7 @@
 
 An in-panel AI assistant and an MCP server for Filament v5 panels, built on laravel/ai and laravel/mcp. One tool list serves both: the chat inside the panel and Claude Code, Claude Desktop, Cursor or any other MCP client, with the panel's own authorization deciding who may run what. Free and open source (MIT).
 
+- Engine: [packstub/agents](https://packstub.dev/docs/agents) — the same tools, MCP server, turns and budgets in a plain Laravel app; this plugin adds the panel pages on top
 - Repository: [github.com/packstub/filament-agents](https://github.com/packstub/filament-agents)
 - Packagist: [packstub/filament-agents](https://packagist.org/packages/packstub/filament-agents)
 - Support: [GitHub issues](https://github.com/packstub/filament-agents/issues)
@@ -33,7 +34,6 @@ An in-panel AI assistant and an MCP server for Filament v5 panels, built on lara
 | [MCP clients](mcp-clients.md) | The Agent access page, tokens, abilities, tool scopes and expiry, connecting Claude Code, Claude Desktop and Cursor, the endpoint's middleware |
 | [Budgets and limits](budgets-and-limits.md) | The platform ceiling in config, the AI limits resource, inheritance, `AgentBudget`, what each turn cost: the AI turns page and the log line |
 | [Tenancy](tenancy.md) | The `{tenant}` path, workspace-bound tokens, per-workspace keys and limits, database-per-tenant migrations |
-| [Without Filament](headless.md) | The engine in a plain Laravel app: registering through the facade, `Agents::tenantUsing()`, the routes, what stays Filament-only |
 | [Configuration](configuration.md) | Every config key and environment variable, the fluent `AgentsPlugin` API |
 | [Security](security.md) | The threat model: trust boundaries, prompt injection, what the package enforces and what stays yours |
 | [Testing](testing.md) | Faking the model, driving tools, testing the MCP endpoint in your app |
