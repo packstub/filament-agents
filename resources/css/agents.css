@@ -37,7 +37,7 @@
 .dark .fi-chat-ring-track { stroke: rgb(255 255 255 / 0.15); }
 .fi-chat-ring-fill { stroke: var(--color-primary-500); stroke-linecap: round; transition: stroke-dasharray 0.3s; }
 .fi-chat-ring-fill-high { stroke: var(--color-warning-500); }
-.fi-chat-ring-panel { width: 24rem; max-width: calc(100vw - 2rem); }
+.fi-chat-ring-panel { width: 100%; }
 .fi-chat-ring-panel dl { display: grid; grid-template-columns: 1fr auto; gap: 0.25rem 1rem; }
 .fi-chat-ring-panel dd { text-align: end; font-variant-numeric: tabular-nums; color: var(--color-gray-800); }
 .dark .fi-chat-ring-panel dd { color: var(--color-gray-200); }

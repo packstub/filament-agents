@@ -228,7 +228,7 @@
                 {{-- The context ring: how full the history window is, from history.meter_share on. Click for what fills it, what the chat cost so far, Compress now and Continue in a new chat. --}}
                 <x-slot:tools>
                     @php($percent = (int) round($context['share'] * 100))
-                    <x-filament::dropdown placement="top-end" width="xs">
+                    <x-filament::dropdown placement="top-end" width="sm">
                         <x-slot name="trigger">
                             <button
                                 type="button"
