@@ -2,7 +2,7 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
-## Unreleased
+## 1.5.0 — 2026-09-09
 
 Upgrading: run `php artisan migrate` (new columns on `agent_turns` and `agent_limits`).
 
