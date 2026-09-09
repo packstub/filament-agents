@@ -3,6 +3,7 @@
 namespace Packstub\Agents\Support;
 
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -44,6 +45,7 @@ class AgentTurns
             'model' => $model,
             'context' => $context,
             'panel' => $runtime['panel'],
+            'guard' => $runtime['guard'],
             'tenant' => $runtime['tenant'] !== null ? (string) $runtime['tenant'] : null,
             'locale' => $runtime['locale'],
         ]);
@@ -91,6 +93,7 @@ class AgentTurns
 
         $job = new RunAgentTurn($turn->id, [
             'panel' => $turn->panel,
+            'guard' => $turn->guard,
             'tenant' => $turn->tenant,
             'user' => $turn->participant_id,
             'locale' => $turn->locale,
@@ -305,13 +308,15 @@ class AgentTurns
     }
 
     /** The person the turn belongs to, from the panel's guard. */
+    /** The person who asked: the signed-in one when it is them, otherwise retrieved through the guard the turn was asked on. */
     public function participant(AgentTurn $turn): ?object
     {
-        $current = auth()->user();
+        $guard = filled($turn->guard) ? Auth::guard($turn->guard) : auth();
+        $current = $guard->user() ?? auth()->user();
         if ($current && $current->getMorphClass() === $turn->participant_type && (string) $current->getAuthIdentifier() === (string) $turn->participant_id) {
             return $current;
         }
 
-        return $turn->participant_id !== null ? auth()->getProvider()?->retrieveById($turn->participant_id) : null;
+        return $turn->participant_id !== null ? $guard->getProvider()?->retrieveById($turn->participant_id) : null;
     }
 }

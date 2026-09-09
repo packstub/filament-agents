@@ -14,7 +14,8 @@ use Packstub\Agents\Facades\Agents;
  * (the default one, or whatever auth middleware picked), the workspace from
  * the closure registered with Agents::tenantUsing() — null means one
  * workspace — and its model from Agents::tenantModel(), so a worker and an
- * MCP request can find it again by key or by slug. Membership goes through
+ * MCP request can find it again by key or by slug; entering one runs the
+ * Agents::enteringTenant() hook, and what it returned runs on leaving. Membership goes through
  * the user's own canAccessTenant() when it has one; without it every
  * signed-in person may enter every workspace.
  */
@@ -83,13 +84,15 @@ class LaravelContext implements AgentContext
 
         $key = $context['tenant'] ?? null;
         $tenant = $key !== null ? $this->findTenant($key) : null;
+        $leaveTenant = null;
 
         if ($tenant) {
             $this->isEntered = true;
             $this->entered = $tenant;
 
             if ($hook = Agents::tenantEnterHook()) {
-                $hook($tenant);
+                $left = $hook($tenant);
+                $leaveTenant = $left instanceof Closure ? $left : null;
             }
         }
 
@@ -97,8 +100,12 @@ class LaravelContext implements AgentContext
             app()->setLocale((string) $context['locale']);
         }
 
-        return function () use ($previousLocale, $previousGuard, $previousEntered, $previousUser, $userChanged, $guard): void {
+        return function () use ($previousLocale, $previousGuard, $previousEntered, $previousUser, $userChanged, $guard, $leaveTenant): void {
             [$this->isEntered, $this->entered] = $previousEntered;
+
+            if ($leaveTenant) {
+                $leaveTenant();
+            }
 
             if ($userChanged) {
                 $previousUser ? $guard->setUser($previousUser) : $guard->forgetUser();

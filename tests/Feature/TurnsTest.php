@@ -46,7 +46,7 @@ it('runs the turn in a queued job and streams it to the page from the turn row',
         ->and(ConversationMessage::query()->where('conversation_id', $conversation->id)->pluck('role')->all())->toBe(['user']);
 
     Queue::assertPushed(RunAgentTurn::class, fn (RunAgentTurn $job) => $job->turnId === $turn->id
-        && $job->runtime === ['panel' => 'admin', 'tenant' => null, 'user' => $user->id, 'locale' => 'en']
+        && $job->runtime === ['panel' => 'admin', 'guard' => 'web', 'tenant' => null, 'user' => $user->id, 'locale' => 'en']
         && $job->tries === 1);
 
     // Reopened while the job waits: the page attaches to the turn — no Retry, the question is being answered.

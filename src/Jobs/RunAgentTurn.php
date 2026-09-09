@@ -47,7 +47,7 @@ class RunAgentTurn implements ShouldQueue
     public int $timeout;
 
     /**
-     * @param  array{panel: ?string, tenant: ?string, user: int|string|null, locale: ?string}  $runtime
+     * @param  array{panel: ?string, guard: ?string, tenant: ?string, user: int|string|null, locale: ?string}  $runtime
      */
     public function __construct(public string $turnId, public array $runtime)
     {

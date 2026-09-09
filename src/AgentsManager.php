@@ -92,19 +92,27 @@ class AgentsManager
     }
 
     /**
-     * Without a panel: how the current workspace is found — fn (): ?Model, null meaning one workspace — and, when
-     * a worker or an MCP request enters one, what the app does about it (fn (Model $tenant): void, a
-     * database switch for instance). A panel's tenant comes from Filament instead.
+     * Without a panel: how the current workspace is found — fn (): ?Model, null meaning one workspace.
+     * A panel's tenant comes from Filament instead.
      */
-    public function tenantUsing(Closure $resolve, ?Closure $enter = null): void
+    public function tenantUsing(Closure $resolve): void
     {
         $this->tenantResolver = $resolve;
-        $this->tenantEnter = $enter;
     }
 
     public function tenantResolver(): ?Closure
     {
         return $this->tenantResolver;
+    }
+
+    /**
+     * Without a panel: what the app does when a queue worker or an MCP request enters a workspace it found by
+     * key or slug — fn (Model $tenant): ?Closure, a database switch for instance. What it returns, if anything,
+     * runs when the worker leaves the workspace again. In a panel Filament's TenantSet plays this role.
+     */
+    public function enteringTenant(Closure $enter): void
+    {
+        $this->tenantEnter = $enter;
     }
 
     public function tenantEnterHook(): ?Closure

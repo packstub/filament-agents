@@ -39,7 +39,7 @@ The scaffold commands know where they run: `packstub-agents:agent` and `packstub
 
 Every part of the package that needs the person, the guard, the workspace or the locale reads it from `Packstub\Agents\Contracts\AgentContext`, bound in the container. In a panel app `AgentsPlugin` binds `Packstub\Agents\Filament\FilamentContext` (the panel, its guard, its tenant); without one the binding is `Packstub\Agents\Support\Context\LaravelContext`:
 
-- **The person** is whoever the guard in use holds — the default guard, or the one an auth middleware picked (`auth:sanctum` on the MCP endpoint).
+- **The person** is whoever the guard in use holds — the default guard, or the one an auth middleware picked (`auth:sanctum` on the MCP endpoint). A turn records the guard it was asked on and the worker signs the person in on that same guard.
 - **The workspace** is what `Agents::tenantUsing()` resolves; unregistered, the app is one workspace.
 - **The locale** is the app's.
 
@@ -52,14 +52,19 @@ use App\Models\Team;
 use Packstub\Agents\Facades\Agents;
 
 Agents::tenantModel(Team::class, slugAttribute: 'slug');
-Agents::tenantUsing(
-    resolve: fn (): ?Team => auth()->user()?->currentTeam,
-    enter: fn (Team $team) => tenancy()->initialize($team),   // optional
-);
+Agents::tenantUsing(fn (): ?Team => auth()->user()?->currentTeam);
+
+// Optional: what a database switch needs when a worker or an MCP request enters a workspace.
+Agents::enteringTenant(function (Team $team): Closure {
+    tenancy()->initialize($team);
+
+    return fn () => tenancy()->end();
+});
 ```
 
 - `tenantModel()` is the model a worker finds a workspace by (its key is stored on the turn) and the MCP path names it by (`slug`, or the key when null).
-- `tenantUsing()`'s first closure is the current workspace of a request: budgets, limits, the prompt's workspace line and a workspace's own provider key (`credentialsUsing()`) are keyed by it. The second, optional, runs when a queue worker or an MCP request *enters* a workspace that was found by key or slug — the place for a database switch or whatever your tenancy layer needs; in a panel app Filament's `TenantSet` event plays that role.
+- `tenantUsing()` resolves the current workspace of a request: budgets, limits, the prompt's workspace line and a workspace's own provider key (`credentialsUsing()`) are keyed by it.
+- `enteringTenant()` runs when a queue worker or an MCP request *enters* a workspace that was found by key or slug — the place for a database switch or whatever your tenancy layer needs. Whatever it returns runs when the worker leaves the workspace again, so a long-lived worker does not stay on the last workspace's connection; return nothing when there is nothing to undo. In a panel app Filament's `TenantSet` event plays this role.
 - Membership goes through your user model's `canAccessTenant(Model $tenant): bool` when it has one (the same method Filament's `HasTenants` asks for); without it every signed-in person may enter every workspace, so add the method as soon as you have more than one.
 
 Put `{tenant}` in the MCP path (`'mcp/{tenant}'`) and a token is bound to the workspace it was minted for, exactly as in a panel: see [Tenancy](tenancy.md). Without a panel there is no Agent access page, so mint tokens yourself:

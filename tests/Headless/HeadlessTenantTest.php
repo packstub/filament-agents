@@ -64,12 +64,17 @@ it('resolves the workspace on the MCP path by slug, checks membership and holds 
     $whoAmI('acme', $foreign)->assertForbidden();
 });
 
-it('captures the workspace tenantUsing() resolves and restores it in the worker, through the enter hook', function () {
+it('captures the workspace tenantUsing() resolves and restores it in the worker, through the enteringTenant() hook and its undo', function () {
     $owner = $this->user();
     $team = $this->team($owner, 'acme');
     $entered = [];
-    Agents::tenantUsing(fn () => $team, function (Model $tenant) use (&$entered): void {
-        $entered[] = $tenant->slug;
+    Agents::tenantUsing(fn () => $team);
+    Agents::enteringTenant(function (Model $tenant) use (&$entered): Closure {
+        $entered[] = 'enter '.$tenant->slug;
+
+        return function () use (&$entered, $tenant): void {
+            $entered[] = 'leave '.$tenant->slug;
+        };
     });
     actingAs($owner);
     Queue::fake();
@@ -89,9 +94,7 @@ it('captures the workspace tenantUsing() resolves and restores it in the worker,
     expect($turn->tenant)->toBe((string) $team->id);
 
     // The worker has no request: the resolver knows nothing, the turn's snapshot does.
-    Agents::tenantUsing(fn () => null, function (Model $tenant) use (&$entered): void {
-        $entered[] = $tenant->slug;
-    });
+    Agents::tenantUsing(fn () => null);
     auth()->logout();
     expect(Agents::tenant())->toBeNull();
 
@@ -100,7 +103,7 @@ it('captures the workspace tenantUsing() resolves and restores it in the worker,
 
     expect($turn->fresh()->status)->toBe(AgentTurn::DONE)
         ->and($seen)->toBe([$owner->id, 'acme'])
-        ->and($entered)->toBe(['acme'])
+        ->and($entered)->toBe(['enter acme', 'leave acme'])
         ->and(Agents::tenant())->toBeNull()
         ->and(auth()->user())->toBeNull();
 });

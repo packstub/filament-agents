@@ -1,6 +1,7 @@
 <?php
 
 use Filament\FilamentServiceProvider;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
@@ -109,7 +110,8 @@ it('runs a queued turn as the person who asked, on the default guard, in their l
 
     $job = Queue::pushed(RunAgentTurn::class, fn (RunAgentTurn $job) => $job->turnId === $turn->id)->first();
     expect($turn->panel)->toBeNull()
-        ->and($job->runtime)->toBe(['panel' => null, 'tenant' => null, 'user' => $user->id, 'locale' => 'de']);
+        ->and($turn->guard)->toBe('web')
+        ->and($job->runtime)->toBe(['panel' => null, 'guard' => 'web', 'tenant' => null, 'user' => $user->id, 'locale' => 'de']);
 
     // The worker knows nothing of the request.
     auth()->logout();
@@ -123,6 +125,44 @@ it('runs a queued turn as the person who asked, on the default guard, in their l
         ->and($seen)->toBe([$user->id, 'web', 'de', null])
         ->and(auth()->user())->toBeNull()
         ->and(app()->getLocale())->toBe('en');
+});
+
+it('runs a queued turn on the guard it was asked on, not the default one', function () {
+    config()->set('auth.guards.staff', ['driver' => 'session', 'provider' => 'users']);
+    $user = $this->user();
+    Auth::guard('staff')->setUser($user);
+    Auth::shouldUse('staff');
+    Queue::fake();
+
+    $seen = null;
+    Agents::useMiddleware([function (AgentPrompt $prompt, Closure $next) use (&$seen) {
+        $seen = [auth()->id(), auth()->getDefaultDriver(), Auth::guard('web')->user()];
+
+        return $next($prompt);
+    }]);
+
+    $conversation = app(AgentConversationStore::class)->startConversation($user, 'Who am I?');
+    $turn = app(AgentTurns::class)->enqueue($conversation, $user, ['prompt' => 'Who am I?'], null, 'auto', null);
+    $job = Queue::pushed(RunAgentTurn::class, fn (RunAgentTurn $job) => $job->turnId === $turn->id)->first();
+    expect($turn->guard)->toBe('staff')
+        ->and($job->runtime['guard'])->toBe('staff');
+
+    // The worker starts on the default guard, with nobody signed in anywhere.
+    Auth::guard('staff')->forgetUser();
+    Auth::shouldUse('web');
+    auth()->forgetGuards();
+    expect(auth()->user())->toBeNull();
+
+    // Whoever reads the turn outside a request finds the person through the turn's guard.
+    expect(app(AgentTurns::class)->participant($turn)?->is($user))->toBeTrue();
+
+    WidgetAgent::fake(['You are Ada.']);
+    $job->handle(app(AgentTurns::class));
+
+    expect($turn->fresh()->status)->toBe(AgentTurn::DONE)
+        ->and($seen)->toBe([$user->id, 'staff', null])
+        ->and(auth()->getDefaultDriver())->toBe('web')
+        ->and(Auth::guard('staff')->user())->toBeNull();
 });
 
 it('enforces the budget and the operator rows in a single workspace', function () {
