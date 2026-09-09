@@ -4,7 +4,11 @@ All notable changes to `packstub/filament-agents` are documented here.
 
 ## 1.7.0 — Unreleased
 
-Upgrading: run `php artisan migrate` (a nullable `guard` column on `agent_turns`); nothing changes for a panel app. `Agents::panel()` and `Agents::panelId()` moved to `Packstub\Agents\Filament\FilamentContext` (`app(FilamentContext::class)->panel()`); `AgentRuntime::capture()` carries a `guard` key.
+Upgrading: run `php artisan migrate` (a nullable `guard` column on `agent_turns`); nothing changes for a panel app. `Agents::panel()` and `Agents::panelId()` moved to `Packstub\Agents\Filament\FilamentContext` (`app(FilamentContext::class)->panel()`); `AgentRuntime::capture()` carries a `guard` key. The engine now comes from `packstub/agents`, which Composer installs with this plugin; a `@source` line, a published config, a `packstub-agents:*` command or a class name in your code all stay as they are.
+
+### Changed
+
+- **The engine is its own package, `packstub/agents`.** The tools, the MCP server and its tokens, the turn job and the poll endpoint, the conversation store, budgets and limits, the `Agent` class, the context, the config, the migrations, the scaffold commands and the `Agents` facade now live in [packstub/agents](https://github.com/packstub/agents), which runs in a plain Laravel app without Filament; this plugin requires it and keeps what a panel adds — `AgentsPlugin`, the chat pages, the Ask button and recent chats, the Agent access page, the AI limits resource and the AI turns page, `show-table`, the embedded table, `FilamentContext`, the views, the stylesheet, the Alpine component and the UI strings. Both packages share the `Packstub\Agents\` namespace, so every class keeps its name; the config file, its keys, the env vars, the commands and the migration file names are unchanged. The plugin's provider is now `Packstub\Agents\Filament\FilamentAgentsServiceProvider` (auto-discovered), `Packstub\Agents\AgentsServiceProvider` is the engine's. `filament/filament` is a requirement of this plugin again; the headless install is documented with the engine ([Agents for Laravel](https://packstub.dev/docs/agents)). The base `Agent` writes its rule about live tables only when `show-table` is on the tool list.
 
 ### Added
 

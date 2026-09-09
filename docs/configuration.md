@@ -26,7 +26,7 @@
 | `chat.queue` | `null` | `AGENT_QUEUE` | the queue name; `null` = the connection's default |
 | `chat.job_timeout` | `600` | `AGENT_JOB_TIMEOUT` | how long one turn may run on the worker, in seconds; a turn whose job went quiet for longer is shown as failed, with a Retry |
 | `chat.poll_interval` | `600` | `AGENT_POLL_INTERVAL` | how often the page asks for the answer so far while a turn runs, in milliseconds |
-| `chat.path` | `agents` | | without a panel, where the poll endpoint lives: `GET {path}/chat/{conversation}/turn`, see [Without Filament](headless.md#routes) |
+| `chat.path` | `agents` | | without a panel, where the poll endpoint lives: `GET {path}/chat/{conversation}/turn`, see [Agents for Laravel](https://packstub.dev/docs/agents/installation#routes) |
 | `chat.middleware` | `['web', 'auth']` | | the middleware of that endpoint; a panel that shows the chat registers its own on the panel's routes |
 | `chat.keep_turns_days` | `90` | `AGENT_KEEP_TURNS_DAYS` | how long ended turns (the per-turn record) are kept for the AI turns page; `null` keeps them; pruned by `model:prune --model=Packstub\Agents\Models\AgentTurn` |
 | `log.channel` | `null` | `AGENT_LOG_CHANNEL` | the log channel that gets one line per ended turn (provider, model, tokens, tools, duration, how it ended); `null` logs nothing. See [What each turn cost](budgets-and-limits.md#what-each-turn-cost) |
@@ -117,7 +117,7 @@ Two panels may register the plugin: the tenant panel with the chat and the token
 
 ## The Agents facade
 
-`Packstub\Agents\Facades\Agents` reads back what the app told the package: `name()`, `tenant()`, `inPanel()`, `toolClasses()`, `resourceClasses()`, `middleware()`, `allows($ability)`, `roleLabel()`, `credentials()`, `canManageLimits()`, and `context()` — the `AgentContext` that knows who is acting and where (the panel's `FilamentContext`, whose `panel()` is the panel the assistant lives in, or the `LaravelContext` of a plain app). Tools and views use it; your own code may too. Without a panel the same facade is how the app registers itself — `useAgent()`, `useServer()`, `useTools()`, `authorizeUsing()`, `tenantUsing()`, `tenantModel()` — see [Without Filament](headless.md).
+`Packstub\Agents\Facades\Agents` reads back what the app told the package: `name()`, `tenant()`, `inPanel()`, `toolClasses()`, `resourceClasses()`, `middleware()`, `allows($ability)`, `roleLabel()`, `credentials()`, `canManageLimits()`, and `context()` — the `AgentContext` that knows who is acting and where (the panel's `FilamentContext`, whose `panel()` is the panel the assistant lives in, or the `LaravelContext` of a plain app). Tools and views use it; your own code may too. Without a panel the same facade is how the app registers itself — `useAgent()`, `useServer()`, `useTools()`, `authorizeUsing()`, `tenantUsing()`, `tenantModel()` — see [Agents for Laravel](https://packstub.dev/docs/agents/installation).
 
 ## Translations and views
 
