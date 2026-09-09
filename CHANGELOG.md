@@ -2,7 +2,9 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
-## Unreleased
+## 1.6.0 — 2026-09-09
+
+Upgrading: nothing to run. A published `config/packstub-agents.php` keeps its Auto / Fast / Deep labels; drop them (`'label' => null`) to show model names like a fresh install.
 
 ### Added
 
