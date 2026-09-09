@@ -1,6 +1,6 @@
 # packstub/filament-agents
 
-Filament v5 plugin: an in-panel AI assistant (laravel/ai) and an MCP server (laravel/mcp) sharing one tool list. **Filament Agents** on packstub.dev, **Packstub Agents** on filamentphp.com; the store dogfoods it.
+Filament v5 plugin: an in-panel AI assistant (laravel/ai) and an MCP server (laravel/mcp) sharing one tool list. **Filament Agents** on packstub.dev, **Packstub Agents** on filamentphp.com.
 
 ## Commands
 
