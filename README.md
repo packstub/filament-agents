@@ -138,7 +138,7 @@ Read more: [The assistant](https://packstub.dev/docs/filament-agents/assistant).
 
 ## The assistant
 
-`packstub-agents:agent` scaffolds `App\Ai\Agents\Assistant`, a subclass of `Packstub\Agents\Ai\Agent` with two slots to fill: `persona()` (who it is) and `domain()` (what the workspace is). The base class supplies the generic working and answering rules, the dynamic context (date, workspace, person, role, language, page context) and the provider options (Anthropic prompt caching of the static block, reasoning effort or thinking level per model). Append to any of them by overriding `workRules()`, `answerRules()` or `context()` and merging the parent's list.
+`packstub-agents:agent` scaffolds `App\Ai\Agents\Assistant`, a subclass of `Packstub\Agents\Ai\Agent` with two slots to fill: `persona()` (who it is) and `domain()` (what the workspace is). The base class supplies the generic working and answering rules, the dynamic context (date, workspace, person, role, language, page context — sent with the question, so the system prompt and the history stay cacheable) and the provider options (Anthropic cache breakpoints on the instructions and the settled history, reasoning effort or thinking level per model). Append to any of them by overriding `workRules()`, `answerRules()` or `context()` and merging the parent's list.
 
 ```php
 class Assistant extends Agent

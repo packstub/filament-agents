@@ -135,6 +135,7 @@ class RunAgentTurn implements ShouldQueue
             $provider = app(AiManager::class)->textProviderFor($agent, $resolved['provider']);
             // What no longer fits the history window is folded into the rolling summary by the provider's cheapest model.
             $store->summarizeWith(AgentConversationStore::providerSummarizer($provider));
+            $store->cachingFor($provider);
             $response = $agent->withModel($resolved['model'])->stream($input, provider: $resolved['provider'], model: $resolved['model']);
 
             $sinceWrite = 0;

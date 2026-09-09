@@ -41,6 +41,9 @@ class AgentConversationStore extends DatabaseConversationStore
     /** fn (string $prompt): string — writes the rolling summary with a cheap model; null: no compaction this turn. */
     protected ?Closure $summarizer = null;
 
+    /** The provider whose name a cache breakpoint in the history is tagged with; null: no breakpoint (only Anthropic reads one). */
+    protected ?string $cacheBreakpointsFor = null;
+
     /** At most this many rows are read per load (bounds the first compaction of a very long chat). */
     public const SUMMARY_ROWS_CAP = 400;
 
@@ -210,6 +213,15 @@ class AgentConversationStore extends DatabaseConversationStore
         $this->summarizer = $summarizer;
     }
 
+    /**
+     * Mark the stable part of the history for the provider's prompt cache when it reads explicit
+     * breakpoints (Anthropic; the others cache every prefix they have seen on their own).
+     */
+    public function cachingFor(?TextProvider $provider): void
+    {
+        $this->cacheBreakpointsFor = $provider?->driver() === 'anthropic' ? $provider->name() : null;
+    }
+
     /** A summarizer on the provider's cheapest model, as titleConversation() uses it. */
     public static function providerSummarizer(TextProvider $provider): Closure
     {
@@ -226,7 +238,8 @@ class AgentConversationStore extends DatabaseConversationStore
      * turns that fit the budget with older tool results pruned. What no longer fits is
      * summarized when a summarizer is set. While a pre-stored question is being answered
      * it is the conversation's last row and the SDK sends it as the prompt — so it is left
-     * out here rather than shown twice.
+     * out here rather than shown twice. For a provider with explicit cache breakpoints the
+     * newest answer that will not change again carries one.
      */
     public function getLatestConversationMessages(string $conversationId, int $limit): Collection
     {
@@ -248,6 +261,40 @@ class AgentConversationStore extends DatabaseConversationStore
         if ($summary !== null) {
             $messages->prepend(new AssistantMessage(__('Understood, I will build on that summary.')));
             $messages->prepend(new Message('user', __('Summary of the earlier part of this conversation (those messages are not shown again):')."\n\n".$summary->content));
+        }
+
+        return $this->cacheBreakpointsFor === null ? $messages : $this->markStablePrefix($messages);
+    }
+
+    /**
+     * Put the provider's cache breakpoint on the newest answer in front of the last
+     * keep_tool_results_turns questions: the tool results before it are already placeholders,
+     * so everything up to there is replayed byte for byte on every later turn and the cache
+     * hits, while the recent turns behind it — the ones still being pruned — are read fresh.
+     * With fewer turns than that the breakpoint lands on the summary's acknowledgement, if any.
+     * Only a plain text answer can carry the marker (it is sent as a raw provider block).
+     */
+    protected function markStablePrefix(Collection $messages): Collection
+    {
+        $keep = self::keepToolResultsTurns();
+        $turns = 0;
+
+        for ($i = $messages->count() - 1; $i >= 0; $i--) {
+            $message = $messages[$i];
+
+            if ($this->isUserMessage($message)) {
+                $turns++;
+
+                continue;
+            }
+
+            if ($turns >= $keep && $message instanceof AssistantMessage && $message->toolCalls->isEmpty() && $message->providerContentBlocks === [] && filled($message->content)) {
+                $messages[$i] = new AssistantMessage($message->content, providerContentBlocks: [
+                    ['type' => 'text', 'text' => $message->content, 'cache_control' => ['type' => 'ephemeral']],
+                ], providerContentBlocksProvider: $this->cacheBreakpointsFor);
+
+                break;
+            }
         }
 
         return $messages;

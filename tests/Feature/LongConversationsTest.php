@@ -3,6 +3,7 @@
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Laravel\Ai\AiManager;
 use Laravel\Ai\Messages\AssistantMessage;
 use Laravel\Ai\Messages\MessageRole;
 use Laravel\Ai\Messages\ToolResultMessage;
@@ -72,6 +73,49 @@ it('replays the recent turns that fit the budget, cut on a turn boundary, with o
 
     $usage = $store->contextUsage($id);
     expect($usage['share'])->toBe(1.0)->and($usage['summarized'])->toBeFalse();
+});
+
+it('marks the newest answer in front of the still-pruned turns as an Anthropic cache breakpoint', function () {
+    $user = $this->user();
+    config(['packstub-agents.history.keep_tool_results_turns' => 2]);
+    $manager = app(AiManager::class);
+
+    $id = longChat($user, 5);
+    $store = app(AgentConversationStore::class);
+    $marked = fn ($messages) => $messages->filter(fn ($m) => $m instanceof AssistantMessage && $m->providerContentBlocks !== [])->values();
+
+    // No provider set: nothing in the history is tagged.
+    expect($marked($store->getLatestConversationMessages($id, 40)))->toHaveCount(0);
+
+    // Anthropic: the answer of turn 3 — the newest whose tool result is a placeholder — carries the breakpoint, tagged with
+    // the provider's name so the SDK keeps the block for that provider only.
+    $store->cachingFor($manager->textProviderFor(new WidgetAgent, 'anthropic'));
+    $messages = $store->getLatestConversationMessages($id, 40);
+    $marks = $marked($messages);
+
+    expect($marks)->toHaveCount(1)
+        ->and($marks[0]->content)->toBe('Answer 3: there are 3 widgets live.')
+        ->and($marks[0]->providerContentBlocks)->toBe([['type' => 'text', 'text' => 'Answer 3: there are 3 widgets live.', 'cache_control' => ['type' => 'ephemeral']]])
+        ->and($marks[0]->providerContentBlocksProvider)->toBe('anthropic')
+        ->and($marks[0]->toolCalls)->toHaveCount(0);
+
+    // Everything after it is what still changes from turn to turn: the last two turns, results verbatim.
+    $after = $messages->slice($messages->search(fn ($m) => $m === $marks[0]) + 1)->values();
+    expect($after->filter(fn ($m) => $m->role === MessageRole::User))->toHaveCount(2)
+        ->and($after->filter(fn ($m) => $m instanceof ToolResultMessage)->every(fn ($m) => $m->toolResults->first()->result === str_repeat('x', 400)))->toBeTrue();
+
+    // OpenAI caches prefixes on its own: no marker.
+    $store->cachingFor($manager->textProviderFor(new WidgetAgent, 'openai'));
+    expect($marked($store->getLatestConversationMessages($id, 40)))->toHaveCount(0);
+
+    // Too short a chat to have a settled turn: no marker either — unless a summary opens it, which is settled until the next compaction.
+    $store->cachingFor($manager->textProviderFor(new WidgetAgent, 'anthropic'));
+    $short = longChat($user, 2);
+    expect($marked($store->getLatestConversationMessages($short, 40)))->toHaveCount(0);
+
+    ConversationSummary::query()->create(['conversation_id' => $short, 'content' => 'Earlier: nothing much.', 'through_message_id' => null]);
+    $marks = $marked($store->getLatestConversationMessages($short, 40));
+    expect($marks)->toHaveCount(1)->and($marks[0]->content)->toBe(__('Understood, I will build on that summary.'));
 });
 
 it('folds what falls out of the window into a rolling summary the model reads first', function () {

@@ -151,10 +151,11 @@ it('builds the prompt from the persona, the domain, the generic rules and the li
     expect($static)->toStartWith('You are Ask Widgets')
         ->toContain('## What the workspace is', 'draft, live, retired', '## How to work', 'show-table', '## How to answer')
         ->and($dynamic)->toContain('## Now', 'Grace Hopper', 'role Owner', 'Answer language: English', 'Widgets in the catalogue: 3.')
-        ->and($agent->instructions())->toBe($static."\n\n".$dynamic)
+        // The system prompt is the static block alone, byte-identical between turns; the dynamic block goes with the question.
+        ->and($agent->instructions())->toBe($static)
         ->and($agent->maxSteps())->toBe(12)
         ->and($agent->providerOptions('anthropic'))->toHaveKeys(['system', 'output_config'])
-        ->and($agent->providerOptions('anthropic')['system'][0]['cache_control'])->toBe(['type' => 'ephemeral'])
+        ->and($agent->providerOptions('anthropic')['system'])->toBe([['type' => 'text', 'text' => $static, 'cache_control' => ['type' => 'ephemeral']]])
         ->and(WidgetAgent::supportsReasoning('gpt-5.2'))->toBeTrue()
         ->and(WidgetAgent::supportsReasoning('gpt-4o'))->toBeFalse()
         ->and($agent->providerOptions('gemini'))->toBe(['thinkingConfig' => ['thinkingLevel' => 'HIGH']])
