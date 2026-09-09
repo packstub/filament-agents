@@ -1,4 +1,5 @@
 {
+  "(answered by :provider)": "(beantwortet von :provider)",
   "(cut short)": "(abgebrochen)",
   "(stopped)": "(gestoppt)",
   "/ min": "/ Min",
@@ -142,6 +143,7 @@
   "The provider closed the stream before the answer was complete.": "Der Anbieter hat den Stream beendet, bevor die Antwort vollständig war.",
   "The provider's content filter stopped the answer.": "Der Inhaltsfilter des Anbieters hat die Antwort gestoppt.",
   "The token acts as you, in this workspace, within your role. Narrow it to what the agent needs.": "Das Token handelt als du, in diesem Arbeitsbereich, im Rahmen deiner Rolle. Beschränke es auf das, was der Agent braucht.",
+  "The usual provider was unavailable; this answer came from :model.": "Der übliche Anbieter war nicht erreichbar; diese Antwort kam von :model.",
   "Thinking…": "Denkt nach…",
   "This access token does not include :tool.": "Dieses Zugangstoken umfasst :tool nicht.",
   "This access token is read-only.": "Dieses Token ist schreibgeschützt.",

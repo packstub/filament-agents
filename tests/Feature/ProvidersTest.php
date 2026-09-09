@@ -1,7 +1,10 @@
 <?php
 
+use Filament\Facades\Filament;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Packstub\Agents\Ai\WorkspaceCredentials;
+use Packstub\Agents\Facades\Agents;
 use Packstub\Agents\Support\AgentModels;
 use Packstub\Agents\Tests\Fixtures\WidgetAgent;
 
@@ -11,13 +14,49 @@ it('ships picker entries for Gemini and xAI', function () {
     config(['packstub-agents.provider' => 'gemini', 'ai.providers.gemini.key' => 'g-key']);
     expect(AgentModels::enabled())->toBeTrue()
         ->and(AgentModels::options())->toHaveKeys(['auto', 'fast', 'deep'])
-        ->and(AgentModels::resolve('auto'))->toBe(['provider' => 'gemini', 'model' => 'gemini-3.8-flash', 'effort' => 'medium'])
-        ->and(AgentModels::resolve('fast'))->toBe(['provider' => 'gemini', 'model' => 'gemini-3.5-flash-lite', 'effort' => 'low'])
-        ->and(AgentModels::resolve('deep'))->toBe(['provider' => 'gemini', 'model' => 'gemini-3.8-flash', 'effort' => 'high']);
+        ->and(AgentModels::resolve('auto'))->toBe(['provider' => 'gemini', 'model' => 'gemini-3.8-flash', 'effort' => 'medium', 'providers' => ['gemini' => 'gemini-3.8-flash']])
+        ->and(AgentModels::resolve('fast'))->toBe(['provider' => 'gemini', 'model' => 'gemini-3.5-flash-lite', 'effort' => 'low', 'providers' => ['gemini' => 'gemini-3.5-flash-lite']])
+        ->and(AgentModels::resolve('deep'))->toBe(['provider' => 'gemini', 'model' => 'gemini-3.8-flash', 'effort' => 'high', 'providers' => ['gemini' => 'gemini-3.8-flash']]);
 
     config(['packstub-agents.provider' => 'xai', 'ai.providers.xai.key' => 'x-key']);
-    expect(AgentModels::resolve('auto'))->toBe(['provider' => 'xai', 'model' => 'grok-4.6', 'effort' => 'medium'])
-        ->and(AgentModels::resolve('deep'))->toBe(['provider' => 'xai', 'model' => 'grok-4.6', 'effort' => 'xhigh']);
+    expect(AgentModels::resolve('auto'))->toBe(['provider' => 'xai', 'model' => 'grok-4.6', 'effort' => 'medium', 'providers' => ['xai' => 'grok-4.6']])
+        ->and(AgentModels::resolve('deep'))->toBe(['provider' => 'xai', 'model' => 'grok-4.6', 'effort' => 'xhigh', 'providers' => ['xai' => 'grok-4.6']]);
+});
+
+it('resolves the failover list to the same picker key on each provider that has a key', function () {
+    config([
+        'packstub-agents.provider' => 'anthropic',
+        'packstub-agents.failover' => ['gemini', 'anthropic', 'openai', 'gemini', 'ollama'],
+        'ai.providers.anthropic.key' => 'a-key',
+        'ai.providers.gemini.key' => 'g-key',
+        'ai.providers.openai.key' => null, // no key: skipped rather than failing the turn with an auth error
+        'ai.providers.ollama.key' => 'unused',
+    ]);
+
+    // The first choice leads, then the fallbacks in config order — itself and duplicates dropped, a keyless provider
+    // left out, a provider without picker entries on its smartest (Auto) or cheapest (Fast) model.
+    expect(AgentModels::failover())->toBe(['gemini', 'ollama'])
+        ->and(AgentModels::resolve('deep')['providers'])->toBe(['anthropic' => 'claude-opus-5', 'gemini' => 'gemini-3.8-flash', 'ollama' => AgentModels::modelFor('ollama', 'deep')])
+        ->and(AgentModels::resolve('fast')['providers'])->toBe(['anthropic' => 'claude-haiku-4-5', 'gemini' => 'gemini-3.5-flash-lite', 'ollama' => AgentModels::modelFor('ollama', 'fast')])
+        ->and(AgentModels::resolve('fast')['providers']['ollama'])->not->toBe(AgentModels::resolve('deep')['providers']['ollama']);
+
+    // The options a fallback gets are read for its own model: a reasoning effort on OpenAI's gpt-5, none for the
+    // first choice's Claude name it would otherwise be asked about.
+    config(['ai.providers.openai.key' => 'o-key']);
+    $agent = (new WidgetAgent(modelKey: 'deep'))->withModel('claude-opus-5')->withModels(AgentModels::resolve('deep')['providers']);
+    expect(AgentModels::resolve('deep')['providers']['openai'])->toStartWith('gpt-5')
+        ->and($agent->providerOptions('openai'))->toBe(['reasoning' => ['effort' => 'high']])
+        ->and((new WidgetAgent(modelKey: 'deep'))->withModel('claude-opus-5')->providerOptions('openai'))->toBe([]);
+
+    // A workspace on its own key stays on its provider: a fallback would run on the platform's key.
+    Filament::setTenant($this->user(), isQuiet: true);
+    Agents::credentialsUsing(fn () => new WorkspaceCredentials('anthropic', 'ws-key'));
+    expect(AgentModels::failover())->toBe([])
+        ->and(AgentModels::resolve('deep')['providers'])->toBe(['anthropic' => 'claude-opus-5']);
+
+    expect(AgentModels::providerLabel('openai'))->toBe('OpenAI')
+        ->and(AgentModels::providerLabel('xai'))->toBe('xAI')
+        ->and(AgentModels::providerLabel('mistral'))->toBe('Mistral');
 });
 
 it('runs any other laravel/ai provider on its smartest and cheapest models', function () {

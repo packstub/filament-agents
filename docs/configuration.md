@@ -9,6 +9,7 @@
 | `name` | `Assistant` | `AGENT_NAME` | how the assistant introduces itself; `AgentsPlugin::name()` overrides it |
 | `panel` | `null` | | the panel the assistant lives in; set by the plugin when it registers |
 | `provider` | `anthropic` | `AGENT_PROVIDER` | `anthropic`, `openai`, `gemini` or `xai` have picker entries; any other laravel/ai text provider (`ollama`, `openrouter`, `mistral`, `groq`, `deepseek`…) runs on its smartest and cheapest models. The platform default; a workspace may bring its own |
+| `failover` | `[]` | `AGENT_FAILOVER` | providers to fall back to, in order (`gemini,openai`), when the platform provider refuses a turn before it started answering; see [Failover](assistant.md#failover) |
 | `enabled` | `null` | `AGENT_ENABLED` | `null` = enabled when a key exists for the provider; `false` hides the chat |
 | `models` | see below | `AGENT_MODEL`, `AGENT_MODEL_FAST`, `AGENT_MODEL_DEEP` | the picker entries per provider: label, model, effort |
 | `max_steps` | `12` | | tool round-trips one turn may take before the agent has to answer |

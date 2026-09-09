@@ -2,9 +2,12 @@
 
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
+use Laravel\Ai\Events\AgentFailedOver;
+use Laravel\Ai\Exceptions\ProviderOverloadedException;
 use Laravel\Ai\Prompts\AgentPrompt;
 use Laravel\Ai\Responses\Data\Meta;
 use Laravel\Ai\Responses\Data\ToolCall;
@@ -41,6 +44,50 @@ function agentLog(): TestHandler
 
     return Log::channel('agents')->getLogger()->getHandlers()[0];
 }
+
+it('falls back to the next provider when the first refuses the turn, and says who answered', function () {
+    $user = $this->user();
+    actingAs($user);
+    Queue::fake();
+    Event::fake([AgentFailedOver::class]);
+    config(['packstub-agents.failover' => ['gemini'], 'ai.providers.anthropic.key' => 'a-key', 'ai.providers.gemini.key' => 'g-key']);
+
+    [$turn, $job] = queuedTurnFor('How many widgets are live?');
+
+    // Anthropic is overloaded (503) before anything streamed; the same fake then answers as Gemini.
+    WidgetAgent::fake(function ($prompt, $attachments, $provider) {
+        if ($provider->name() === 'anthropic') {
+            throw ProviderOverloadedException::forProvider('anthropic', 503);
+        }
+
+        return 'Two are live.';
+    });
+    $job->handle(app(AgentTurns::class));
+
+    $turn->refresh();
+    Event::assertDispatched(AgentFailedOver::class, fn (AgentFailedOver $event) => $event->provider->name() === 'anthropic' && $event->model === 'claude-opus-5');
+
+    // The record names the provider that answered; the transcript's answer says so under it.
+    expect($turn->status)->toBe(AgentTurn::DONE)
+        ->and($turn->provider)->toBe('gemini')
+        ->and($turn->model_name)->toBe('gemini-3.8-flash')
+        ->and($turn->text)->toBe('Two are live.');
+
+    livewire(Chat::class, ['conversation' => $turn->conversation_id])
+        ->assertSee('Two are live.')
+        ->assertSee(__('(answered by :provider)', ['provider' => 'Gemini']))
+        ->assertSee(__('The usual provider was unavailable; this answer came from :model.', ['model' => 'gemini-3.8-flash']));
+
+    // The first choice answering leaves no note.
+    [$turn, $job] = queuedTurnFor('And retired?');
+    WidgetAgent::fake(['One is retired.']);
+    $job->handle(app(AgentTurns::class));
+
+    expect($turn->fresh()->provider)->toBe('anthropic');
+    livewire(Chat::class, ['conversation' => $turn->conversation_id])
+        ->assertSee('One is retired.')
+        ->assertDontSee('(answered by Gemini)');
+});
 
 it('records what a turn cost and how it went on its row, and logs one line', function () {
     $user = $this->user();

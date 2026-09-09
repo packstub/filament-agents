@@ -13,6 +13,7 @@ use Laravel\Ai\Approvals\Decisions;
 use Laravel\Ai\Responses\Data\Usage;
 use Laravel\Ai\Streaming\Events\Error;
 use Laravel\Ai\Streaming\Events\StreamEnd;
+use Laravel\Ai\Streaming\Events\StreamStart;
 use Laravel\Ai\Streaming\Events\TextDelta;
 use Laravel\Ai\Streaming\Events\ToolCall;
 use Laravel\Ai\Streaming\Events\ToolResult;
@@ -119,10 +120,11 @@ class RunAgentTurn implements ShouldQueue
         $usage = new Usage;
         $tools = [];
         $resolved = null;
-        $measure = function (string $reason) use ($startedAt, &$usage, &$tools, &$resolved): array {
+        $answered = null; // the provider and model that took the turn, from the stream: a fallback when the first choice refused it
+        $measure = function (string $reason) use ($startedAt, &$usage, &$tools, &$resolved, &$answered): array {
             return [
-                'provider' => $resolved['provider'] ?? null,
-                'model_name' => $resolved['model'] ?? null,
+                'provider' => $answered['provider'] ?? $resolved['provider'] ?? null,
+                'model_name' => $answered['model'] ?? $resolved['model'] ?? null,
                 'usage' => $usage->toArray(),
                 'tool_calls' => $tools,
                 'duration_ms' => (int) round((microtime(true) - $startedAt) * 1000),
@@ -136,7 +138,10 @@ class RunAgentTurn implements ShouldQueue
             // What no longer fits the history window is folded into the rolling summary by the provider's cheapest model.
             $store->summarizeWith(AgentConversationStore::providerSummarizer($provider));
             $store->cachingFor($provider);
-            $response = $agent->withModel($resolved['model'])->stream($input, provider: $resolved['provider'], model: $resolved['model']);
+            // The provider list: the first choice, then the failover providers (AGENT_FAILOVER), each with its own model.
+            // laravel/ai moves down the list when a provider refuses the turn before anything streamed and fires
+            // Laravel\Ai\Events\AgentFailedOver; the stream's start says who took it.
+            $response = $agent->withModel($resolved['model'])->withModels($resolved['providers'])->stream($input, provider: $resolved['providers']);
 
             $sinceWrite = 0;
             $lastCheck = 0.0;
@@ -176,6 +181,8 @@ class RunAgentTurn implements ShouldQueue
                 } elseif ($event instanceof StreamEnd) {
                     $end = $event;
                     $usage = $usage->add($event->usage);
+                } elseif ($event instanceof StreamStart) {
+                    $answered ??= ['provider' => $event->provider, 'model' => $event->model];
                 }
 
                 if ($wrote || microtime(true) - $lastCheck >= 0.25) {
@@ -200,6 +207,12 @@ class RunAgentTurn implements ShouldQueue
             // stored as the answer; mark it so the page says so and offers Regenerate.
             if (trim($buffer) !== '' && ($reason = AgentTurns::cutShortReason($end)) !== null) {
                 $store->markCutShort($turn->conversation_id, $reason);
+            }
+
+            // A fallback answered: the answer says so, and the title comes from the provider that is up.
+            if ($answered !== null && $answered['provider'] !== $resolved['provider']) {
+                $store->markAnsweredBy($turn->conversation_id, $answered['provider'], $answered['model']);
+                $provider = app(AiManager::class)->textProviderFor($agent, $answered['provider']);
             }
 
             if (($turn->input['title'] ?? false) && $turn->prompt() !== null) {

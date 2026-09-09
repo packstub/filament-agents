@@ -26,6 +26,12 @@ return [
     // openrouter, mistral, groq, deepseek…) runs on its smartest and cheapest models. A workspace may bring its own.
     'provider' => env('AGENT_PROVIDER', 'anthropic'),
 
+    // Providers to fall back to, in order, when the platform provider refuses a turn before it started answering
+    // (overloaded, rate limited, unreachable, out of credits): AGENT_FAILOVER=gemini,openai. Each runs the picker
+    // entry of its own catalog below (or its smartest / cheapest model) and needs its key in config/ai.php; the
+    // answer says which provider it came from. A workspace on its own key has no fallback.
+    'failover' => array_values(array_filter(array_map('trim', explode(',', (string) env('AGENT_FAILOVER', ''))))),
+
     // null = enabled when a key exists for the provider (platform or workspace). AGENT_ENABLED=false hides the chat.
     'enabled' => env('AGENT_ENABLED'),
 

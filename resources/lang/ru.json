@@ -1,4 +1,5 @@
 {
+  "(answered by :provider)": "(ответил :provider)",
   "(cut short)": "(оборвано)",
   "(stopped)": "(остановлено)",
   "/ min": "/ мин",
@@ -142,6 +143,7 @@
   "The provider closed the stream before the answer was complete.": "Провайдер закрыл поток до завершения ответа.",
   "The provider's content filter stopped the answer.": "Фильтр контента провайдера остановил ответ.",
   "The token acts as you, in this workspace, within your role. Narrow it to what the agent needs.": "Токен действует от вашего имени, в этом рабочем пространстве, в рамках вашей роли. Ограничьте его тем, что нужно агенту.",
+  "The usual provider was unavailable; this answer came from :model.": "Обычный провайдер был недоступен; этот ответ дал :model.",
   "Thinking…": "Думает…",
   "This access token does not include :tool.": "Этот токен доступа не включает :tool.",
   "This access token is read-only.": "Этот токен только для чтения.",

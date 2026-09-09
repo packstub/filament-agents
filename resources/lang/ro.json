@@ -1,4 +1,5 @@
 {
+  "(answered by :provider)": "(răspuns de :provider)",
   "(cut short)": "(întrerupt)",
   "(stopped)": "(oprit)",
   "/ min": "/ min",
@@ -142,6 +143,7 @@
   "The provider closed the stream before the answer was complete.": "Furnizorul a închis fluxul înainte ca răspunsul să fie complet.",
   "The provider's content filter stopped the answer.": "Filtrul de conținut al furnizorului a oprit răspunsul.",
   "The token acts as you, in this workspace, within your role. Narrow it to what the agent needs.": "Tokenul acționează ca tine, în acest spațiu de lucru, în limitele rolului tău. Restrânge-l la ce are nevoie agentul.",
+  "The usual provider was unavailable; this answer came from :model.": "Furnizorul obișnuit nu a fost disponibil; acest răspuns a venit de la :model.",
   "Thinking…": "Se gândește…",
   "This access token does not include :tool.": "Acest token de acces nu include :tool.",
   "This access token is read-only.": "Acest token este doar-citire.",

@@ -80,6 +80,32 @@ abstract class TestCase extends Orchestra
         $app['config']->set('packstub-agents.enabled', true);
         $app['config']->set('packstub-agents.mcp.path', 'mcp');
         $app['config']->set('ai.providers.anthropic.key', 'sk-test');
+        // The provider and the picker catalog are pinned here so the suite reads nothing from AGENT_PROVIDER /
+        // AGENT_MODEL* in the developer's environment. The names are made up; the Grok ones keep the "grok-" prefix
+        // Agent::supportsReasoning() looks for, and the OpenAI ones the "gpt-5" prefix.
+        $app['config']->set('packstub-agents.provider', 'anthropic');
+        $app['config']->set('packstub-agents.models', [
+            'anthropic' => [
+                'auto' => ['label' => 'Auto', 'model' => 'test-claude-auto', 'effort' => 'medium'],
+                'fast' => ['label' => 'Fast', 'model' => 'test-claude-fast', 'effort' => null],
+                'deep' => ['label' => 'Deep', 'model' => 'test-claude-deep', 'effort' => 'xhigh'],
+            ],
+            'openai' => [
+                'auto' => ['label' => 'Auto', 'model' => 'gpt-5-test-auto', 'effort' => 'medium'],
+                'fast' => ['label' => 'Fast', 'model' => 'gpt-5-test-fast', 'effort' => 'low'],
+                'deep' => ['label' => 'Deep', 'model' => 'gpt-5-test-deep', 'effort' => 'high'],
+            ],
+            'gemini' => [
+                'auto' => ['label' => 'Auto', 'model' => 'test-gemini-auto', 'effort' => 'medium'],
+                'fast' => ['label' => 'Fast', 'model' => 'test-gemini-fast', 'effort' => 'low'],
+                'deep' => ['label' => 'Deep', 'model' => 'test-gemini-deep', 'effort' => 'high'],
+            ],
+            'xai' => [
+                'auto' => ['label' => 'Auto', 'model' => 'grok-test-auto', 'effort' => 'medium'],
+                'fast' => ['label' => 'Fast', 'model' => 'grok-test-fast', 'effort' => 'low'],
+                'deep' => ['label' => 'Deep', 'model' => 'grok-test-deep', 'effort' => 'xhigh'],
+            ],
+        ]);
         // A turn runs in a queued job; on the sync driver it runs inside the request, as the suite expects.
         $app['config']->set('queue.default', 'sync');
     }
