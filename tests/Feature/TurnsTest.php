@@ -8,7 +8,6 @@ use Laravel\Ai\Responses\Data\FinishReason;
 use Laravel\Ai\Responses\Data\Usage;
 use Laravel\Ai\Streaming\Events\StreamEnd;
 use Packstub\Agents\AgentsPlugin;
-use Packstub\Agents\Facades\Agents;
 use Packstub\Agents\Filament\Pages\Chat;
 use Packstub\Agents\Jobs\RunAgentTurn;
 use Packstub\Agents\Models\AgentMessageFeedback;
@@ -47,7 +46,7 @@ it('runs the turn in a queued job and streams it to the page from the turn row',
         ->and(ConversationMessage::query()->where('conversation_id', $conversation->id)->pluck('role')->all())->toBe(['user']);
 
     Queue::assertPushed(RunAgentTurn::class, fn (RunAgentTurn $job) => $job->turnId === $turn->id
-        && $job->runtime === ['panel' => 'admin', 'tenant' => null, 'user' => $user->id, 'locale' => 'en']
+        && $job->runtime === ['panel' => 'admin', 'guard' => 'web', 'tenant' => null, 'user' => $user->id, 'locale' => 'en']
         && $job->tries === 1);
 
     // Reopened while the job waits: the page attaches to the turn — no Retry, the question is being answered.
@@ -61,7 +60,7 @@ it('runs the turn in a queued job and streams it to the page from the turn row',
         ->and($page->instance()->messages()->last()['editable'])->toBeFalse();
 
     // The endpoint the page polls, under the panel's auth.
-    $url = Agents::panel()->route('packstub-agents.turn', ['conversation' => $conversation->id]);
+    $url = Filament::getPanel('admin')->route('packstub-agents.turn', ['conversation' => $conversation->id]);
     $waiting = get($url)->assertOk()
         ->assertJsonPath('active.id', $turn->id)
         ->assertJsonPath('active.status', AgentTurn::PENDING)
@@ -219,7 +218,7 @@ it('shows a turn whose worker went quiet as failed, with a retry', function () {
     expect($turn->fresh()->status)->toBe(AgentTurn::FAILED)
         ->and($page->instance()->messages()->last()['unanswered'])->toBeTrue();
 
-    get(Agents::panel()->route('packstub-agents.turn', ['conversation' => $conversation->id]))->assertOk()->assertJsonPath('active', null);
+    get(Filament::getPanel('admin')->route('packstub-agents.turn', ['conversation' => $conversation->id]))->assertOk()->assertJsonPath('active', null);
 
     // The queue gave up on a job (timeout, lost process): same outcome, and the next waiting question starts.
     $page->call('retry');
@@ -283,7 +282,7 @@ it('puts a worker into the shape of the panel request and cleans up after', func
     $user = $this->user(['locale' => 'de']);
     actingAs($user);
 
-    expect(AgentRuntime::capture())->toBe(['panel' => 'admin', 'tenant' => null, 'user' => $user->id, 'locale' => 'en']);
+    expect(AgentRuntime::capture())->toBe(['panel' => 'admin', 'tenant' => null, 'user' => $user->id, 'locale' => 'en', 'guard' => 'web']);
 
     auth()->logout();
     expect(auth()->user())->toBeNull();

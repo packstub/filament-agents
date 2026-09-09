@@ -19,7 +19,7 @@ return [
     // How the assistant introduces itself in the panel ("Ask Acme"). AgentsPlugin::make()->name() overrides it.
     'name' => env('AGENT_NAME', 'Assistant'),
 
-    // The panel the assistant lives in. Set by AgentsPlugin when it registers; only set it here for a headless install.
+    // The panel the assistant lives in. Set by AgentsPlugin when it registers; stays null without Filament.
     'panel' => null,
 
     // 'anthropic', 'openai', 'gemini' or 'xai' have picker entries below; any other laravel/ai text provider (ollama,
@@ -114,6 +114,10 @@ return [
         'job_timeout' => (int) env('AGENT_JOB_TIMEOUT', 600),
         // How often the page asks for the answer so far while a turn runs, in milliseconds.
         'poll_interval' => (int) env('AGENT_POLL_INTERVAL', 600),
+        // Without a panel, the poll endpoint (GET {path}/chat/{conversation}/turn) is registered here, under this
+        // middleware; the person must be the conversation's participant. A panel that shows the chat registers its own.
+        'path' => 'agents',
+        'middleware' => ['web', 'auth'],
         // Ended turns (the per-turn record: model, tokens, duration, how it ended) are kept this many days for the
         // operator's AI turns page; null keeps them forever. Pruned by `model:prune --model=Packstub\\Agents\\Models\\AgentTurn`.
         'keep_turns_days' => env('AGENT_KEEP_TURNS_DAYS', 90),

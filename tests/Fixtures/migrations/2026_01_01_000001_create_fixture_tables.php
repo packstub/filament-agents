@@ -19,6 +19,14 @@ return new class extends Migration
             $table->timestamps();
         });
 
+        Schema::create('teams', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('owner_id');
+            $table->string('name');
+            $table->string('slug')->unique();
+            $table->timestamps();
+        });
+
         Schema::create('widgets', function (Blueprint $table) {
             $table->id();
             $table->string('name');

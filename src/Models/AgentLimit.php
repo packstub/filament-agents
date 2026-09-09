@@ -41,7 +41,7 @@ class AgentLimit extends Model
     /** @return class-string<Model>|null */
     public static function tenantModel(): ?string
     {
-        return Agents::panel()?->getTenantModel();
+        return Agents::context()->tenantModel();
     }
 
     /** @return class-string<Model> */

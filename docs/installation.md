@@ -11,7 +11,7 @@
 | laravel/mcp | ^0.9 |
 | laravel/sanctum | ^4 (tokens for MCP clients) |
 
-The package requires `laravel/ai`, `laravel/mcp` and `laravel/sanctum`, so Composer installs them for you.
+The package requires `laravel/ai`, `laravel/mcp` and `laravel/sanctum`, so Composer installs them for you. Filament is suggested, not required: the MCP endpoint, the tokens, the turn job, budgets and limits run in a plain Laravel app, see [Without Filament](headless.md).
 
 ## Install
 

@@ -3,6 +3,7 @@
 namespace Packstub\Agents\Support;
 
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -44,6 +45,7 @@ class AgentTurns
             'model' => $model,
             'context' => $context,
             'panel' => $runtime['panel'],
+            'guard' => $runtime['guard'],
             'tenant' => $runtime['tenant'] !== null ? (string) $runtime['tenant'] : null,
             'locale' => $runtime['locale'],
         ]);
@@ -91,6 +93,7 @@ class AgentTurns
 
         $job = new RunAgentTurn($turn->id, [
             'panel' => $turn->panel,
+            'guard' => $turn->guard,
             'tenant' => $turn->tenant,
             'user' => $turn->participant_id,
             'locale' => $turn->locale,
@@ -284,6 +287,16 @@ class AgentTurns
         ], true) ? $end->reason : null;
     }
 
+    /**
+     * What the model reads in place of the tool's result when the person rejects
+     * a proposal. A bare rejection would end the turn silently; with a reason
+     * laravel/ai carries on, so the model can acknowledge and offer the next step.
+     */
+    public static function rejectionResult(): string
+    {
+        return 'The person rejected this change, so it did not run. Do not retry it or propose it again unless asked; acknowledge in one sentence and, if useful, ask what they would like instead.';
+    }
+
     public static function jobTimeout(): int
     {
         return max(30, (int) config('packstub-agents.chat.job_timeout', 600));
@@ -295,13 +308,15 @@ class AgentTurns
     }
 
     /** The person the turn belongs to, from the panel's guard. */
+    /** The person who asked: the signed-in one when it is them, otherwise retrieved through the guard the turn was asked on. */
     public function participant(AgentTurn $turn): ?object
     {
-        $current = auth()->user();
+        $guard = filled($turn->guard) ? Auth::guard($turn->guard) : auth();
+        $current = $guard->user() ?? auth()->user();
         if ($current && $current->getMorphClass() === $turn->participant_type && (string) $current->getAuthIdentifier() === (string) $turn->participant_id) {
             return $current;
         }
 
-        return $turn->participant_id !== null ? auth()->getProvider()?->retrieveById($turn->participant_id) : null;
+        return $turn->participant_id !== null ? $guard->getProvider()?->retrieveById($turn->participant_id) : null;
     }
 }

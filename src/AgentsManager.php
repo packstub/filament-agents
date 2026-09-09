@@ -3,23 +3,25 @@
 namespace Packstub\Agents;
 
 use Closure;
-use Filament\Facades\Filament;
-use Filament\Panel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
 use Laravel\Mcp\Server\Tool;
 use Packstub\Agents\Ai\Agent;
 use Packstub\Agents\Ai\DefaultAgent;
 use Packstub\Agents\Ai\WorkspaceCredentials;
+use Packstub\Agents\Contracts\AgentContext;
 use Packstub\Agents\Contracts\AgentResource;
 use Packstub\Agents\Mcp\AgentServer;
-use ReflectionClass;
+use ReflectionProperty;
 
 /**
  * What the app told the package about itself: the agent class, the tool list,
  * how to authorize an ability, where a workspace's own provider key comes
- * from. AgentsPlugin fills it in when the panel registers; everything else
- * in the package reads it through the Agents facade.
+ * from, and — without a panel — what a workspace is. AgentsPlugin fills it in
+ * when the panel registers; a plain Laravel app calls the same methods from a
+ * service provider. Everything else in the package reads it through the
+ * Agents facade. Who is acting and where comes from the AgentContext bound
+ * in the container (see context()).
  */
 class AgentsManager
 {
@@ -31,6 +33,9 @@ class AgentsManager
 
     /** @var list<class-string<Tool>> */
     protected array $tools = [];
+
+    /** @var list<class-string<Tool>>|Closure|null tools appended to the base server's own list (show-table in a panel with agent resources) */
+    protected array|Closure|null $addedTools = null;
 
     /** @var list<class-string<AgentResource>> */
     protected array $resources = [];
@@ -46,6 +51,15 @@ class AgentsManager
 
     protected ?Closure $limitsAuthorize = null;
 
+    protected ?Closure $tenantResolver = null;
+
+    protected ?Closure $tenantEnter = null;
+
+    /** @var class-string<Model>|null */
+    protected ?string $tenantModel = null;
+
+    protected ?string $tenantSlugAttribute = null;
+
     protected ?string $agentAccessAbility = null;
 
     protected Closure|string|null $agentAccessGroup = null;
@@ -59,40 +73,74 @@ class AgentsManager
         return (string) config('packstub-agents.name', 'Assistant');
     }
 
-    public function panelId(): ?string
+    /** Who is acting and where: the context bound in the container (LaravelContext, or FilamentContext once AgentsPlugin registered). */
+    public function context(): AgentContext
     {
-        return config('packstub-agents.panel');
+        return app(AgentContext::class);
     }
 
-    /** The panel the assistant lives in: the current one when it matches, otherwise the registered one. */
-    public function panel(): ?Panel
-    {
-        $current = Filament::getCurrentPanel();
-        $id = $this->panelId();
-
-        if ($current && (! $id || $current->getId() === $id)) {
-            return $current;
-        }
-
-        return $id && array_key_exists($id, Filament::getPanels()) ? Filament::getPanel($id) : $current;
-    }
-
-    /** True when the request is served inside the assistant's panel (chat, hooks and agent access show up). */
+    /** True when the request is served inside the assistant's panel (chat, hooks and agent access show up); never without one. */
     public function inPanel(): bool
     {
-        $panel = Filament::getCurrentPanel();
-
-        if (! $panel || ($this->panelId() && $panel->getId() !== $this->panelId())) {
-            return false;
-        }
-
-        return ! $panel->hasTenancy() || Filament::getTenant() !== null;
+        return $this->context()->inPanel();
     }
 
-    /** The workspace the request runs in (Filament's tenant), if the panel has tenancy. */
+    /** The workspace the request runs in (the panel's tenant, or what tenantUsing() resolves), or null in a single-workspace app. */
     public function tenant(): ?Model
     {
-        return Filament::getTenant();
+        return $this->context()->tenant();
+    }
+
+    /**
+     * Without a panel: how the current workspace is found — fn (): ?Model, null meaning one workspace.
+     * A panel's tenant comes from Filament instead.
+     */
+    public function tenantUsing(Closure $resolve): void
+    {
+        $this->tenantResolver = $resolve;
+    }
+
+    public function tenantResolver(): ?Closure
+    {
+        return $this->tenantResolver;
+    }
+
+    /**
+     * Without a panel: what the app does when a queue worker or an MCP request enters a workspace it found by
+     * key or slug — fn (Model $tenant): ?Closure, a database switch for instance. What it returns, if anything,
+     * runs when the worker leaves the workspace again. In a panel Filament's TenantSet plays this role.
+     */
+    public function enteringTenant(Closure $enter): void
+    {
+        $this->tenantEnter = $enter;
+    }
+
+    public function tenantEnterHook(): ?Closure
+    {
+        return $this->tenantEnter;
+    }
+
+    /**
+     * Without a panel: the workspace model and the attribute the MCP path names it by ("mcp/{tenant}"; null = the key),
+     * so a worker and an MCP request can find a workspace again.
+     *
+     * @param  class-string<Model>  $model
+     */
+    public function tenantModel(string $model, ?string $slugAttribute = null): void
+    {
+        $this->tenantModel = $model;
+        $this->tenantSlugAttribute = $slugAttribute;
+    }
+
+    /** @return class-string<Model>|null */
+    public function tenantModelClass(): ?string
+    {
+        return $this->tenantModel;
+    }
+
+    public function tenantSlugAttribute(): ?string
+    {
+        return $this->tenantSlugAttribute;
     }
 
     /** @param  class-string<Agent>  $class */
@@ -133,8 +181,20 @@ class AgentsManager
     }
 
     /**
+     * Tools appended to the base AgentServer's own list — draw-chart — when no server class declares one and no
+     * list was given: AgentsPlugin adds show-table in a panel with agent resources. A closure is read on each call.
+     *
+     * @param  list<class-string<Tool>>|Closure  $tools
+     */
+    public function addTools(array|Closure $tools): void
+    {
+        $this->addedTools = $tools;
+    }
+
+    /**
      * Every tool of the product, in the order the model sees them: the list
-     * given to the plugin, or the default $tools of the MCP server class.
+     * given to the plugin, the default $tools of the MCP server class, or —
+     * on the base server — the package's generic tools plus what addTools() added.
      *
      * @return list<class-string<Tool>>
      */
@@ -144,9 +204,16 @@ class AgentsManager
             return $this->tools;
         }
 
-        $server = $this->serverClass();
+        $property = new ReflectionProperty($this->serverClass(), 'tools');
+        $default = array_values((array) $property->getDefaultValue());
 
-        return array_values((new ReflectionClass($server))->getDefaultProperties()['tools'] ?? []);
+        if ($property->getDeclaringClass()->getName() !== AgentServer::class) {
+            return $default;
+        }
+
+        $added = $this->addedTools instanceof Closure ? ($this->addedTools)() : $this->addedTools;
+
+        return array_values(array_unique([...$default, ...array_values((array) $added)]));
     }
 
     /** @param  list<class-string<AgentResource>>  $resources */
@@ -156,21 +223,25 @@ class AgentsManager
     }
 
     /**
-     * The Filament resources the assistant may show as live tables and use as
-     * page context: the list given to the plugin, or every resource of the
-     * panel that implements AgentResource.
+     * The resources the assistant may show as live tables and use as page
+     * context: the list given to useResources(), or — in a panel — every
+     * resource of the panel that implements AgentResource.
      *
      * @return list<class-string<AgentResource>>
      */
     public function resourceClasses(): array
     {
-        if ($this->resources !== []) {
-            return $this->resources;
-        }
+        return $this->context()->resourceClasses();
+    }
 
-        $panel = $this->panel();
-
-        return $panel ? array_values(array_filter($panel->getResources(), fn (string $r) => is_subclass_of($r, AgentResource::class))) : [];
+    /**
+     * The list given to useResources(), as it was given (the context decides what to add to it).
+     *
+     * @return list<class-string<AgentResource>>
+     */
+    public function registeredResources(): array
+    {
+        return $this->resources;
     }
 
     /** @param  list<class-string|object|Closure>  $middleware */

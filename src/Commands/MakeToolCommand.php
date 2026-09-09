@@ -5,6 +5,7 @@ namespace Packstub\Agents\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Str;
+use Packstub\Agents\Support\Installed;
 
 /** Scaffold one tool: a laravel/mcp tool with an ability, listed once and served to the chat and to MCP clients. */
 class MakeToolCommand extends Command
@@ -33,7 +34,7 @@ class MakeToolCommand extends Command
         ));
 
         $this->components->info("Tool created: {$path}");
-        $this->line('Add it to your server\'s $tools (or AgentsPlugin::make()->tools([...])) and it is served to the chat and to MCP clients.');
+        $this->line('Add it to your server\'s $tools (or '.(Installed::filament() ? 'AgentsPlugin::make()->tools([...])' : 'Agents::useTools([...])').') and it is served to the chat and to MCP clients.');
 
         return self::SUCCESS;
     }

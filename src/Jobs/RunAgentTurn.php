@@ -19,7 +19,6 @@ use Laravel\Ai\Streaming\Events\ToolCall;
 use Laravel\Ai\Streaming\Events\ToolResult;
 use Packstub\Agents\Exceptions\TurnRefused;
 use Packstub\Agents\Facades\Agents;
-use Packstub\Agents\Filament\Pages\Chat;
 use Packstub\Agents\Models\AgentTurn;
 use Packstub\Agents\Support\AgentConversationStore;
 use Packstub\Agents\Support\AgentModels;
@@ -48,7 +47,7 @@ class RunAgentTurn implements ShouldQueue
     public int $timeout;
 
     /**
-     * @param  array{panel: ?string, tenant: ?string, user: int|string|null, locale: ?string}  $runtime
+     * @param  array{panel: ?string, guard: ?string, tenant: ?string, user: int|string|null, locale: ?string}  $runtime
      */
     public function __construct(public string $turnId, public array $runtime)
     {
@@ -105,7 +104,7 @@ class RunAgentTurn implements ShouldQueue
         }
 
         $input = $turn->prompt() ?? Decisions::from(collect($turn->decisions() ?? [])->map(
-            fn (bool $approve) => $approve ? Decision::approve() : Decision::reject(Chat::rejectionResult()),
+            fn (bool $approve) => $approve ? Decision::approve() : Decision::reject(AgentTurns::rejectionResult()),
         )->all());
 
         $agent = Agents::agent($turn->context, $turn->model)->continue($turn->conversation_id, as: $user);

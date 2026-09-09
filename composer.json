@@ -32,7 +32,6 @@
     ],
     "require": {
         "php": "^8.4",
-        "filament/filament": "^5.0",
         "laravel/ai": "^0.11",
         "laravel/framework": "^13.0",
         "laravel/mcp": "^0.9",
@@ -40,6 +39,7 @@
         "spatie/laravel-package-tools": "^1.93"
     },
     "require-dev": {
+        "filament/filament": "^5.0",
         "orchestra/testbench": "^11.2",
         "phpunit/phpunit": "^13.3",
         "laravel/pint": "^1.13",
@@ -86,6 +86,7 @@
         "docs": "https://packstub.dev/docs/filament-agents"
     },
     "suggest": {
+        "filament/filament": "The chat pages, the Agent access page, the operator's limits and turns pages, live tables in answers (^5.0). Without it the package serves the MCP endpoint, the turn job, budgets and limits in a plain Laravel app.",
         "packstub/filament-tenancy": "Database-per-tenant panels: the MCP endpoint and the chat follow the workspace automatically."
     },
     "config": {

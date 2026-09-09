@@ -28,6 +28,7 @@ return new class extends Migration
             $table->string('model_name')->nullable(); // the model that answered (`model` is the picker key)
             $table->string('context')->nullable(); // the page context the chat was opened from
             $table->string('panel')->nullable();
+            $table->string('guard', 64)->nullable(); // the auth guard the person asked on; the worker signs them in on it
             $table->string('tenant')->nullable(); // the workspace key, when the panel has tenancy
             $table->string('locale', 12)->nullable();
             $table->text('text')->nullable(); // the answer so far
