@@ -86,11 +86,5 @@
         "allow-plugins": {
             "pestphp/pest-plugin": true
         }
-    },
-    "repositories": [
-        {
-            "type": "vcs",
-            "url": "https://github.com/packstub/agents"
-        }
-    ]
+    }
 }

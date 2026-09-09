@@ -2,7 +2,7 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
-## 1.7.0 — Unreleased
+## 1.7.0 — 2026-09-09
 
 Upgrading: run `php artisan migrate` (a nullable `guard` column on `agent_turns`); nothing changes for a panel app. `Agents::panel()` and `Agents::panelId()` moved to `Packstub\Agents\Filament\FilamentContext` (`app(FilamentContext::class)->panel()`); `AgentRuntime::capture()` carries a `guard` key. The engine now comes from `packstub/agents`, which Composer installs with this plugin; a `@source` line, a published config, a `packstub-agents:*` command or a class name in your code all stay as they are.
 

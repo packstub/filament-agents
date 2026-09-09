@@ -10,7 +10,7 @@ composer test:filter <name>
 composer lint               # Pint
 ```
 
-`composer.json` resolves `packstub/agents` from GitHub (a `vcs` repository) until it is on Packagist. To run this suite against the sibling checkout, replace the installed copy with a symlink after `composer install`: `rm -rf vendor/packstub/agents && ln -s ../../../agents vendor/packstub/agents` (the autoloader maps `Packstub\Agents\` to `vendor/packstub/agents/src`, so no regeneration is needed). Run the core's own suite too after a change there.
+`packstub/agents` comes from Packagist. To run this suite against the sibling checkout, replace the installed copy with a symlink after `composer install`: `rm -rf vendor/packstub/agents && ln -s ../../../agents vendor/packstub/agents` (the autoloader maps `Packstub\Agents\` to `vendor/packstub/agents/src`, so no regeneration is needed). Run the core's own suite too after a change there.
 
 ## Layout
 
