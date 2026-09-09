@@ -5,6 +5,7 @@ namespace Packstub\Agents\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Str;
+use Packstub\Agents\Support\Installed;
 
 /** Scaffold the app's agent class: the persona and domain slots to fill, on top of the package's base agent. */
 class MakeAgentCommand extends Command
@@ -28,7 +29,9 @@ class MakeAgentCommand extends Command
         $files->put($path, str_replace(['{{ class }}', '{{ name }}'], [$class, config('packstub-agents.name', 'Assistant')], $files->get(__DIR__.'/../../stubs/agent.stub')));
 
         $this->components->info("Agent created: {$path}");
-        $this->line('Register it: AgentsPlugin::make()->agent(\App\Ai\Agents\\'.$class.'::class)');
+        $this->line(Installed::filament()
+            ? 'Register it: AgentsPlugin::make()->agent(\App\Ai\Agents\\'.$class.'::class)'
+            : 'Register it in a service provider: Agents::useAgent(\App\Ai\Agents\\'.$class.'::class)');
 
         return self::SUCCESS;
     }

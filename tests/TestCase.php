@@ -78,7 +78,6 @@ abstract class TestCase extends Orchestra
 
         $app['config']->set('auth.providers.users.model', User::class);
         $app['config']->set('packstub-agents.enabled', true);
-        $app['config']->set('packstub-agents.mcp.path', 'mcp');
         $app['config']->set('ai.providers.anthropic.key', 'sk-test');
         // The provider and the picker catalog are pinned here so the suite reads nothing from AGENT_PROVIDER /
         // AGENT_MODEL* in the developer's environment. The names are made up; the Grok ones keep the "grok-" prefix

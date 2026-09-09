@@ -284,6 +284,16 @@ class AgentTurns
         ], true) ? $end->reason : null;
     }
 
+    /**
+     * What the model reads in place of the tool's result when the person rejects
+     * a proposal. A bare rejection would end the turn silently; with a reason
+     * laravel/ai carries on, so the model can acknowledge and offer the next step.
+     */
+    public static function rejectionResult(): string
+    {
+        return 'The person rejected this change, so it did not run. Do not retry it or propose it again unless asked; acknowledge in one sentence and, if useful, ask what they would like instead.';
+    }
+
     public static function jobTimeout(): int
     {
         return max(30, (int) config('packstub-agents.chat.job_timeout', 600));

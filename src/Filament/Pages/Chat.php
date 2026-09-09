@@ -15,6 +15,7 @@ use Laravel\Ai\AiManager;
 use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Models\ConversationMessage;
 use Packstub\Agents\Facades\Agents;
+use Packstub\Agents\Filament\FilamentContext;
 use Packstub\Agents\Mcp\AgentTool;
 use Packstub\Agents\Models\AgentMessageFeedback;
 use Packstub\Agents\Models\AgentTurn;
@@ -22,6 +23,7 @@ use Packstub\Agents\Support\AgentConversationStore;
 use Packstub\Agents\Support\AgentModels;
 use Packstub\Agents\Support\AgentResources;
 use Packstub\Agents\Support\AgentTurns;
+use Packstub\Agents\Support\Markdown;
 use Packstub\Agents\Support\PageContext;
 use Throwable;
 
@@ -220,7 +222,7 @@ class Chat extends Page
     /** Where the page polls the running turn (null before the first question of a new chat). */
     public function pollUrl(): ?string
     {
-        if (! $this->conversation || ! ($panel = Agents::panel())) {
+        if (! $this->conversation || ! ($panel = app(FilamentContext::class)->panel())) {
             return null;
         }
 
@@ -435,14 +437,10 @@ class Chat extends Page
         return $queued->prompt();
     }
 
-    /**
-     * What the model reads in place of the tool's result when the person rejects
-     * a proposal. A bare rejection would end the turn silently; with a reason
-     * laravel/ai carries on, so the model can acknowledge and offer the next step.
-     */
+    /** @see AgentTurns::rejectionResult() */
     public static function rejectionResult(): string
     {
-        return 'The person rejected this change, so it did not run. Do not retry it or propose it again unless asked; acknowledge in one sentence and, if useful, ask what they would like instead.';
+        return AgentTurns::rejectionResult();
     }
 
     /**
@@ -646,9 +644,10 @@ class Chat extends Page
         return ['resource' => $table['resource'], 'filters' => (array) ($table['filters'] ?? []), 'title' => (string) ($table['title'] ?? '')];
     }
 
+    /** @see Markdown::render() */
     public static function markdown(string $text): string
     {
-        return Str::markdown($text, ['html_input' => 'strip', 'allow_unsafe_links' => false]);
+        return Markdown::render($text);
     }
 
     protected function ownConversations()

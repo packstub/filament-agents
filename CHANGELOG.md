@@ -2,6 +2,14 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## 1.7.0 — Unreleased
+
+Upgrading: nothing to run and nothing changes for a panel app. `Agents::panel()` and `Agents::panelId()` moved to `Packstub\Agents\Filament\FilamentContext` (`app(FilamentContext::class)->panel()`); `AgentRuntime::capture()` carries a `guard` key.
+
+### Added
+
+- **Works without Filament.** The package installs in a plain Laravel app: `filament/filament` is a suggestion (a dev dependency here), and the MCP endpoint, tokens, the turn job, budgets and limits run without a panel. Who is acting and where now comes from `Packstub\Agents\Contracts\AgentContext`, bound in the container — `Support\Context\LaravelContext` by default (the guard in use, the workspace from `Agents::tenantUsing(resolve, enter)` and `Agents::tenantModel(Model::class, slugAttribute)`, membership through the user's own `canAccessTenant()`), `Filament\FilamentContext` once `AgentsPlugin` registers (the panel, its guard, its tenant; `TenantSet` keeps firing for a worker and an MCP request). `Agents::tenant()`, `inPanel()` and `resourceClasses()` delegate to it, `Agents::context()` returns it, `AgentRuntime` and `AuthenticateAgent` go through it. The base `AgentServer` serves `draw-chart` by default and the plugin adds `show-table` in a panel with agent resources; `Support\Markdown::render()` and `AgentTurns::rejectionResult()` take over from the chat page so the job and the poll controller import nothing from the panel; the poll endpoint is registered outside a panel too (`GET {chat.path}/chat/{conversation}/turn` under `chat.middleware`, new config keys, skipped when a panel registered its own); the assets, the embedded table and the panel warm-up are registered only with Filament, and the scaffold commands print the service-provider registration without it. See [Without Filament](docs/headless.md).
+
 ## 1.6.0 — 2026-09-09
 
 Upgrading: nothing to run. A published `config/packstub-agents.php` keeps its Auto / Fast / Deep labels; drop them (`'label' => null`) to show model names like a fresh install.

@@ -61,6 +61,10 @@ use Packstub\Agents\AgentsPlugin;
 
 Without a key the chat hides itself and the MCP endpoint still answers. Read more: [Installation](https://packstub.dev/docs/filament-agents/installation).
 
+### Works without Filament
+
+Filament is a suggestion, not a requirement. In a plain Laravel app the same package serves the MCP endpoint with its tokens, runs turns through the same queued job, middleware and budget, and keeps the operator's limits — registered through the `Agents` facade from a service provider (`Agents::useAgent()`, `useServer()`, `authorizeUsing()`, `tenantUsing()`) instead of the plugin. The chat pages, the Agent access page, the operator pages and `show-table` are what a panel adds. Read more: [Without Filament](https://packstub.dev/docs/filament-agents/headless).
+
 ## Writing tools
 
 ```bash

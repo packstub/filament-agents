@@ -10,13 +10,16 @@ use Filament\View\PanelsRenderHook;
 use Illuminate\Support\Facades\Route;
 use Laravel\Mcp\Server\Tool;
 use Packstub\Agents\Ai\Agent;
+use Packstub\Agents\Contracts\AgentContext;
 use Packstub\Agents\Contracts\AgentResource;
+use Packstub\Agents\Filament\FilamentContext;
 use Packstub\Agents\Filament\Pages\AgentAccess;
 use Packstub\Agents\Filament\Pages\Chat;
 use Packstub\Agents\Filament\Pages\Chats;
 use Packstub\Agents\Filament\Pages\TurnLog;
 use Packstub\Agents\Filament\Resources\AgentLimits\AgentLimitResource;
 use Packstub\Agents\Http\Controllers\TurnController;
+use Packstub\Agents\Mcp\Tools\ShowTable;
 
 /**
  * Registers the assistant in a panel:
@@ -236,6 +239,12 @@ class AgentsPlugin implements Plugin
     public function register(Panel $panel): void
     {
         $manager = app(AgentsManager::class);
+
+        // Who is acting and where now comes from the panel: its guard, its tenant (TenantSet keeps firing), its resources.
+        app()->singleton(AgentContext::class, FilamentContext::class);
+
+        // The base server's list gets show-table once the panel has resources the assistant may show (read when asked).
+        $manager->addTools(fn (): array => $manager->resourceClasses() !== [] ? [ShowTable::class] : []);
 
         if ($this->chat || $this->agentAccess) {
             config()->set('packstub-agents.panel', $panel->getId());
