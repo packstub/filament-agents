@@ -41,6 +41,11 @@ jobs:
           restore-keys: |
             composer-${{ runner.os }}-php${{ matrix.php }}-
 
+      # packstub/agents comes from its GitHub repo until it is on Packagist; before its first tag only dev-main
+      # exists, which ^1.0 accepts only with dev stability allowed (prefer-stable picks a tag once there is one).
+      - name: Allow the engine's dev branch until its first release
+        run: composer config minimum-stability dev
+
       - name: Install dependencies
         run: composer update --prefer-dist --no-interaction --no-progress
 
