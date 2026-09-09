@@ -40,7 +40,7 @@ AgentsPlugin::make()->credentialsUsing(fn () => Filament::getTenant()
     : null);
 ```
 
-When the callback returns credentials with a key, the turn runs on that provider with that key (the key is swapped into laravel/ai's config for the request), and the chat is enabled for that workspace even when the platform has no key. Return `null` for "the platform's provider".
+When the callback returns credentials with a key, the turn runs on that provider with that key (the key is swapped into laravel/ai's config for the request), and the chat is enabled for that workspace even when the platform has no key. Return `null` for "the platform's provider". The picker shows the workspace that provider's list without any entry that names another provider (see [models](configuration.md#models)): such an entry would run on the platform's key and silently change who pays. A workspace on the platform key sees every entry whose provider has a platform key.
 
 ## Per-workspace limits
 
