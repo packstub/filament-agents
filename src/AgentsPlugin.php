@@ -60,6 +60,9 @@ class AgentsPlugin implements Plugin
     /** How a chat turn runs: 'queue' (a worker) or 'sync' (inside the request); null = config('packstub-agents.chat.driver'). */
     protected ?string $chatDriver = null;
 
+    /** @var array<string, int|float> history.* overrides */
+    protected array $history = [];
+
     protected bool $agentAccess = true;
 
     protected ?string $agentAccessAbility = null;
@@ -173,6 +176,24 @@ class AgentsPlugin implements Plugin
         return $this;
     }
 
+    /**
+     * What a long chat replays (config `history`): the window in estimated tokens, how many exchanges keep their
+     * tool results verbatim, the share of the window from which the page suggests a new chat, the share from which
+     * the context ring shows in the composer, and how many exchanges "Compress now" keeps.
+     */
+    public function history(?int $maxTokens = null, ?int $keepToolResultsTurns = null, ?float $noticeShare = null, ?float $meterShare = null, ?int $compressKeepTurns = null): static
+    {
+        $this->history = array_filter([
+            'max_tokens' => $maxTokens,
+            'keep_tool_results_turns' => $keepToolResultsTurns,
+            'notice_share' => $noticeShare,
+            'meter_share' => $meterShare,
+            'compress_keep_turns' => $compressKeepTurns,
+        ], fn ($value) => $value !== null);
+
+        return $this;
+    }
+
     /** The Agent access page (MCP tokens). $ability gates it; $group is its navigation group. */
     public function agentAccess(bool $enabled = true, ?string $ability = null, Closure|string|null $group = null): static
     {
@@ -226,6 +247,10 @@ class AgentsPlugin implements Plugin
 
         if ($this->chatDriver !== null) {
             config()->set('packstub-agents.chat.driver', $this->chatDriver);
+        }
+
+        foreach ($this->history as $key => $value) {
+            config()->set("packstub-agents.history.{$key}", $value);
         }
 
         if ($this->server !== null) {

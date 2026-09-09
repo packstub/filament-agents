@@ -78,6 +78,8 @@ return [
         'max_tokens' => (int) env('AGENT_HISTORY_MAX_TOKENS', 24000),
         'keep_tool_results_turns' => 3,
         'notice_share' => 0.7,
+        'meter_share' => 0.25, // the context ring in the composer shows from this share of the window
+        'compress_keep_turns' => 2, // exchanges "Compress now" keeps verbatim
     ],
 
     // How a chat turn runs. The answer is produced by the RunAgentTurn job, which writes what it has so far to the

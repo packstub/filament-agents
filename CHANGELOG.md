@@ -2,6 +2,12 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## Unreleased
+
+### Added
+
+- **The context ring.** The context meter that sat above the composer is now a small ring in the composer's footer, next to Send, shown only from `history.meter_share` (0.25) of the history window on — below that the composer is clean. Its stroke is the share in use, in the warning colour once the chat is long. Click it for the breakdown: what fills the window (rolling summary, questions, answers, tool calls, tool results kept or pruned to a placeholder, estimated) and what the chat cost so far over its recorded turns (turns, tokens in and out, tool calls, wall time), with the last turn's input tokens as the context the provider actually read. Two actions: **Compress now** folds everything but the last `history.compress_keep_turns` (2) exchanges into the rolling summary in the same chat (`AgentConversationStore::compactNow()`), and **Continue in a new chat** as before. The long-chat notice lives in the popup. `AgentsPlugin::make()->history(maxTokens:, keepToolResultsTurns:, noticeShare:, meterShare:, compressKeepTurns:)` mirrors into `history.*`; `contextUsage()` reports a `breakdown`.
+
 ## 1.5.0 — 2026-09-09
 
 Upgrading: run `php artisan migrate` (new columns on `agent_turns` and `agent_limits`).

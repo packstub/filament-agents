@@ -7,6 +7,7 @@
     'autofocus' => false,
     'stoppable' => true,
 ])
+{{-- Slot `tools`: extra controls in the footer, between the "keep typing" hint and Send (the chat page's context ring). --}}
 @php
     $targets ??= $method;
     $placeholder ??= __('Ask a follow-up…');
@@ -47,6 +48,7 @@
             </x-filament::input.select>
         </x-filament::input.wrapper>
         <div class="flex items-center gap-3">
+            {{ $tools ?? '' }}
             <span class="hidden text-xs text-gray-400 sm:inline" x-show="busy" x-cloak>{{ __('Keep typing — the next question is sent when this answer is done.') }}</span>
             @if ($stoppable)
                 <x-filament::button type="button" color="gray" outlined size="sm" icon="heroicon-m-stop" x-show="turn !== null" x-cloak x-on:click="stop()" x-bind:disabled="stopping">
