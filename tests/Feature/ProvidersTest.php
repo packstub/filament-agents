@@ -142,10 +142,50 @@ it('shows a workspace on its own key only the entries of its provider', function
     expect(AgentModels::enabled())->toBeTrue()->and(AgentModels::options())->toHaveKey('pro')->not->toHaveKey('opus');
 });
 
+it('names an entry without a label after its model', function () {
+    expect(AgentModels::modelName('claude-opus-5'))->toBe('Claude Opus 5')
+        ->and(AgentModels::modelName('claude-haiku-4-5'))->toBe('Claude Haiku 4.5')
+        ->and(AgentModels::modelName('claude-sonnet-4-5-20250929'))->toBe('Claude Sonnet 4.5')
+        ->and(AgentModels::modelName('gemini-3.5-flash-lite'))->toBe('Gemini 3.5 Flash Lite')
+        ->and(AgentModels::modelName('gpt-5.2'))->toBe('GPT-5.2')
+        ->and(AgentModels::modelName('gpt-5-mini'))->toBe('GPT-5 Mini')
+        ->and(AgentModels::modelName('o4-mini'))->toBe('o4 Mini')
+        ->and(AgentModels::modelName('grok-4.6'))->toBe('Grok 4.6')
+        ->and(AgentModels::modelName('openai/gpt-5'))->toBe('GPT-5')
+        ->and(AgentModels::modelName('qwen3.5:0.8b'))->toBe('Qwen3.5 0.8b')
+        ->and(AgentModels::modelName('llama3.3'))->toBe('Llama3.3');
+
+    // The shipped catalog has no labels: the picker shows the models, Auto and Deep on the same one told apart by the
+    // key, an explicit label as it is, a null model by the name laravel/ai resolves it to.
+    config([
+        'packstub-agents.provider' => 'anthropic',
+        'ai.providers.gemini.key' => 'g-key',
+        'packstub-agents.models.anthropic' => [
+            'auto' => ['label' => null, 'model' => 'claude-opus-5', 'effort' => 'medium'],
+            'fast' => ['label' => null, 'model' => 'claude-haiku-4-5', 'effort' => null],
+            'deep' => ['label' => null, 'model' => 'claude-opus-5', 'effort' => 'xhigh'],
+            'flash' => ['label' => 'Gemini Flash', 'provider' => 'gemini', 'model' => 'gemini-3.5-flash-lite', 'effort' => 'low'],
+            'best' => ['label' => null, 'provider' => 'gemini', 'model' => null, 'effort' => null],
+        ],
+    ]);
+    expect(AgentModels::options())->toBe([
+        'auto' => 'Claude Opus 5',
+        'fast' => 'Claude Haiku 4.5',
+        'deep' => 'Claude Opus 5 · Deep',
+        'flash' => 'Gemini Flash',
+        'best' => AgentModels::modelName(AgentModels::modelFor('gemini', 'best')),
+    ])->and(AgentModels::groups()['gemini'])->toHaveKeys(['flash', 'best']);
+
+    actingAs($this->user());
+    livewire(Chat::class)->assertSee('Claude Opus 5 · Deep')->assertDontSee('>Deep<');
+});
+
 it('runs any other laravel/ai provider on its smartest and cheapest models', function () {
     config(['packstub-agents.provider' => 'ollama', 'ai.providers.ollama.key' => 'unused']);
 
-    expect(AgentModels::options())->toBe(['auto' => 'Auto', 'fast' => 'Fast'])
+    // Shown by model name, as laravel/ai names them for the provider.
+    expect(AgentModels::options())->toBe(['auto' => AgentModels::modelName(AgentModels::modelFor('ollama', 'auto')), 'fast' => AgentModels::modelName(AgentModels::modelFor('ollama', 'fast'))])
+        ->and(AgentModels::options()['auto'])->not->toBe(AgentModels::options()['fast'])
         ->and(AgentModels::current())->toBe('auto')
         ->and(AgentModels::resolve('auto')['provider'])->toBe('ollama')
         ->and(AgentModels::resolve('auto')['model'])->not->toStartWith('claude')

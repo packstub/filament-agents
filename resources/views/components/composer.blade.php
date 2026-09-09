@@ -40,7 +40,7 @@
         @if ($autofocus) autofocus @endif
     ></textarea>
     <div class="flex items-center justify-between gap-3 px-3 pb-3">
-        <x-filament::input.wrapper class="w-32">
+        <x-filament::input.wrapper class="w-auto max-w-56">
             {{-- Entries of more than one provider (a Gemini entry on an Anthropic picker) sit under provider headings. --}}
             <x-filament::input.select wire:model="model">
                 @php($modelGroups = \Packstub\Agents\Support\AgentModels::groups())

@@ -11,7 +11,7 @@
 | `provider` | `anthropic` | `AGENT_PROVIDER` | `anthropic`, `openai`, `gemini` or `xai` have picker entries; any other laravel/ai text provider (`ollama`, `openrouter`, `mistral`, `groq`, `deepseek`…) runs on its smartest and cheapest models. The platform default; a workspace may bring its own |
 | `failover` | `[]` | `AGENT_FAILOVER` | providers to fall back to, in order (`gemini,openai`), when the platform provider refuses a turn before it started answering; see [Failover](assistant.md#failover) |
 | `enabled` | `null` | `AGENT_ENABLED` | `null` = enabled when a key exists for the provider in use or for the provider of any picker entry; `false` hides the chat |
-| `models` | see below | `AGENT_MODEL`, `AGENT_MODEL_FAST`, `AGENT_MODEL_DEEP` | the picker entries per provider: label, model, effort, and optionally the provider the entry runs on |
+| `models` | see below | `AGENT_MODEL`, `AGENT_MODEL_FAST`, `AGENT_MODEL_DEEP` | the picker entries per provider: model, effort, an optional label (the model's name otherwise) and optionally the provider the entry runs on |
 | `max_steps` | `12` | | tool round-trips one turn may take before the agent has to answer |
 | `max_tokens` | `4096` | | answer length |
 | `max_conversation_messages` | `40` | | how many earlier messages a long chat replays |
@@ -43,31 +43,31 @@ The provider keys themselves live in laravel/ai's `config/ai.php` (`ANTHROPIC_AP
 ```php
 'models' => [
     'anthropic' => [
-        'auto' => ['label' => 'Auto', 'model' => env('AGENT_MODEL', 'claude-opus-5'), 'effort' => 'medium'],
-        'fast' => ['label' => 'Fast', 'model' => env('AGENT_MODEL_FAST', 'claude-haiku-4-5'), 'effort' => null],
-        'deep' => ['label' => 'Deep', 'model' => env('AGENT_MODEL_DEEP', 'claude-opus-5'), 'effort' => 'xhigh'],
+        'auto' => ['label' => null, 'model' => env('AGENT_MODEL', 'claude-opus-5'), 'effort' => 'medium'],
+        'fast' => ['label' => null, 'model' => env('AGENT_MODEL_FAST', 'claude-haiku-4-5'), 'effort' => null],
+        'deep' => ['label' => null, 'model' => env('AGENT_MODEL_DEEP', 'claude-opus-5'), 'effort' => 'xhigh'],
         // 'flash' => ['label' => 'Gemini Flash', 'provider' => 'gemini', 'model' => 'gemini-3.5-flash-lite', 'effort' => 'low'],
         // 'local' => ['label' => 'Local', 'provider' => 'ollama', 'model' => 'llama3.3', 'effort' => null, 'failover' => []],
     ],
     'openai' => [
-        'auto' => ['label' => 'Auto', 'model' => env('AGENT_MODEL'), 'effort' => 'medium'],
-        'fast' => ['label' => 'Fast', 'model' => env('AGENT_MODEL_FAST'), 'effort' => 'low'],
-        'deep' => ['label' => 'Deep', 'model' => env('AGENT_MODEL_DEEP'), 'effort' => 'high'],
+        'auto' => ['label' => null, 'model' => env('AGENT_MODEL'), 'effort' => 'medium'],
+        'fast' => ['label' => null, 'model' => env('AGENT_MODEL_FAST'), 'effort' => 'low'],
+        'deep' => ['label' => null, 'model' => env('AGENT_MODEL_DEEP'), 'effort' => 'high'],
     ],
     'gemini' => [
-        'auto' => ['label' => 'Auto', 'model' => env('AGENT_MODEL', 'gemini-3.8-flash'), 'effort' => 'medium'],
-        'fast' => ['label' => 'Fast', 'model' => env('AGENT_MODEL_FAST', 'gemini-3.5-flash-lite'), 'effort' => 'low'],
-        'deep' => ['label' => 'Deep', 'model' => env('AGENT_MODEL_DEEP', 'gemini-3.8-flash'), 'effort' => 'high'],
+        'auto' => ['label' => null, 'model' => env('AGENT_MODEL', 'gemini-3.8-flash'), 'effort' => 'medium'],
+        'fast' => ['label' => null, 'model' => env('AGENT_MODEL_FAST', 'gemini-3.5-flash-lite'), 'effort' => 'low'],
+        'deep' => ['label' => null, 'model' => env('AGENT_MODEL_DEEP', 'gemini-3.8-flash'), 'effort' => 'high'],
     ],
     'xai' => [
-        'auto' => ['label' => 'Auto', 'model' => env('AGENT_MODEL', 'grok-4.6'), 'effort' => 'medium'],
-        'fast' => ['label' => 'Fast', 'model' => env('AGENT_MODEL_FAST', 'grok-4.6'), 'effort' => 'low'],
-        'deep' => ['label' => 'Deep', 'model' => env('AGENT_MODEL_DEEP', 'grok-4.6'), 'effort' => 'xhigh'],
+        'auto' => ['label' => null, 'model' => env('AGENT_MODEL', 'grok-4.6'), 'effort' => 'medium'],
+        'fast' => ['label' => null, 'model' => env('AGENT_MODEL_FAST', 'grok-4.6'), 'effort' => 'low'],
+        'deep' => ['label' => null, 'model' => env('AGENT_MODEL_DEEP', 'grok-4.6'), 'effort' => 'xhigh'],
     ],
 ],
 ```
 
-Rename, remove or add entries; the picker shows whatever is there. A `null` model resolves to the provider's smartest model (or cheapest for the `fast` key). A provider with no entries at all (Ollama, OpenRouter, Mistral, Groq, DeepSeek…) gets Auto (smartest) and Fast (cheapest) with no effort; add an entry to pin models or to offer Deep. Effort is passed as Anthropic's `output_config.effort`, OpenAI's and xAI's `reasoning.effort` (reasoning models only) or Gemini's thinking level (`low`, `medium`, `high`; `xhigh` is sent as `high`). When you pin a model that rejects the parameter, set its effort to `null`.
+Rename, remove or add entries; the picker shows whatever is there. A `null` label names the entry after the model it runs — Claude Opus 5, Claude Haiku 4.5 — and a second unlabelled entry on the same model adds its key to tell them apart (Claude Opus 5 · Deep); set a label to show something else (`'label' => 'Fast'`). A `null` model resolves to the provider's smartest model (or cheapest for the `fast` key), and the entry is named after the model that resolves. A provider with no entries at all (Ollama, OpenRouter, Mistral, Groq, DeepSeek…) gets its smartest (`auto`) and cheapest (`fast`) models with no effort; add an entry to pin models or to offer a `deep` one. Effort is passed as Anthropic's `output_config.effort`, OpenAI's and xAI's `reasoning.effort` (reasoning models only) or Gemini's thinking level (`low`, `medium`, `high`; `xhigh` is sent as `high`). When you pin a model that rejects the parameter, set its effort to `null`.
 
 The picker shows the list of the provider in use (`provider`, or the workspace's own). An entry in that list may name another provider to run on — `'provider' => 'gemini'` on the commented `flash` entry above puts Gemini Flash next to Claude on an Anthropic install. Such an entry is listed only when its provider has a key in `config/ai.php`; when the picker holds entries of more than one provider, they sit under provider headings, the picker's own provider first. Its model and effort are in that provider's terms (a Gemini thinking level on a Gemini entry), and it fails over down the `failover` list like any entry, with its own provider left out — the platform provider included when it is listed. Give an entry its own `failover` list to override the global one: `[]` keeps a local Ollama model local, for data that must not leave the server. A workspace on its own key sees only the entries of its provider; see [Tenancy](tenancy.md#a-workspaces-own-key). The chat is on when the provider in use has a key, or when any listed entry's provider has one.
 

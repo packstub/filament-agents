@@ -2,6 +2,7 @@
 
 namespace Packstub\Agents\Support;
 
+use Illuminate\Support\Str;
 use Laravel\Ai\AiManager;
 use Laravel\Ai\Enums\Lab;
 use Packstub\Agents\Ai\WorkspaceCredentials;
@@ -12,10 +13,11 @@ use Packstub\Agents\Facades\Agents;
  *
  * Provider: the workspace's own (the credentials callback on AgentsPlugin)
  * or the platform default (AGENT_PROVIDER + the key in config/ai.php).
- * Model: the picker next to the composer (Auto / Fast / Deep), remembered in
- * the session, defaulting to the workspace's preferred entry. The picker
- * lists the catalog of that provider; an entry may name another provider
- * to run on, so one picker can offer Claude and Gemini side by side.
+ * Model: the picker next to the composer (the auto / fast / deep entries,
+ * shown by model name), remembered in the session, defaulting to the
+ * workspace's preferred entry. The picker lists the catalog of that provider;
+ * an entry may name another provider to run on, so one picker can offer
+ * Claude and Gemini side by side.
  */
 class AgentModels
 {
@@ -46,7 +48,7 @@ class AgentModels
     /** @return array<string, string> key => label */
     public static function options(): array
     {
-        return collect(self::catalog())->map(fn (array $m) => $m['label'])->all();
+        return self::labels(self::catalog());
     }
 
     /**
@@ -57,11 +59,81 @@ class AgentModels
      */
     public static function groups(): array
     {
-        return collect(self::catalog())
+        $catalog = self::catalog();
+        $labels = self::labels($catalog);
+
+        return collect($catalog)
             ->groupBy('provider', preserveKeys: true)
             ->sortBy(fn ($entries, string $provider) => $provider === self::provider() ? 0 : 1)
-            ->map(fn ($entries) => $entries->map(fn (array $m) => $m['label'])->all())
+            ->map(fn ($entries) => $entries->map(fn (array $m, string $key) => $labels[$key])->all())
             ->all();
+    }
+
+    /**
+     * What the picker calls each entry: its label, or for a null label the name of the model it runs ("Claude Opus 5",
+     * "Gemini 3.5 Flash Lite"); a second unlabelled entry on the same model carries its key to tell them apart
+     * ("Claude Opus 5 · Deep").
+     *
+     * @param  array<string, array{label: ?string, provider: string, model: ?string, effort: ?string}>  $catalog
+     * @return array<string, string> key => label
+     */
+    protected static function labels(array $catalog): array
+    {
+        $labels = [];
+        $shown = [];
+
+        foreach ($catalog as $key => $m) {
+            if ($m['label'] !== null) {
+                $labels[$key] = $m['label'];
+
+                continue;
+            }
+
+            try {
+                $model = $m['model'] ?: self::defaultModel($m['provider'], $key);
+            } catch (\Throwable) {
+                $labels[$key] = Str::headline($key);
+
+                continue;
+            }
+
+            $name = self::modelName($model);
+            $labels[$key] = isset($shown[$m['provider'].'/'.$model]) ? $name.' · '.Str::headline($key) : $name;
+            $shown[$m['provider'].'/'.$model] = true;
+        }
+
+        return $labels;
+    }
+
+    /**
+     * A model id as a person would say it: claude-haiku-4-5 → Claude Haiku 4.5, gemini-3.5-flash-lite → Gemini 3.5
+     * Flash Lite, gpt-5-mini → GPT-5 Mini, grok-4.6 → Grok 4.6, qwen3.5:0.8b → Qwen3.5 0.8b; a vendor prefix
+     * (openai/gpt-5 on OpenRouter) and a trailing date (-20250929) are dropped.
+     */
+    public static function modelName(string $model): string
+    {
+        $model = Str::afterLast($model, '/');
+        $model = preg_replace('/[-@]\d{8}$/', '', $model) ?? $model;
+
+        $words = [];
+        foreach (preg_split('/[-:]/', $model) as $i => $part) {
+            $numeric = $part !== '' && preg_match('/^\d+(\.\d+)?$/', $part) === 1;
+            $previous = $words === [] ? null : $words[array_key_last($words)];
+
+            if ($numeric && $previous !== null && preg_match('/^\d+$/', $previous) === 1) {
+                $words[array_key_last($words)] = $previous.'.'.$part; // claude-haiku-4-5 → 4.5
+            } elseif ($numeric && $previous === 'GPT') {
+                $words[array_key_last($words)] = 'GPT-'.$part; // OpenAI's own spelling
+            } elseif (strtolower($part) === 'gpt') {
+                $words[] = 'GPT';
+            } elseif ($i === 0 && preg_match('/^o\d+$/', $part) === 1) {
+                $words[] = $part; // o4-mini keeps OpenAI's lowercase
+            } else {
+                $words[] = $numeric ? $part : ucfirst($part);
+            }
+        }
+
+        return implode(' ', $words);
     }
 
     public static function current(): string
@@ -97,11 +169,7 @@ class AgentModels
 
         self::applyWorkspaceKey($provider);
 
-        $model = $entry['model'] ?? null;
-        if (! $model) {
-            $textProvider = app(AiManager::class)->textProvider($provider);
-            $model = $key === 'fast' ? $textProvider->cheapestTextModel() : $textProvider->smartestTextModel();
-        }
+        $model = $entry['model'] ?: self::defaultModel($provider, $key);
 
         $providers = [$provider => $model];
         foreach (self::failover($key) as $fallback) {
@@ -155,11 +223,13 @@ class AgentModels
     public static function modelFor(string $provider, ?string $key = null): string
     {
         $key ??= self::current();
-        $model = self::entry($provider, $key)['model'] ?? null;
-        if ($model) {
-            return $model;
-        }
 
+        return (self::entry($provider, $key)['model'] ?? null) ?: self::defaultModel($provider, $key);
+    }
+
+    /** What a null model means on a provider: its cheapest model for the fast key, its smartest for any other, as laravel/ai knows them. */
+    protected static function defaultModel(string $provider, string $key): string
+    {
         $textProvider = app(AiManager::class)->textProvider($provider);
 
         return $key === 'fast' ? $textProvider->cheapestTextModel() : $textProvider->smartestTextModel();
@@ -169,7 +239,7 @@ class AgentModels
      * The entry a picker key runs on a given provider: the picked one when it runs there (a Gemini entry on the
      * Anthropic picker), else the same key on that provider's own catalog (a failover), else nothing.
      *
-     * @return array{label: string, provider: string, model: ?string, effort: ?string}|null
+     * @return array{label: ?string, provider: string, model: ?string, effort: ?string}|null
      */
     public static function entry(string $provider, string $key): ?array
     {
@@ -188,7 +258,7 @@ class AgentModels
      * kept to those that can run: an entry on another provider needs that provider's key in config/ai.php, and a
      * workspace on its own key sees only the entries of its provider — anything else would run on the platform's key.
      *
-     * @return array<string, array{label: string, provider: string, model: ?string, effort: ?string}>
+     * @return array<string, array{label: ?string, provider: string, model: ?string, effort: ?string}>
      */
     public static function catalog(?string $provider = null): array
     {
@@ -198,7 +268,7 @@ class AgentModels
         $ownProvider = $own?->provider && $own->apiKey ? $own->provider : null;
 
         return collect($models[$provider] ?? self::genericCatalog())
-            ->map(fn (array $m) => $m + ['provider' => $provider, 'model' => null, 'effort' => null])
+            ->map(fn (array $m) => $m + ['label' => null, 'provider' => $provider, 'model' => null, 'effort' => null])
             ->filter(fn (array $m) => $ownProvider
                 ? $m['provider'] === $ownProvider
                 : ($m['provider'] === $provider || self::hasPlatformKey($m['provider'])))
@@ -206,16 +276,16 @@ class AgentModels
     }
 
     /**
-     * A provider without entries in config (Ollama, OpenRouter, Mistral, Groq…): its smartest model as Auto and its
-     * cheapest as Fast, as laravel/ai knows them, with no effort since the knob differs per provider.
+     * A provider without entries in config (Ollama, OpenRouter, Mistral, Groq…): its smartest model as auto and its
+     * cheapest as fast, as laravel/ai knows them, shown by name, with no effort since the knob differs per provider.
      *
-     * @return array<string, array{label: string, model: ?string, effort: ?string}>
+     * @return array<string, array{label: ?string, model: ?string, effort: ?string}>
      */
     protected static function genericCatalog(): array
     {
         return [
-            'auto' => ['label' => 'Auto', 'model' => null, 'effort' => null],
-            'fast' => ['label' => 'Fast', 'model' => null, 'effort' => null],
+            'auto' => ['label' => null, 'model' => null, 'effort' => null],
+            'fast' => ['label' => null, 'model' => null, 'effort' => null],
         ];
     }
 

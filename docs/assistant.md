@@ -4,7 +4,7 @@
 
 `AgentsPlugin` adds three things to the panel when `chat()` is on (the default):
 
-- a **Chat** page (`/chat/{conversation?}`) where the answer streams in while the agent calls tools, with a model picker (Auto, Fast, Deep) next to the composer;
+- a **Chat** page (`/chat/{conversation?}`) where the answer streams in while the agent calls tools, with a model picker next to the composer (Claude Opus 5, Claude Haiku 4.5, Claude Opus 5 · Deep out of the box);
 - an **Ask …** button in the topbar, which opens a new chat and, on a record page of a resource that implements `AgentResource`, carries that record along as page context ("About Order RO-00012");
 - the recent conversations at the end of the sidebar, plus a **Chats** page listing all of the person's conversations.
 
@@ -119,21 +119,21 @@ The generic working rules cover the things every assistant in a panel needs: nev
 ```php
 'models' => [
     'anthropic' => [
-        'auto' => ['label' => 'Auto', 'model' => env('AGENT_MODEL', 'claude-opus-5'), 'effort' => 'medium'],
-        'fast' => ['label' => 'Fast', 'model' => env('AGENT_MODEL_FAST', 'claude-haiku-4-5'), 'effort' => null],
-        'deep' => ['label' => 'Deep', 'model' => env('AGENT_MODEL_DEEP', 'claude-opus-5'), 'effort' => 'xhigh'],
+        'auto' => ['label' => null, 'model' => env('AGENT_MODEL', 'claude-opus-5'), 'effort' => 'medium'],
+        'fast' => ['label' => null, 'model' => env('AGENT_MODEL_FAST', 'claude-haiku-4-5'), 'effort' => null],
+        'deep' => ['label' => null, 'model' => env('AGENT_MODEL_DEEP', 'claude-opus-5'), 'effort' => 'xhigh'],
     ],
     'openai' => [
-        'auto' => ['label' => 'Auto', 'model' => env('AGENT_MODEL'), 'effort' => 'medium'],
-        'fast' => ['label' => 'Fast', 'model' => env('AGENT_MODEL_FAST'), 'effort' => 'low'],
-        'deep' => ['label' => 'Deep', 'model' => env('AGENT_MODEL_DEEP'), 'effort' => 'high'],
+        'auto' => ['label' => null, 'model' => env('AGENT_MODEL'), 'effort' => 'medium'],
+        'fast' => ['label' => null, 'model' => env('AGENT_MODEL_FAST'), 'effort' => 'low'],
+        'deep' => ['label' => null, 'model' => env('AGENT_MODEL_DEEP'), 'effort' => 'high'],
     ],
     'gemini' => [ /* gemini-3.8-flash, gemini-3.5-flash-lite as Fast */ ],
     'xai' => [ /* grok-4.6 */ ],
 ],
 ```
 
-A `null` model means "the provider's smartest" (Auto and Deep) or "the provider's cheapest" (Fast) as laravel/ai knows them; a provider without entries (Ollama, OpenRouter, Mistral…) gets exactly those two. Effort becomes Anthropic's `output_config.effort`, OpenAI's and xAI's `reasoning.effort` (reasoning models only) or Gemini's thinking level. An entry may name another provider to run on — `['label' => 'Gemini Flash', 'provider' => 'gemini', 'model' => 'gemini-3.5-flash-lite', 'effort' => 'low']` under `anthropic` offers a cheap Gemini model next to Claude, or a local Ollama one for data that must stay on the server; the picker then groups its entries by provider, an entry of a provider without a key is left out, and the person can move to another provider when theirs is rate limited without an operator touching config. See [Configuration](configuration.md#models). `max_steps` caps the tool round-trips in one turn (12), `max_tokens` the answer length (4096), and `max_conversation_messages` how many earlier messages are replayed (40).
+The picker names each entry after its model, or after its `label` when it has one; a second entry on the same model adds its key (Claude Opus 5 · Deep). A `null` model means "the provider's smartest" (`auto` and `deep`) or "the provider's cheapest" (`fast`) as laravel/ai knows them; a provider without entries (Ollama, OpenRouter, Mistral…) gets exactly those two. Effort becomes Anthropic's `output_config.effort`, OpenAI's and xAI's `reasoning.effort` (reasoning models only) or Gemini's thinking level. An entry may name another provider to run on — `['label' => 'Gemini Flash', 'provider' => 'gemini', 'model' => 'gemini-3.5-flash-lite', 'effort' => 'low']` under `anthropic` offers a cheap Gemini model next to Claude, or a local Ollama one for data that must stay on the server; the picker then groups its entries by provider, an entry of a provider without a key is left out, and the person can move to another provider when theirs is rate limited without an operator touching config. See [Configuration](configuration.md#models). `max_steps` caps the tool round-trips in one turn (12), `max_tokens` the answer length (4096), and `max_conversation_messages` how many earlier messages are replayed (40).
 
 ### Failover
 
