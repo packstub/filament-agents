@@ -48,12 +48,34 @@ abstract class Agent implements AgentContract, Conversational, HasMiddleware, Ha
         public ?string $model = null,
     ) {}
 
+    /** The exact model per provider this turn may run on, when it has a failover list (AgentModels::resolve()['providers']). */
+    protected array $models = [];
+
     /** The exact model this turn runs on (drives provider-specific options such as reasoning effort). */
     public function withModel(?string $model): static
     {
         $this->model = $model;
 
         return $this;
+    }
+
+    /**
+     * The model each provider in the failover list runs, so the options a provider gets (reasoning effort on
+     * OpenAI and xAI) are read for its own model, not the first choice's.
+     *
+     * @param  array<string, string>  $models  provider => model
+     */
+    public function withModels(array $models): static
+    {
+        $this->models = $models;
+
+        return $this;
+    }
+
+    /** The model this turn runs on a provider: the failover list's entry, the exact model set, or the catalog's. */
+    protected function modelOn(string $provider): string
+    {
+        return $this->models[$provider] ?? $this->model ?? AgentModels::modelFor($provider, $this->modelKey);
     }
 
     /** One sentence on who the assistant is and where it lives ("You are Acme Assistant, the back-office assistant of…"). */
@@ -132,13 +154,13 @@ abstract class Agent implements AgentContract, Conversational, HasMiddleware, Ha
             ]),
             // OpenAI caches every prefix it has seen on its own — the static system prompt makes the history one;
             // reasoning effort is the equivalent knob (reasoning models only — gpt-4.1 / gpt-4o reject the parameter).
-            Lab::OpenAI => $effort && self::supportsReasoning($this->model ?? AgentModels::modelFor('openai', $this->modelKey)) ? ['reasoning' => ['effort' => $effort]] : [],
+            Lab::OpenAI => $effort && self::supportsReasoning($this->modelOn('openai')) ? ['reasoning' => ['effort' => $effort]] : [],
             // Gemini 3 takes the effort as a thinking level (generationConfig.thinkingConfig.thinkingLevel); it knows
             // no xhigh, so that is sent as high. Caching is implicit.
             Lab::Gemini => $effort ? ['thinkingConfig' => ['thinkingLevel' => strtoupper($effort === 'xhigh' ? 'high' : $effort)]] : [],
             // xAI speaks the Responses API: reasoning.effort (low … xhigh) on the reasoning Grok models; the
             // "non-reasoning" variants reject it.
-            Lab::xAI => $effort && self::supportsReasoning($this->model ?? AgentModels::modelFor('xai', $this->modelKey), 'xai') ? ['reasoning' => ['effort' => $effort]] : [],
+            Lab::xAI => $effort && self::supportsReasoning($this->modelOn('xai'), 'xai') ? ['reasoning' => ['effort' => $effort]] : [],
             default => [],
         };
     }

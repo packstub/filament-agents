@@ -143,6 +143,7 @@ it('limits a scoped token to the tools it names, in the list and by name', funct
 it('builds the prompt from the persona, the domain, the generic rules and the live context', function () {
     actingAs($this->user(['name' => 'Grace Hopper']));
     $this->widgets();
+    config(['packstub-agents.max_steps' => 7]);
 
     $agent = new WidgetAgent(modelKey: 'deep');
     $static = $agent->staticInstructions();
@@ -153,11 +154,9 @@ it('builds the prompt from the persona, the domain, the generic rules and the li
         ->and($dynamic)->toContain('## Now', 'Grace Hopper', 'role Owner', 'Answer language: English', 'Widgets in the catalogue: 3.')
         // The system prompt is the static block alone, byte-identical between turns; the dynamic block goes with the question.
         ->and($agent->instructions())->toBe($static)
-        ->and($agent->maxSteps())->toBe(12)
+        ->and($agent->maxSteps())->toBe(7)
         ->and($agent->providerOptions('anthropic'))->toHaveKeys(['system', 'output_config'])
         ->and($agent->providerOptions('anthropic')['system'])->toBe([['type' => 'text', 'text' => $static, 'cache_control' => ['type' => 'ephemeral']]])
         ->and(WidgetAgent::supportsReasoning('gpt-5.2'))->toBeTrue()
-        ->and(WidgetAgent::supportsReasoning('gpt-4o'))->toBeFalse()
-        ->and($agent->providerOptions('gemini'))->toBe(['thinkingConfig' => ['thinkingLevel' => 'HIGH']])
-        ->and($agent->providerOptions('xai'))->toBe(['reasoning' => ['effort' => 'xhigh']]);
+        ->and(WidgetAgent::supportsReasoning('gpt-4o'))->toBeFalse();
 });

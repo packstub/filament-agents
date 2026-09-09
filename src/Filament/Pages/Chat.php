@@ -139,6 +139,7 @@ class Chat extends Page
                     'at' => $m->created_at,
                     'stopped' => AgentConversationStore::wasStopped($m->meta),
                     'cutShort' => AgentConversationStore::cutShort($m->meta),
+                    'answeredBy' => AgentConversationStore::answeredBy($m->meta),
                     'unanswered' => false,
                     'editable' => false,
                     'regenerable' => false,

@@ -64,25 +64,71 @@ class AgentModels
 
     /**
      * Resolve a picker key to what the prompt needs, and put the workspace's
-     * own key in place for this request when it has one.
+     * own key in place for this request when it has one. `providers` is the
+     * ordered provider => model list the turn runs on: the provider first,
+     * then the failover providers with the same picker key on their own
+     * catalog — laravel/ai moves down the list when one refuses the turn.
      *
-     * @return array{provider: string, model: string, effort: ?string}
+     * @return array{provider: string, model: string, effort: ?string, providers: array<string, string>}
      */
     public static function resolve(?string $key = null): array
     {
         $provider = self::provider();
         $catalog = self::catalog($provider);
-        $entry = $catalog[$key ?? self::current()] ?? reset($catalog) ?: ['model' => null, 'effort' => null];
+        $key ??= self::current();
+        $entry = $catalog[$key] ?? reset($catalog) ?: ['model' => null, 'effort' => null];
 
         self::applyWorkspaceKey($provider);
 
         $model = $entry['model'] ?? null;
         if (! $model) {
             $textProvider = app(AiManager::class)->textProvider($provider);
-            $model = ($key ?? self::current()) === 'fast' ? $textProvider->cheapestTextModel() : $textProvider->smartestTextModel();
+            $model = $key === 'fast' ? $textProvider->cheapestTextModel() : $textProvider->smartestTextModel();
         }
 
-        return ['provider' => $provider, 'model' => $model, 'effort' => $entry['effort'] ?? null];
+        $providers = [$provider => $model];
+        foreach (self::failover() as $fallback) {
+            $providers[$fallback] = self::modelFor($fallback, $key);
+        }
+
+        return ['provider' => $provider, 'model' => $model, 'effort' => $entry['effort'] ?? null, 'providers' => $providers];
+    }
+
+    /**
+     * The providers a turn falls back to, in order (config `failover`): those with a key in config/ai.php, the
+     * provider itself left out. A workspace on its own key stays on it — a fallback would run on the platform's.
+     *
+     * @return list<string>
+     */
+    public static function failover(): array
+    {
+        $own = self::credentials();
+
+        if ($own?->provider && $own->apiKey) {
+            return [];
+        }
+
+        $provider = self::provider();
+
+        return collect((array) config('packstub-agents.failover', []))
+            ->filter(fn ($name) => is_string($name) && $name !== '' && $name !== $provider && filled(config("ai.providers.{$name}.key")))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /** How a provider is called in the UI ('openai' → OpenAI). */
+    public static function providerLabel(string $provider): string
+    {
+        return match ($provider) {
+            'anthropic' => 'Anthropic',
+            'openai' => 'OpenAI',
+            'gemini' => 'Gemini',
+            'xai' => 'xAI',
+            'openrouter' => 'OpenRouter',
+            'deepseek' => 'DeepSeek',
+            default => ucfirst($provider),
+        };
     }
 
     /** The model a picker key maps to on a given provider, without touching keys or session. */

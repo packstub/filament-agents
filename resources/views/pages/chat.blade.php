@@ -160,6 +160,10 @@
                                     {{-- The provider ended the answer early; Regenerate (above, on the last answer) produces it again. --}}
                                     <span class="ml-1 text-xs" title="{{ \Packstub\Agents\Filament\Pages\Chat::cutShortText($message['cutShort']) }}">· {{ __('(cut short)') }}</span>
                                 @endif
+                                @if ($message['answeredBy'])
+                                    {{-- The first choice refused the turn and a failover provider took it. --}}
+                                    <span class="ml-1 text-xs" title="{{ __('The usual provider was unavailable; this answer came from :model.', ['model' => $message['answeredBy']['model']]) }}">· {{ __('(answered by :provider)', ['provider' => \Packstub\Agents\Support\AgentModels::providerLabel($message['answeredBy']['provider'])]) }}</span>
+                                @endif
                             </div>
                         @endif
                     </div>

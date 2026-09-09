@@ -260,12 +260,13 @@ it('compresses a chat in place, keeping the last exchanges verbatim', function (
 });
 
 it('mirrors the history settings of the plugin into config', function () {
+    config(['packstub-agents.history.notice_share' => 0.61]); // not given to history(): left as it was
     AgentsPlugin::make()->history(maxTokens: 12000, meterShare: 0.5, compressKeepTurns: 4)->register(Filament::getPanel('admin'));
 
     expect(config('packstub-agents.history.max_tokens'))->toBe(12000)
         ->and(config('packstub-agents.history.meter_share'))->toBe(0.5)
         ->and(config('packstub-agents.history.compress_keep_turns'))->toBe(4)
-        ->and(config('packstub-agents.history.notice_share'))->toBe(0.7)
+        ->and(config('packstub-agents.history.notice_share'))->toBe(0.61)
         ->and(AgentConversationStore::compressKeepTurns())->toBe(4)
         ->and(AgentConversationStore::meterShare())->toBe(0.5);
 });

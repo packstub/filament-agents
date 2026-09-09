@@ -135,6 +135,19 @@ The generic working rules cover the things every assistant in a panel needs: nev
 
 A `null` model means "the provider's smartest" (Auto and Deep) or "the provider's cheapest" (Fast) as laravel/ai knows them; a provider without entries (Ollama, OpenRouter, Mistral…) gets exactly those two. Effort becomes Anthropic's `output_config.effort`, OpenAI's and xAI's `reasoning.effort` (reasoning models only) or Gemini's thinking level. `max_steps` caps the tool round-trips in one turn (12), `max_tokens` the answer length (4096), and `max_conversation_messages` how many earlier messages are replayed (40).
 
+### Failover
+
+An overloaded or rate-limited provider (a 503 or a 429, a connection that never opens, an account out of credits) used to fail the whole turn and leave the person with a Retry. `failover` in `config/packstub-agents.php` (`AGENT_FAILOVER=gemini,openai`) names the providers to try next, in order. Each runs the same picker key on its own catalog — Deep on Anthropic falls back to Deep on Gemini — or, for a provider without entries, its smartest or cheapest model; the effort a fallback gets is read for its own model. A provider without a key in `config/ai.php` is left out rather than failing the turn with an authentication error, and a workspace on its own key stays on its provider, since a fallback would run on the platform's.
+
+laravel/ai moves down the list only when a provider refuses the turn before anything streamed; an answer that breaks off midway is stored as it arrived and marked cut short, as before. When a fallback answers, the answer carries a small note ("answered by Gemini", the model in the tooltip), the turn's record names the provider that answered, and `Laravel\Ai\Events\AgentFailedOver` fires with the provider, the model and the exception it refused with — listen to it to tell the operators:
+
+```php
+Event::listen(AgentFailedOver::class, fn (AgentFailedOver $event) => Notification::route('mail', 'ops@acme.test')
+    ->notify(new ProviderDown($event->provider->name(), $event->exception->getMessage())));
+```
+
+A turn that resumes an approval stays on the provider that proposed the change; it cannot fail over.
+
 ### Middleware
 
 Every turn runs through a middleware pipeline before the provider is called, the same one laravel/ai gives its agents. The package puts its own guard rails there — `Packstub\Agents\Ai\Middleware\EnforceBudget` refuses a turn over a limit and counts one that may run — and your app adds its own after them: an audit log, redaction of what leaves the workspace, a tenant check, a note appended to the prompt. `Packstub\Agents\Ai\Middleware\AttachContext` runs last and prepends the dynamic block (date, person, page context) to the question, so your middleware reads the question as typed.

@@ -134,6 +134,18 @@ class AgentConversationStore extends DatabaseConversationStore
      */
     public function markCutShort(string $conversationId, string $reason): void
     {
+        $this->markLatestAnswer($conversationId, ['cut_short' => $reason]);
+    }
+
+    /** Mark the newest answer as taken by a failover provider (the first choice refused the turn), so the page says so. */
+    public function markAnsweredBy(string $conversationId, string $provider, string $model): void
+    {
+        $this->markLatestAnswer($conversationId, ['answered_by' => ['provider' => $provider, 'model' => $model]]);
+    }
+
+    /** Merge $meta into the newest answer's meta (the row laravel/ai stored for it). */
+    protected function markLatestAnswer(string $conversationId, array $meta): void
+    {
         $row = $this->table($this->messagesTable())
             ->where('conversation_id', $conversationId)
             ->where('role', 'assistant')
@@ -144,11 +156,11 @@ class AgentConversationStore extends DatabaseConversationStore
             return;
         }
 
-        $meta = is_string($row->meta) ? json_decode($row->meta, true) : $row->meta;
+        $existing = is_string($row->meta) ? json_decode($row->meta, true) : $row->meta;
 
         $this->table($this->messagesTable())
             ->where('id', $row->id)
-            ->update(['meta' => json_encode([...(is_array($meta) ? $meta : []), 'cut_short' => $reason])]);
+            ->update(['meta' => json_encode([...(is_array($existing) ? $existing : []), ...$meta])]);
     }
 
     /** Why a stored answer was ended early by the provider, or null. */
@@ -158,6 +170,21 @@ class AgentConversationStore extends DatabaseConversationStore
         $reason = is_array($meta) ? ($meta['cut_short'] ?? null) : null;
 
         return is_string($reason) && $reason !== '' ? $reason : null;
+    }
+
+    /**
+     * The failover provider and model that answered instead of the first choice, or null.
+     *
+     * @return ?array{provider: string, model: string}
+     */
+    public static function answeredBy(mixed $meta): ?array
+    {
+        $meta = is_string($meta) ? json_decode($meta, true) : $meta;
+        $by = is_array($meta) ? ($meta['answered_by'] ?? null) : null;
+
+        return is_array($by) && is_string($by['provider'] ?? null) && $by['provider'] !== ''
+            ? ['provider' => $by['provider'], 'model' => (string) ($by['model'] ?? '')]
+            : null;
     }
 
     /**
