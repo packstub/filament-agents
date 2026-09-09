@@ -250,30 +250,30 @@
                                 @if ($context['turns']['last_tokens_in'] !== null)
                                     <p class="mt-0.5">{{ __('The last question read :tokens tokens.', ['tokens' => number_format($context['turns']['last_tokens_in'])]) }}</p>
                                 @endif
-                                <dl class="mt-2 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1">
+                                <dl class="mt-2">
                                     @foreach (\Packstub\Agents\Filament\Pages\Chat::breakdownLabels() as $key => $label)
                                         @if ($context['breakdown'][$key] > 0)
                                             <dt>{{ $label }}</dt>
-                                            <dd class="text-end tabular-nums text-gray-800 dark:text-gray-200">{{ number_format($context['breakdown'][$key]) }}</dd>
+                                            <dd>{{ number_format($context['breakdown'][$key]) }}</dd>
                                         @endif
                                     @endforeach
                                 </dl>
                             </div>
 
-                            @if ($context['turns']['count'] > 0)
+                            @if ($context['turns']['last_tokens_in'] !== null)
                                 <div>
                                     <p class="text-sm font-semibold text-gray-950 dark:text-white">{{ __('This chat so far') }}</p>
-                                    <dl class="mt-2 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1">
+                                    <dl class="mt-2">
                                         <dt>{{ __('Turns') }}</dt>
-                                        <dd class="text-end tabular-nums text-gray-800 dark:text-gray-200">{{ number_format($context['turns']['count']) }}</dd>
+                                        <dd>{{ number_format($context['turns']['count']) }}</dd>
                                         <dt>{{ __('Tokens in') }}</dt>
-                                        <dd class="text-end tabular-nums text-gray-800 dark:text-gray-200">{{ number_format($context['turns']['tokens_in']) }}</dd>
+                                        <dd>{{ number_format($context['turns']['tokens_in']) }}</dd>
                                         <dt>{{ __('Tokens out') }}</dt>
-                                        <dd class="text-end tabular-nums text-gray-800 dark:text-gray-200">{{ number_format($context['turns']['tokens_out']) }}</dd>
+                                        <dd>{{ number_format($context['turns']['tokens_out']) }}</dd>
                                         <dt>{{ __('Tool calls') }}</dt>
-                                        <dd class="text-end tabular-nums text-gray-800 dark:text-gray-200">{{ number_format($context['turns']['tool_calls']) }}</dd>
+                                        <dd>{{ number_format($context['turns']['tool_calls']) }}</dd>
                                         <dt>{{ __('Time') }}</dt>
-                                        <dd class="text-end tabular-nums text-gray-800 dark:text-gray-200">{{ \Packstub\Agents\Filament\Pages\Chat::duration($context['turns']['duration_ms']) }}</dd>
+                                        <dd>{{ \Packstub\Agents\Filament\Pages\Chat::duration($context['turns']['duration_ms']) }}</dd>
                                     </dl>
                                 </div>
                             @endif
@@ -292,7 +292,7 @@
                                 <p class="text-gray-800 dark:text-gray-200">{{ __('This chat is getting long — answers stay sharpest in a new one.') }}</p>
                             @endif
 
-                            <div class="flex flex-wrap gap-2">
+                            <div class="fi-chat-ring-actions">
                                 <x-filament::button size="xs" color="gray" outlined icon="heroicon-m-arrows-pointing-in" wire:click="compressNow" x-bind:disabled="busy">{{ __('Compress now') }}</x-filament::button>
                                 <x-filament::button size="xs" color="gray" outlined icon="heroicon-m-arrow-right-circle" wire:click="continueInNewChat" x-bind:disabled="busy">{{ __('Continue in a new chat') }}</x-filament::button>
                             </div>
