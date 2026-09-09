@@ -228,13 +228,13 @@
                 {{-- The context ring: how full the history window is, from history.meter_share on. Click for what fills it, what the chat cost so far, Compress now and Continue in a new chat. --}}
                 <x-slot:tools>
                     @php($percent = (int) round($context['share'] * 100))
-                    <x-filament::dropdown placement="top-end" width="sm">
+                    <x-filament::dropdown placement="top-end" width="sm" shift>
                         <x-slot name="trigger">
                             <button
                                 type="button"
                                 class="fi-chat-ring"
                                 aria-label="{{ __('Context :percent%', ['percent' => $percent]) }}"
-                                x-tooltip="{ content: @js(__('Context :percent%', ['percent' => $percent]).' · '.__('~:used of :budget tokens', ['used' => number_format($context['tokens']), 'budget' => number_format($context['budget'])])), theme: $store.theme }"
+                                x-tooltip="{ content: @js(__('Context :percent%', ['percent' => $percent]).' · '.__('~:used of :budget tokens', ['used' => number_format($context['tokens']), 'budget' => number_format($context['budget'])])), theme: $store.theme, touch: false }"
                             >
                                 <svg viewBox="0 0 20 20" aria-hidden="true">
                                     <circle class="fi-chat-ring-track" cx="10" cy="10" r="8" pathLength="100" />
