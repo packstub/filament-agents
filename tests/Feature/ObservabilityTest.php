@@ -20,6 +20,7 @@ use Packstub\Agents\Filament\Pages\Chat;
 use Packstub\Agents\Filament\Pages\TurnLog;
 use Packstub\Agents\Jobs\RunAgentTurn;
 use Packstub\Agents\Models\AgentTurn;
+use Packstub\Agents\Support\AgentModels;
 use Packstub\Agents\Support\AgentTurns;
 use Packstub\Agents\Tests\Fixtures\WidgetAgent;
 
@@ -51,6 +52,7 @@ it('falls back to the next provider when the first refuses the turn, and says wh
     Queue::fake();
     Event::fake([AgentFailedOver::class]);
     config(['packstub-agents.failover' => ['gemini'], 'ai.providers.anthropic.key' => 'a-key', 'ai.providers.gemini.key' => 'g-key']);
+    $resolved = AgentModels::resolve('auto');
 
     [$turn, $job] = queuedTurnFor('How many widgets are live?');
 
@@ -65,25 +67,25 @@ it('falls back to the next provider when the first refuses the turn, and says wh
     $job->handle(app(AgentTurns::class));
 
     $turn->refresh();
-    Event::assertDispatched(AgentFailedOver::class, fn (AgentFailedOver $event) => $event->provider->name() === 'anthropic' && $event->model === 'claude-opus-5');
+    Event::assertDispatched(AgentFailedOver::class, fn (AgentFailedOver $event) => $event->provider->name() === $resolved['provider'] && $event->model === $resolved['model']);
 
     // The record names the provider that answered; the transcript's answer says so under it.
     expect($turn->status)->toBe(AgentTurn::DONE)
         ->and($turn->provider)->toBe('gemini')
-        ->and($turn->model_name)->toBe('gemini-3.8-flash')
+        ->and($turn->model_name)->toBe($resolved['providers']['gemini'])
         ->and($turn->text)->toBe('Two are live.');
 
     livewire(Chat::class, ['conversation' => $turn->conversation_id])
         ->assertSee('Two are live.')
         ->assertSee(__('(answered by :provider)', ['provider' => 'Gemini']))
-        ->assertSee(__('The usual provider was unavailable; this answer came from :model.', ['model' => 'gemini-3.8-flash']));
+        ->assertSee(__('The usual provider was unavailable; this answer came from :model.', ['model' => $resolved['providers']['gemini']]));
 
     // The first choice answering leaves no note.
     [$turn, $job] = queuedTurnFor('And retired?');
     WidgetAgent::fake(['One is retired.']);
     $job->handle(app(AgentTurns::class));
 
-    expect($turn->fresh()->provider)->toBe('anthropic');
+    expect($turn->fresh()->provider)->toBe($resolved['provider']);
     livewire(Chat::class, ['conversation' => $turn->conversation_id])
         ->assertSee('One is retired.')
         ->assertDontSee('(answered by Gemini)');
@@ -94,21 +96,22 @@ it('records what a turn cost and how it went on its row, and logs one line', fun
     actingAs($user);
     Queue::fake();
     $log = agentLog();
+    $resolved = AgentModels::resolve('auto');
 
     [$turn, $job] = queuedTurnFor('How many widgets are live?');
 
     // One tool round-trip, then the answer, with the token usage the provider reported for each step.
     WidgetAgent::fake([
         new ToolCall('call-1', 'list-widgets', ['filters' => []]),
-        new TextResponse('Two are live.', new Usage(promptTokens: 120, completionTokens: 30, cacheReadInputTokens: 400, reasoningTokens: 5), new Meta('anthropic', 'claude-opus-5')),
+        new TextResponse('Two are live.', new Usage(promptTokens: 120, completionTokens: 30, cacheReadInputTokens: 400, reasoningTokens: 5), new Meta($resolved['provider'], $resolved['model'])),
     ]);
     $job->handle(app(AgentTurns::class));
 
     $turn->refresh();
 
     expect($turn->status)->toBe(AgentTurn::DONE)
-        ->and($turn->provider)->toBe('anthropic')
-        ->and($turn->model_name)->toBe('claude-opus-5')
+        ->and($turn->provider)->toBe($resolved['provider'])
+        ->and($turn->model_name)->toBe($resolved['model'])
         ->and($turn->usage)->toMatchArray(['prompt_tokens' => 120, 'completion_tokens' => 30, 'cache_read_input_tokens' => 400, 'reasoning_tokens' => 5])
         ->and($turn->tokensIn())->toBe(520)
         ->and($turn->tokensOut())->toBe(35)
@@ -118,10 +121,10 @@ it('records what a turn cost and how it went on its row, and logs one line', fun
 
     expect($log->getRecords())->toHaveCount(1);
     $record = $log->getRecords()[0];
-    expect($record->message)->toContain('Agent turn done: anthropic/claude-opus-5, 520 tokens in, 35 out, 1 tool call')
+    expect($record->message)->toContain("Agent turn done: {$resolved['provider']}/{$resolved['model']}, 520 tokens in, 35 out, 1 tool call")
         ->and($record->context)->toMatchArray([
             'turn' => $turn->id, 'conversation' => $turn->conversation_id, 'user' => $user->id, 'status' => 'done',
-            'provider' => 'anthropic', 'model' => 'claude-opus-5', 'prompt_tokens' => 120, 'completion_tokens' => 30,
+            'provider' => $resolved['provider'], 'model' => $resolved['model'], 'prompt_tokens' => 120, 'completion_tokens' => 30,
             'tool_calls' => ['list-widgets'], 'finish_reason' => 'stop', 'error' => null,
         ]);
 
@@ -139,6 +142,7 @@ it('records how a refused, a failed and a lost turn ended', function () {
     actingAs($this->user());
     Queue::fake();
     $log = agentLog();
+    $resolved = AgentModels::resolve('auto');
 
     // Refused by a middleware: no provider was involved.
     config(['packstub-agents.middleware' => [fn (AgentPrompt $prompt, Closure $next) => throw new TurnRefused('Not now.')]]);
@@ -146,9 +150,9 @@ it('records how a refused, a failed and a lost turn ended', function () {
     $job->handle(app(AgentTurns::class));
     config(['packstub-agents.middleware' => []]);
 
-    expect($refused->fresh())->toMatchArray(['status' => AgentTurn::FAILED, 'finish_reason' => 'refused', 'provider' => 'anthropic', 'tool_calls' => []])
+    expect($refused->fresh())->toMatchArray(['status' => AgentTurn::FAILED, 'finish_reason' => 'refused', 'provider' => $resolved['provider'], 'tool_calls' => []])
         ->and($refused->fresh()->duration_ms)->toBeInt()
-        ->and($log->getRecords()[0]->message)->toContain('Agent turn failed: anthropic/claude-opus-5')
+        ->and($log->getRecords()[0]->message)->toContain("Agent turn failed: {$resolved['provider']}/{$resolved['model']}")
         ->and($log->getRecords()[0]->context['error'])->toBe('Not now.');
 
     // The provider failed.

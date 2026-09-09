@@ -61,9 +61,10 @@ it('hides the chat when no provider is configured or the workspace is switched o
     config(['packstub-agents.enabled' => null, 'ai.providers.anthropic.key' => null]);
     expect(AgentModels::enabled())->toBeFalse();
 
-    config(['ai.providers.anthropic.key' => 'sk-platform']);
+    config(['ai.providers.anthropic.key' => 'sk-platform', 'packstub-agents.provider' => 'anthropic']);
+    $auto = config('packstub-agents.models.anthropic.auto');
     expect(AgentModels::enabled())->toBeTrue()
-        ->and(AgentModels::resolve('auto'))->toMatchArray(['provider' => 'anthropic', 'effort' => 'medium'])
+        ->and(AgentModels::resolve('auto'))->toMatchArray(['provider' => 'anthropic', 'model' => $auto['model'], 'effort' => $auto['effort']])
         ->and(AgentModels::options())->toHaveKeys(['auto', 'fast', 'deep']);
 
     AgentModels::remember('deep');
