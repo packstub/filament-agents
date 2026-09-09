@@ -141,7 +141,7 @@ abstract class Agent implements AgentContract, Conversational, HasMiddleware, Ha
     public function providerOptions(Lab|string $provider): array
     {
         $lab = $provider instanceof Lab ? $provider : Lab::tryFrom((string) $provider);
-        $effort = AgentModels::catalog($lab?->value ?? (string) $provider)[$this->modelKey ?? AgentModels::current()]['effort'] ?? null;
+        $effort = AgentModels::entry($lab?->value ?? (string) $provider, $this->modelKey ?? AgentModels::current())['effort'] ?? null;
 
         return match ($lab) {
             // A cache breakpoint closes the static prefix (tools, then the instructions); the history gets its own

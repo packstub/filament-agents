@@ -32,34 +32,44 @@ return [
     // answer says which provider it came from. A workspace on its own key has no fallback.
     'failover' => array_values(array_filter(array_map('trim', explode(',', (string) env('AGENT_FAILOVER', ''))))),
 
-    // null = enabled when a key exists for the provider (platform or workspace). AGENT_ENABLED=false hides the chat.
+    // null = enabled when a key exists for the provider in use (platform or workspace) or for the provider of any
+    // picker entry below. AGENT_ENABLED=false hides the chat.
     'enabled' => env('AGENT_ENABLED'),
 
-    // What the model picker offers, per provider. A null model means "the provider's smartest" (auto, deep) or
-    // "the provider's cheapest" (fast) as laravel/ai knows them; AGENT_MODEL* pin explicit names. Effort is
-    // passed as Anthropic output_config.effort, OpenAI and xAI reasoning.effort (reasoning models only) or
-    // Gemini's thinking level (low, medium, high; xhigh is sent as high). A provider without entries here gets
-    // Auto (smartest) and Fast (cheapest) with no effort.
+    // What the model picker offers: the list of the provider in use. A null label names the entry after its model
+    // ("Claude Opus 5"; a second entry on the same model adds its key: "Claude Opus 5 · Deep"); set one to show
+    // something else ("Fast"). A null model means "the provider's smartest" (auto, deep) or "the provider's cheapest"
+    // (fast) as laravel/ai knows them; AGENT_MODEL* pin explicit names. Effort is passed as Anthropic
+    // output_config.effort, OpenAI and xAI reasoning.effort (reasoning models only) or Gemini's thinking level (low,
+    // medium, high; xhigh is sent as high). A provider without entries here gets its smartest (auto) and cheapest
+    // (fast) models with no effort.
+    //
+    // An entry may name another provider to run on, so one picker offers Claude and Gemini side by side; it is
+    // listed when that provider has a key in config/ai.php, under a provider heading, and its effort is in that
+    // provider's terms. A 'failover' list on an entry replaces the global one for it ([] keeps a local model local).
+    // A workspace on its own key sees only the entries of its provider.
     'models' => [
         'anthropic' => [
-            'auto' => ['label' => 'Auto', 'model' => env('AGENT_MODEL', 'claude-opus-5'), 'effort' => 'medium'],
-            'fast' => ['label' => 'Fast', 'model' => env('AGENT_MODEL_FAST', 'claude-haiku-4-5'), 'effort' => null],
-            'deep' => ['label' => 'Deep', 'model' => env('AGENT_MODEL_DEEP', 'claude-opus-5'), 'effort' => 'xhigh'],
+            'auto' => ['label' => null, 'model' => env('AGENT_MODEL', 'claude-opus-5'), 'effort' => 'medium'],
+            'fast' => ['label' => null, 'model' => env('AGENT_MODEL_FAST', 'claude-haiku-4-5'), 'effort' => null],
+            'deep' => ['label' => null, 'model' => env('AGENT_MODEL_DEEP', 'claude-opus-5'), 'effort' => 'xhigh'],
+            // 'flash' => ['label' => 'Gemini Flash', 'provider' => 'gemini', 'model' => 'gemini-3.5-flash-lite', 'effort' => 'low'],
+            // 'local' => ['label' => 'Local', 'provider' => 'ollama', 'model' => 'llama3.3', 'effort' => null, 'failover' => []],
         ],
         'openai' => [
-            'auto' => ['label' => 'Auto', 'model' => env('AGENT_MODEL'), 'effort' => 'medium'],
-            'fast' => ['label' => 'Fast', 'model' => env('AGENT_MODEL_FAST'), 'effort' => 'low'],
-            'deep' => ['label' => 'Deep', 'model' => env('AGENT_MODEL_DEEP'), 'effort' => 'high'],
+            'auto' => ['label' => null, 'model' => env('AGENT_MODEL'), 'effort' => 'medium'],
+            'fast' => ['label' => null, 'model' => env('AGENT_MODEL_FAST'), 'effort' => 'low'],
+            'deep' => ['label' => null, 'model' => env('AGENT_MODEL_DEEP'), 'effort' => 'high'],
         ],
         'gemini' => [
-            'auto' => ['label' => 'Auto', 'model' => env('AGENT_MODEL', 'gemini-3.8-flash'), 'effort' => 'medium'],
-            'fast' => ['label' => 'Fast', 'model' => env('AGENT_MODEL_FAST', 'gemini-3.5-flash-lite'), 'effort' => 'low'],
-            'deep' => ['label' => 'Deep', 'model' => env('AGENT_MODEL_DEEP', 'gemini-3.8-flash'), 'effort' => 'high'],
+            'auto' => ['label' => null, 'model' => env('AGENT_MODEL', 'gemini-3.8-flash'), 'effort' => 'medium'],
+            'fast' => ['label' => null, 'model' => env('AGENT_MODEL_FAST', 'gemini-3.5-flash-lite'), 'effort' => 'low'],
+            'deep' => ['label' => null, 'model' => env('AGENT_MODEL_DEEP', 'gemini-3.8-flash'), 'effort' => 'high'],
         ],
         'xai' => [
-            'auto' => ['label' => 'Auto', 'model' => env('AGENT_MODEL', 'grok-4.6'), 'effort' => 'medium'],
-            'fast' => ['label' => 'Fast', 'model' => env('AGENT_MODEL_FAST', 'grok-4.6'), 'effort' => 'low'],
-            'deep' => ['label' => 'Deep', 'model' => env('AGENT_MODEL_DEEP', 'grok-4.6'), 'effort' => 'xhigh'],
+            'auto' => ['label' => null, 'model' => env('AGENT_MODEL', 'grok-4.6'), 'effort' => 'medium'],
+            'fast' => ['label' => null, 'model' => env('AGENT_MODEL_FAST', 'grok-4.6'), 'effort' => 'low'],
+            'deep' => ['label' => null, 'model' => env('AGENT_MODEL_DEEP', 'grok-4.6'), 'effort' => 'xhigh'],
         ],
     ],
 

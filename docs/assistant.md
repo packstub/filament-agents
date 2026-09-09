@@ -4,7 +4,7 @@
 
 `AgentsPlugin` adds three things to the panel when `chat()` is on (the default):
 
-- a **Chat** page (`/chat/{conversation?}`) where the answer streams in while the agent calls tools, with a model picker (Auto, Fast, Deep) next to the composer;
+- a **Chat** page (`/chat/{conversation?}`) where the answer streams in while the agent calls tools, with a model picker next to the composer (Claude Opus 5, Claude Haiku 4.5, Claude Opus 5 · Deep out of the box);
 - an **Ask …** button in the topbar, which opens a new chat and, on a record page of a resource that implements `AgentResource`, carries that record along as page context ("About Order RO-00012");
 - the recent conversations at the end of the sidebar, plus a **Chats** page listing all of the person's conversations.
 
@@ -44,7 +44,7 @@ The card sits in the conversation like any other answer, with the composer under
 
 ### When the chat is hidden
 
-The chat pages, the topbar button and the sidebar block hide themselves when `AgentModels::enabled()` is false: no provider key for the configured provider (and no workspace key), `AGENT_ENABLED=false`, or the workspace switched off on the operator's limits page. The MCP endpoint is independent of that.
+The chat pages, the topbar button and the sidebar block hide themselves when `AgentModels::enabled()` is false: no provider key for the configured provider, for the provider of any picker entry or from the workspace, `AGENT_ENABLED=false`, or the workspace switched off on the operator's limits page. The MCP endpoint is independent of that.
 
 ## The Agent class
 
@@ -119,25 +119,25 @@ The generic working rules cover the things every assistant in a panel needs: nev
 ```php
 'models' => [
     'anthropic' => [
-        'auto' => ['label' => 'Auto', 'model' => env('AGENT_MODEL', 'claude-opus-5'), 'effort' => 'medium'],
-        'fast' => ['label' => 'Fast', 'model' => env('AGENT_MODEL_FAST', 'claude-haiku-4-5'), 'effort' => null],
-        'deep' => ['label' => 'Deep', 'model' => env('AGENT_MODEL_DEEP', 'claude-opus-5'), 'effort' => 'xhigh'],
+        'auto' => ['label' => null, 'model' => env('AGENT_MODEL', 'claude-opus-5'), 'effort' => 'medium'],
+        'fast' => ['label' => null, 'model' => env('AGENT_MODEL_FAST', 'claude-haiku-4-5'), 'effort' => null],
+        'deep' => ['label' => null, 'model' => env('AGENT_MODEL_DEEP', 'claude-opus-5'), 'effort' => 'xhigh'],
     ],
     'openai' => [
-        'auto' => ['label' => 'Auto', 'model' => env('AGENT_MODEL'), 'effort' => 'medium'],
-        'fast' => ['label' => 'Fast', 'model' => env('AGENT_MODEL_FAST'), 'effort' => 'low'],
-        'deep' => ['label' => 'Deep', 'model' => env('AGENT_MODEL_DEEP'), 'effort' => 'high'],
+        'auto' => ['label' => null, 'model' => env('AGENT_MODEL'), 'effort' => 'medium'],
+        'fast' => ['label' => null, 'model' => env('AGENT_MODEL_FAST'), 'effort' => 'low'],
+        'deep' => ['label' => null, 'model' => env('AGENT_MODEL_DEEP'), 'effort' => 'high'],
     ],
     'gemini' => [ /* gemini-3.8-flash, gemini-3.5-flash-lite as Fast */ ],
     'xai' => [ /* grok-4.6 */ ],
 ],
 ```
 
-A `null` model means "the provider's smartest" (Auto and Deep) or "the provider's cheapest" (Fast) as laravel/ai knows them; a provider without entries (Ollama, OpenRouter, Mistral…) gets exactly those two. Effort becomes Anthropic's `output_config.effort`, OpenAI's and xAI's `reasoning.effort` (reasoning models only) or Gemini's thinking level. `max_steps` caps the tool round-trips in one turn (12), `max_tokens` the answer length (4096), and `max_conversation_messages` how many earlier messages are replayed (40).
+The picker names each entry after its model, or after its `label` when it has one; a second entry on the same model adds its key (Claude Opus 5 · Deep). A `null` model means "the provider's smartest" (`auto` and `deep`) or "the provider's cheapest" (`fast`) as laravel/ai knows them; a provider without entries (Ollama, OpenRouter, Mistral…) gets exactly those two. Effort becomes Anthropic's `output_config.effort`, OpenAI's and xAI's `reasoning.effort` (reasoning models only) or Gemini's thinking level. An entry may name another provider to run on — `['label' => 'Gemini Flash', 'provider' => 'gemini', 'model' => 'gemini-3.5-flash-lite', 'effort' => 'low']` under `anthropic` offers a cheap Gemini model next to Claude, or a local Ollama one for data that must stay on the server; the picker then groups its entries by provider, an entry of a provider without a key is left out, and the person can move to another provider when theirs is rate limited without an operator touching config. See [Configuration](configuration.md#models). `max_steps` caps the tool round-trips in one turn (12), `max_tokens` the answer length (4096), and `max_conversation_messages` how many earlier messages are replayed (40).
 
 ### Failover
 
-An overloaded or rate-limited provider (a 503 or a 429, a connection that never opens, an account out of credits) used to fail the whole turn and leave the person with a Retry. `failover` in `config/packstub-agents.php` (`AGENT_FAILOVER=gemini,openai`) names the providers to try next, in order. Each runs the same picker key on its own catalog — Deep on Anthropic falls back to Deep on Gemini — or, for a provider without entries, its smartest or cheapest model; the effort a fallback gets is read for its own model. A provider without a key in `config/ai.php` is left out rather than failing the turn with an authentication error, and a workspace on its own key stays on its provider, since a fallback would run on the platform's.
+An overloaded or rate-limited provider (a 503 or a 429, a connection that never opens, an account out of credits) used to fail the whole turn and leave the person with a Retry. `failover` in `config/packstub-agents.php` (`AGENT_FAILOVER=gemini,openai`) names the providers to try next, in order. Each runs the same picker key on its own catalog — Deep on Anthropic falls back to Deep on Gemini — or, for a provider without entries, its smartest or cheapest model; the effort a fallback gets is read for its own model. A provider without a key in `config/ai.php` is left out rather than failing the turn with an authentication error, and a workspace on its own key stays on its provider, since a fallback would run on the platform's. A picker entry that runs on another provider falls back down the same list with its own provider left out (the platform provider included when listed), unless the entry carries its own `failover` list — `[]` pins it to its provider.
 
 laravel/ai moves down the list only when a provider refuses the turn before anything streamed; an answer that breaks off midway is stored as it arrived and marked cut short, as before. When a fallback answers, the answer carries a small note ("answered by Gemini", the model in the tooltip), the turn's record names the provider that answered, and `Laravel\Ai\Events\AgentFailedOver` fires with the provider, the model and the exception it refused with — listen to it to tell the operators:
 
