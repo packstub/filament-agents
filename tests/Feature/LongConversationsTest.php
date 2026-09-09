@@ -1,12 +1,15 @@
 <?php
 
+use Filament\Facades\Filament;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Ai\Messages\AssistantMessage;
 use Laravel\Ai\Messages\MessageRole;
 use Laravel\Ai\Messages\ToolResultMessage;
 use Laravel\Ai\Models\Conversation;
+use Packstub\Agents\AgentsPlugin;
 use Packstub\Agents\Filament\Pages\Chat;
+use Packstub\Agents\Models\AgentTurn;
 use Packstub\Agents\Models\ConversationSummary;
 use Packstub\Agents\Support\AgentConversationStore;
 use Packstub\Agents\Tests\Fixtures\WidgetAgent;
@@ -125,7 +128,105 @@ it('folds what falls out of the window into a rolling summary the model reads fi
         ->and(ConversationSummary::query()->where('conversation_id', $id)->value('content'))->toBe('Summary v2');
 });
 
-it('shows a context meter and continues a long chat in a new one that starts from a summary', function () {
+it('shows the context ring from meter_share on, with the breakdown and the turn totals behind it', function () {
+    $user = $this->user();
+    actingAs($user);
+
+    $id = longChat($user, 6);
+    $store = app(AgentConversationStore::class);
+
+    // A short chat in a wide window: the composer is clean.
+    config(['packstub-agents.history.max_tokens' => 24000]);
+    $component = livewire(Chat::class, ['conversation' => $id])->assertDontSee('fi-chat-ring');
+    expect($component->instance()->history()['meter'])->toBeFalse();
+
+    // Lower the threshold: the ring shows, with the estimate and what fills the window.
+    config(['packstub-agents.history.meter_share' => 0.01, 'packstub-agents.history.keep_tool_results_turns' => 1]);
+    $usage = $store->contextUsage($id);
+    expect($usage['breakdown']['questions'])->toBeGreaterThan(0)
+        ->and($usage['breakdown']['answers'])->toBeGreaterThan(0)
+        ->and($usage['breakdown']['tool_calls'])->toBeGreaterThan(0)
+        ->and($usage['breakdown']['tool_results'])->toBeGreaterThanOrEqual(100) // the last exchange keeps its 400-byte result (and the call's JSON around it)
+        ->and($usage['breakdown']['tool_results_pruned'])->toBe(5 * 40)
+        ->and($usage['breakdown']['summary'])->toBe(0)
+        ->and(array_sum($usage['breakdown']))->toBe($usage['tokens']);
+
+    // Two recorded turns: the totals and the last turn's real context size.
+    $turn = fn (array $usage, array $tools, int $ms) => AgentTurn::query()->create([
+        'id' => (string) Str::uuid7(), 'conversation_id' => $id, 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id,
+        'status' => AgentTurn::DONE, 'input' => ['prompt' => 'Hi'], 'usage' => $usage, 'tool_calls' => $tools, 'duration_ms' => $ms, 'finish_reason' => 'stop',
+    ]);
+    $turn(['prompt_tokens' => 1000, 'completion_tokens' => 100], ['list_widgets'], 4000);
+    usleep(1100);
+    $turn(['prompt_tokens' => 2000, 'cache_read_input_tokens' => 500, 'completion_tokens' => 150, 'reasoning_tokens' => 50], ['list_widgets', 'show_table'], 62000);
+    AgentTurn::query()->create(['id' => (string) Str::uuid7(), 'conversation_id' => $id, 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id, 'status' => AgentTurn::QUEUED, 'input' => ['prompt' => 'Later']]);
+
+    $component = livewire(Chat::class, ['conversation' => $id])
+        ->assertSee('fi-chat-ring')
+        ->assertSee(__('History window'))
+        ->assertSee(__('This chat so far'))
+        ->assertSee(__('Compress now'))
+        ->assertSee(__('Continue in a new chat'))
+        ->assertSee(__('The last question read :tokens tokens.', ['tokens' => '2,500']))
+        ->assertSee('1.1 min');
+
+    $history = $component->instance()->history();
+    expect($history['meter'])->toBeTrue()
+        ->and($history['notice'])->toBeFalse()
+        ->and($history['turns'])->toBe(['count' => 2, 'tokens_in' => 3500, 'tokens_out' => 300, 'tool_calls' => 3, 'duration_ms' => 66000, 'last_tokens_in' => 2500]);
+});
+
+it('compresses a chat in place, keeping the last exchanges verbatim', function () {
+    $user = $this->user();
+    actingAs($user);
+    config(['packstub-agents.history.max_tokens' => 24000, 'packstub-agents.history.compress_keep_turns' => 2]);
+
+    $id = longChat($user, 6);
+    $store = app(AgentConversationStore::class);
+    $before = $store->contextUsage($id)['tokens'];
+
+    WidgetAgent::fake(['Questions 1 to 4 asked for the live count; answers 1 to 4.']);
+
+    livewire(Chat::class, ['conversation' => $id])->call('compressNow')->assertNotified(__('Older messages were compressed'));
+
+    $summary = ConversationSummary::query()->where('conversation_id', $id)->firstOrFail();
+    $messages = $store->getLatestConversationMessages($id, 40);
+    $usage = $store->contextUsage($id);
+
+    expect($summary->content)->toContain('Questions 1 to 4')
+        ->and($summary->source_conversation_id)->toBeNull()
+        ->and($messages)->toHaveCount(2 + 4 * 2) // the summary pair, then two exchanges of question, answer+call, result, answer
+        ->and($messages[2]->content)->toBe('Question 5: how many widgets are live?')
+        ->and($usage['summarized'])->toBeTrue()
+        ->and($usage['tokens'])->toBeLessThan($before)
+        ->and($usage['breakdown']['summary'])->toBeGreaterThan(0);
+
+    // Nothing older than the kept exchanges: nothing to do, and the summary is untouched.
+    expect($store->compactNow($id, fn () => 'never called', 2))->toBeFalse()
+        ->and(ConversationSummary::query()->where('conversation_id', $id)->value('content'))->toBe($summary->content);
+
+    // A failing summarizer is reported and keeps the summary so far.
+    expect(fn () => $store->compactNow($id, fn () => throw new RuntimeException('cheap model down'), 1))->toThrow(RuntimeException::class);
+    expect(ConversationSummary::query()->where('conversation_id', $id)->value('content'))->toBe($summary->content);
+
+    // On the page the failure is a notification, and nothing is compressed while a turn runs.
+    WidgetAgent::fake([]);
+    AgentTurn::query()->create(['id' => (string) Str::uuid7(), 'conversation_id' => $id, 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id, 'status' => AgentTurn::QUEUED, 'input' => ['prompt' => 'Later']]);
+    livewire(Chat::class, ['conversation' => $id])->call('compressNow')->assertNotNotified();
+});
+
+it('mirrors the history settings of the plugin into config', function () {
+    AgentsPlugin::make()->history(maxTokens: 12000, meterShare: 0.5, compressKeepTurns: 4)->register(Filament::getPanel('admin'));
+
+    expect(config('packstub-agents.history.max_tokens'))->toBe(12000)
+        ->and(config('packstub-agents.history.meter_share'))->toBe(0.5)
+        ->and(config('packstub-agents.history.compress_keep_turns'))->toBe(4)
+        ->and(config('packstub-agents.history.notice_share'))->toBe(0.7)
+        ->and(AgentConversationStore::compressKeepTurns())->toBe(4)
+        ->and(AgentConversationStore::meterShare())->toBe(0.5);
+});
+
+it('continues a long chat in a new one that starts from a summary', function () {
     $user = $this->user();
     actingAs($user);
     config(['packstub-agents.history.max_tokens' => 1000, 'packstub-agents.history.notice_share' => 0.5]);
@@ -135,6 +236,8 @@ it('shows a context meter and continues a long chat in a new one that starts fro
     WidgetAgent::fake(['Widgets 1 to 6 were live; the person kept asking for the live count.']);
 
     $component = livewire(Chat::class, ['conversation' => $id])
+        ->assertSee('fi-chat-ring-fill-high')
+        ->assertSee(__('This chat is getting long — answers stay sharpest in a new one.'))
         ->assertSee(__('Continue in a new chat'));
 
     expect($component->instance()->history()['notice'])->toBeTrue();

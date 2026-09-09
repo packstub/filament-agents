@@ -223,23 +223,83 @@
             </button>
         </div>
 
-        @if ($context && $context['tokens'] > 0)
-            {{-- How much of the history window this chat uses: what does not fit is summarized for the model. --}}
-            <div class="fi-chat-context flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
-                <span class="fi-chat-context-bar" title="{{ __(':used of :budget tokens of history', ['used' => number_format($context['tokens']), 'budget' => number_format($context['budget'])]) }}">
-                    <span class="fi-chat-context-fill {{ $context['notice'] ? 'fi-chat-context-fill-high' : '' }}" style="width: {{ (int) round($context['share'] * 100) }}%"></span>
-                </span>
-                <span>{{ __('Context :percent%', ['percent' => (int) round($context['share'] * 100)]) }}</span>
-                @if ($context['summarized'] && ! $context['source'])
-                    <span>· {{ __('older messages are summarized for the assistant') }}</span>
-                @endif
-                @if ($context['notice'])
-                    <span class="text-gray-700 dark:text-gray-300">· {{ __('This chat is getting long — answers stay sharpest in a new one.') }}</span>
-                    <x-filament::link tag="button" wire:click="continueInNewChat" size="sm" icon="heroicon-m-arrow-right-circle" x-show="! busy">{{ __('Continue in a new chat') }}</x-filament::link>
-                @endif
-            </div>
-        @endif
+        <x-packstub-agents::composer method="send" class="sticky bottom-4 shadow-lg">
+            @if ($context && $context['meter'])
+                {{-- The context ring: how full the history window is, from history.meter_share on. Click for what fills it, what the chat cost so far, Compress now and Continue in a new chat. --}}
+                <x-slot:tools>
+                    @php($percent = (int) round($context['share'] * 100))
+                    <x-filament::dropdown placement="top-end" width="sm" shift>
+                        <x-slot name="trigger">
+                            <button
+                                type="button"
+                                class="fi-chat-ring"
+                                aria-label="{{ __('Context :percent%', ['percent' => $percent]) }}"
+                                x-tooltip="{ content: @js(__('Context :percent%', ['percent' => $percent]).' · '.__('~:used of :budget tokens', ['used' => number_format($context['tokens']), 'budget' => number_format($context['budget'])])), theme: $store.theme, touch: false }"
+                            >
+                                <svg viewBox="0 0 20 20" aria-hidden="true">
+                                    <circle class="fi-chat-ring-track" cx="10" cy="10" r="8" pathLength="100" />
+                                    <circle class="fi-chat-ring-fill {{ $context['notice'] ? 'fi-chat-ring-fill-high' : '' }}" cx="10" cy="10" r="8" pathLength="100" stroke-dasharray="{{ $percent }} 100" />
+                                </svg>
+                            </button>
+                        </x-slot>
 
-        <x-packstub-agents::composer method="send" class="sticky bottom-4 shadow-lg" />
+                        <div class="fi-chat-ring-panel flex flex-col gap-4 p-4 text-xs text-gray-600 dark:text-gray-400">
+                            <div>
+                                <p class="text-sm font-semibold text-gray-950 dark:text-white">{{ __('History window') }}</p>
+                                <p class="mt-0.5">{{ __('~:used of :budget tokens', ['used' => number_format($context['tokens']), 'budget' => number_format($context['budget'])]) }} · {{ __('estimated') }}</p>
+                                @if ($context['turns']['last_tokens_in'] !== null)
+                                    <p class="mt-0.5">{{ __('The last question read :tokens tokens.', ['tokens' => number_format($context['turns']['last_tokens_in'])]) }}</p>
+                                @endif
+                                <dl class="mt-2">
+                                    @foreach (\Packstub\Agents\Filament\Pages\Chat::breakdownLabels() as $key => $label)
+                                        @if ($context['breakdown'][$key] > 0)
+                                            <dt>{{ $label }}</dt>
+                                            <dd>{{ number_format($context['breakdown'][$key]) }}</dd>
+                                        @endif
+                                    @endforeach
+                                </dl>
+                            </div>
+
+                            @if ($context['turns']['last_tokens_in'] !== null)
+                                <div>
+                                    <p class="text-sm font-semibold text-gray-950 dark:text-white">{{ __('This chat so far') }}</p>
+                                    <dl class="mt-2">
+                                        <dt>{{ __('Turns') }}</dt>
+                                        <dd>{{ number_format($context['turns']['count']) }}</dd>
+                                        <dt>{{ __('Tokens in') }}</dt>
+                                        <dd>{{ number_format($context['turns']['tokens_in']) }}</dd>
+                                        <dt>{{ __('Tokens out') }}</dt>
+                                        <dd>{{ number_format($context['turns']['tokens_out']) }}</dd>
+                                        <dt>{{ __('Tool calls') }}</dt>
+                                        <dd>{{ number_format($context['turns']['tool_calls']) }}</dd>
+                                        <dt>{{ __('Time') }}</dt>
+                                        <dd>{{ \Packstub\Agents\Filament\Pages\Chat::duration($context['turns']['duration_ms']) }}</dd>
+                                    </dl>
+                                </div>
+                            @endif
+
+                            @if ($context['source'])
+                                <p>
+                                    {{ __('Continued from') }}
+                                    <a href="{{ \Packstub\Agents\Filament\Pages\Chat::getUrl(['conversation' => $context['source']]) }}" class="font-medium text-primary-600 hover:underline">{{ $context['sourceTitle'] ?? __('an earlier chat') }}</a>
+                                    — {{ __('the assistant starts from a summary of it.') }}
+                                </p>
+                            @elseif ($context['summarized'])
+                                <p>{{ __('Older messages are summarized for the assistant.') }}</p>
+                            @endif
+
+                            @if ($context['notice'])
+                                <p class="text-gray-800 dark:text-gray-200">{{ __('This chat is getting long — answers stay sharpest in a new one.') }}</p>
+                            @endif
+
+                            <div class="fi-chat-ring-actions">
+                                <x-filament::button size="xs" color="gray" outlined icon="heroicon-m-arrows-pointing-in" wire:click="compressNow" x-bind:disabled="busy">{{ __('Compress now') }}</x-filament::button>
+                                <x-filament::button size="xs" color="gray" outlined icon="heroicon-m-arrow-right-circle" wire:click="continueInNewChat" x-bind:disabled="busy">{{ __('Continue in a new chat') }}</x-filament::button>
+                            </div>
+                        </div>
+                    </x-filament::dropdown>
+                </x-slot>
+            @endif
+        </x-packstub-agents::composer>
     </div>
 </x-filament-panels::page>

@@ -3,6 +3,7 @@
 namespace Packstub\Agents\Filament\Pages;
 
 use BackedEnum;
+use Closure;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -226,9 +227,12 @@ class Chat extends Page
     }
 
     /**
-     * How full the history window is, for the meter under the transcript (page context is the $context property).
+     * How full the history window is, for the context ring in the composer: the estimate and what fills it
+     * (AgentConversationStore::contextUsage), and what the chat cost so far from its ended turns — the last
+     * turn's input tokens being the context the provider actually read. `meter` says whether the ring shows
+     * (history.meter_share), `notice` whether the chat is long enough to suggest a new one (history.notice_share).
      *
-     * @return array{tokens: int, budget: int, share: float, summarized: bool, source: ?string, sourceTitle: ?string, notice: bool}|null
+     * @return array{tokens: int, budget: int, share: float, summarized: bool, source: ?string, sourceTitle: ?string, breakdown: array<string, int>, turns: array{count: int, tokens_in: int, tokens_out: int, tool_calls: int, duration_ms: int, last_tokens_in: ?int}, meter: bool, notice: bool}|null
      */
     public function history(): ?array
     {
@@ -241,8 +245,57 @@ class Chat extends Page
         return [
             ...$usage,
             'sourceTitle' => $usage['source'] ? $this->ownConversations()->whereKey($usage['source'])->value('title') : null,
+            'turns' => $this->turnTotals(),
+            'meter' => $usage['tokens'] > 0 && $usage['share'] >= AgentConversationStore::meterShare(),
             'notice' => $usage['share'] >= (float) config('packstub-agents.history.notice_share', 0.7),
         ];
+    }
+
+    /**
+     * What the chat cost so far, over its ended turns.
+     *
+     * @return array{count: int, tokens_in: int, tokens_out: int, tool_calls: int, duration_ms: int, last_tokens_in: ?int}
+     */
+    protected function turnTotals(): array
+    {
+        $turns = AgentTurn::query()
+            ->forConversation($this->conversation)
+            ->whereNotIn('status', AgentTurn::OPEN)
+            ->orderByDesc('id')
+            ->limit(AgentConversationStore::SUMMARY_ROWS_CAP)
+            ->get(['id', 'usage', 'tool_calls', 'duration_ms']);
+
+        return [
+            'count' => $turns->count(),
+            'tokens_in' => (int) $turns->sum(fn (AgentTurn $t) => $t->tokensIn() ?? 0),
+            'tokens_out' => (int) $turns->sum(fn (AgentTurn $t) => $t->tokensOut() ?? 0),
+            'tool_calls' => (int) $turns->sum(fn (AgentTurn $t) => count($t->tool_calls ?? [])),
+            'duration_ms' => (int) $turns->sum('duration_ms'),
+            'last_tokens_in' => $turns->first(fn (AgentTurn $t) => $t->usage !== null)?->tokensIn(),
+        ];
+    }
+
+    /** Fold the older part of this chat into its rolling summary now, keeping the last exchanges verbatim. */
+    public function compressNow(): void
+    {
+        if (! $this->conversation || ! AgentModels::enabled() || ! $this->idle()) {
+            return;
+        }
+
+        try {
+            $compressed = app(AgentConversationStore::class)->compactNow($this->conversation, $this->summarizer(), AgentConversationStore::compressKeepTurns());
+        } catch (Throwable $e) {
+            report($e);
+            Notification::make()->title(__('The chat could not be summarized'))->body($e->getMessage())->danger()->send();
+
+            return;
+        }
+
+        Notification::make()
+            ->title($compressed ? __('Older messages were compressed') : __('Nothing older to compress'))
+            ->body($compressed ? __('The assistant reads a summary of them from the next question on.') : __('The last exchanges are always kept as they are.'))
+            ->success()
+            ->send();
     }
 
     /** Open a new chat that starts from a summary of this one, and go there. */
@@ -252,9 +305,6 @@ class Chat extends Page
             return;
         }
 
-        $resolved = AgentModels::resolve($this->model);
-        $agent = Agents::agent($this->context, $this->model);
-        $provider = app(AiManager::class)->textProviderFor($agent, $resolved['provider']);
         $title = Str::limit((string) $this->ownConversations()->whereKey($this->conversation)->value('title'), 80);
 
         try {
@@ -262,7 +312,7 @@ class Chat extends Page
                 $this->conversation,
                 auth()->user(),
                 __(':title (continued)', ['title' => $title]),
-                AgentConversationStore::providerSummarizer($provider),
+                $this->summarizer(),
             );
         } catch (Throwable $e) {
             report($e);
@@ -272,6 +322,15 @@ class Chat extends Page
         }
 
         $this->redirect(static::getUrl(['conversation' => $id]));
+    }
+
+    /** A summarizer on the cheapest model of the provider behind the picked model. */
+    protected function summarizer(): Closure
+    {
+        $resolved = AgentModels::resolve($this->model);
+        $agent = Agents::agent($this->context, $this->model);
+
+        return AgentConversationStore::providerSummarizer(app(AiManager::class)->textProviderFor($agent, $resolved['provider']));
     }
 
     /** The composer passes the question along (agent-chat.js); $prompt on the component is the auto-sent one from the URL or session. */
@@ -476,6 +535,31 @@ class Chat extends Page
             'poll' => $this->pollUrl(),
             'active' => $turn->isActive(),
         ];
+    }
+
+    /**
+     * The parts of the history window, in the order the context popup lists them.
+     *
+     * @return array<string, string>
+     */
+    public static function breakdownLabels(): array
+    {
+        return [
+            'summary' => __('Rolling summary'),
+            'questions' => __('Questions'),
+            'answers' => __('Answers'),
+            'tool_calls' => __('Tool calls'),
+            'tool_results' => __('Tool results'),
+            'tool_results_pruned' => __('Tool results, pruned to a placeholder'),
+        ];
+    }
+
+    /** A wall time for the context popup: seconds, minutes from one minute on. */
+    public static function duration(int $milliseconds): string
+    {
+        $seconds = (int) round($milliseconds / 1000);
+
+        return $seconds >= 60 ? __(':minutes min', ['minutes' => number_format($seconds / 60, 1)]) : __(':seconds s', ['seconds' => $seconds]);
     }
 
     /** What to tell the person about an answer the provider ended early (AgentTurns::cutShortReason). */

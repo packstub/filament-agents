@@ -254,17 +254,27 @@ class AgentConversationStore extends DatabaseConversationStore
     }
 
     /**
-     * How full the history window is, for the chat page's meter.
+     * How full the history window is, for the chat page's meter, and what fills it: the rolling summary, the
+     * questions, the answers, the tool calls, and the tool results the model still reads verbatim or reduced
+     * to a placeholder. All estimated (four characters per token).
      *
-     * @return array{tokens: int, budget: int, share: float, summarized: bool, source: ?string}
+     * @return array{tokens: int, budget: int, share: float, summarized: bool, source: ?string, breakdown: array{summary: int, questions: int, answers: int, tool_calls: int, tool_results: int, tool_results_pruned: int}}
      */
     public function contextUsage(string $conversationId): array
     {
         $summary = ConversationSummary::query()->where('conversation_id', $conversationId)->first();
         $records = $this->recordsAfter($conversationId, $summary?->through_message_id);
         $budget = self::budget();
-        $tokens = ($summary ? self::estimateTokens($summary->content) : 0)
-            + $records->values()->sum(fn ($record, int $i) => $this->estimateRecord($record, $i));
+        $breakdown = ['summary' => $summary ? self::estimateTokens($summary->content) : 0, 'questions' => 0, 'answers' => 0, 'tool_calls' => 0, 'tool_results' => 0, 'tool_results_pruned' => 0];
+
+        foreach ($records->values() as $i => $record) {
+            $parts = $this->estimateParts($record, $i);
+            $breakdown[$record->role === 'user' ? 'questions' : 'answers'] += $parts['content'];
+            $breakdown['tool_calls'] += $parts['tool_calls'];
+            $breakdown[$parts['pruned'] ? 'tool_results_pruned' : 'tool_results'] += $parts['tool_results'];
+        }
+
+        $tokens = array_sum($breakdown);
 
         return [
             'tokens' => $tokens,
@@ -272,7 +282,39 @@ class AgentConversationStore extends DatabaseConversationStore
             'share' => $budget > 0 ? min(1.0, $tokens / $budget) : 0.0,
             'summarized' => $summary !== null,
             'source' => $summary?->source_conversation_id,
+            'breakdown' => $breakdown,
         ];
+    }
+
+    /**
+     * Fold everything but the last $keepTurns exchanges into the rolling summary, in place ("Compress now" on the
+     * chat page). Returns false when there is nothing older than those exchanges; a failing summarizer throws,
+     * so the page can say so, and the summary so far is kept.
+     */
+    public function compactNow(string $conversationId, Closure $summarizer, int $keepTurns): bool
+    {
+        $summary = ConversationSummary::query()->where('conversation_id', $conversationId)->first();
+        $records = $this->recordsAfter($conversationId, $summary?->through_message_id); // newest first
+        $kept = 0;
+        $questions = 0;
+
+        foreach ($records as $record) {
+            if ($record->role === 'user' && ++$questions > max(0, $keepTurns)) {
+                break;
+            }
+
+            $kept++;
+        }
+
+        $dropped = $records->slice($kept)->reverse()->values();
+
+        if ($dropped->isEmpty()) {
+            return false;
+        }
+
+        $this->writeSummary($conversationId, $summary, $dropped, $summarizer);
+
+        return true;
     }
 
     /**
@@ -342,12 +384,18 @@ class AgentConversationStore extends DatabaseConversationStore
     protected function compact(string $conversationId, ?ConversationSummary $summary, Collection $dropped): ?ConversationSummary
     {
         try {
-            $content = ($this->summarizer)($this->summaryPrompt($summary?->content, $dropped));
+            return $this->writeSummary($conversationId, $summary, $dropped, $this->summarizer);
         } catch (Throwable $e) {
             report($e);
 
             return null;
         }
+    }
+
+    /** Extend the summary so far with $dropped (oldest first) and store it; null when the summarizer wrote nothing. */
+    protected function writeSummary(string $conversationId, ?ConversationSummary $summary, Collection $dropped, Closure $summarizer): ?ConversationSummary
+    {
+        $content = $summarizer($this->summaryPrompt($summary?->content, $dropped));
 
         if (trim($content) === '') {
             return null;
@@ -412,12 +460,29 @@ class AgentConversationStore extends DatabaseConversationStore
     /** A row's share of the window, as the model would read it ($index counts rows from the newest). */
     protected function estimateRecord(object $record, int $index): int
     {
-        $pruned = $index >= self::keepToolResultsTurns() * 2;
-        $results = (string) $record->tool_results;
+        $parts = $this->estimateParts($record, $index);
 
-        return self::estimateTokens((string) $record->content)
-            + self::estimateTokens((string) $record->tool_calls)
-            + ($pruned && strlen($results) > 2 ? 40 : self::estimateTokens($results));
+        return $parts['content'] + $parts['tool_calls'] + $parts['tool_results'];
+    }
+
+    /**
+     * A row's share of the window by part: its text, its tool calls, and its tool results — reduced to a
+     * placeholder's worth once the row is older than keep_tool_results_turns exchanges.
+     *
+     * @return array{content: int, tool_calls: int, tool_results: int, pruned: bool}
+     */
+    protected function estimateParts(object $record, int $index): array
+    {
+        $results = (string) $record->tool_results;
+        $any = strlen($results) > 2; // not '[]'
+        $pruned = $any && $index >= self::keepToolResultsTurns() * 2;
+
+        return [
+            'content' => self::estimateTokens((string) $record->content),
+            'tool_calls' => self::estimateTokens((string) $record->tool_calls),
+            'tool_results' => $pruned ? 40 : ($any ? self::estimateTokens($results) : 0),
+            'pruned' => $pruned,
+        ];
     }
 
     /** A rough token count (four characters per token) — enough to decide what fits. */
@@ -434,6 +499,18 @@ class AgentConversationStore extends DatabaseConversationStore
     public static function keepToolResultsTurns(): int
     {
         return max(0, (int) config('packstub-agents.history.keep_tool_results_turns', 3));
+    }
+
+    /** How many of the latest exchanges "Compress now" keeps verbatim. */
+    public static function compressKeepTurns(): int
+    {
+        return max(1, (int) config('packstub-agents.history.compress_keep_turns', 2));
+    }
+
+    /** From this share of the window the chat page shows its context ring. */
+    public static function meterShare(): float
+    {
+        return max(0.0, (float) config('packstub-agents.history.meter_share', 0.25));
     }
 
     /** Title a conversation the way laravel/ai does once its first answer is in: a short provider-written line, else the question. */
