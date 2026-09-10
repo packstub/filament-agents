@@ -25,6 +25,7 @@
 | `chat.queue_connection` | `null` | `AGENT_QUEUE_CONNECTION` | the queue connection the turn job runs on with the `queue` driver; `null` = the app's default |
 | `chat.queue` | `null` | `AGENT_QUEUE` | the queue name; `null` = the connection's default |
 | `chat.job_timeout` | `600` | `AGENT_JOB_TIMEOUT` | how long one turn may run on the worker, in seconds; a turn whose job went quiet for longer is shown as failed, with a Retry |
+| `chat.worker_wait` | `10` | `AGENT_WORKER_WAIT` | how long a question may wait for a worker before the status line says none has taken it, in seconds (the queue driver only) |
 | `chat.poll_interval` | `600` | `AGENT_POLL_INTERVAL` | how often the page asks for the answer so far while a turn runs, in milliseconds |
 | `chat.path` | `agents` | | without a panel, where the poll endpoint lives: `GET {path}/chat/{conversation}/turn`, see [Agents for Laravel](https://packstub.dev/docs/agents/installation#routes) |
 | `chat.middleware` | `['web', 'auth']` | | the middleware of that endpoint; a panel that shows the chat registers its own on the panel's routes |

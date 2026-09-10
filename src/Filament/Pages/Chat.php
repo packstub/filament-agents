@@ -206,7 +206,7 @@ class Chat extends Page
             'active' => $active ? [
                 'id' => $active->id,
                 'status' => $active->status,
-                'statusText' => $active->status_text ?? __('Thinking…'),
+                'statusText' => $turns->statusText($active), // what the job reports, or the missing-worker hint
                 'html' => filled($active->text) ? self::markdown((string) $active->text) : '',
             ] : null,
             'queued' => $turns->queued($this->conversation)->map(fn (AgentTurn $t) => ['id' => $t->id, 'text' => (string) $t->prompt()])->values()->all(),
