@@ -2,6 +2,14 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## 1.8.0 — 2026-09-10
+
+Upgrading: nothing to run. The plugin requires `packstub/agents` ^1.1 (Composer updates it); a write tool may add `describe(array $arguments): ?string` to phrase its own proposals.
+
+### Changed
+
+- **A proposed change is a question with a decision.** A write tool waiting for approval is one row: an icon, the call as a question ("Confirm order RO-00016 for Nordwind GmbH?"), Approve and Reject on the right, the exact call folded under it (the tool name and how many arguments; click to open the argument list). The question comes from the tool's `describe()` in the engine, or its title and the first argument. While it waits the row is the most prominent element on the page (primary border and tint); once decided the same row shows Approved or Rejected where the buttons were, with the tool's result in the fold, so nothing moves. The stylesheet reads the panel's own colour variables (`--primary-500`, `--gray-500`…) instead of Tailwind's, so it renders the same whatever the app's CSS build includes. (#43)
+
 ## 1.7.0 — 2026-09-09
 
 Upgrading: run `php artisan migrate` (a nullable `guard` column on `agent_turns`); nothing changes for a panel app. `Agents::panel()` and `Agents::panelId()` moved to `Packstub\Agents\Filament\FilamentContext` (`app(FilamentContext::class)->panel()`); `AgentRuntime::capture()` carries a `guard` key. The engine now comes from `packstub/agents`, which Composer installs with this plugin; a `@source` line, a published config, a `packstub-agents:*` command or a class name in your code all stay as they are.

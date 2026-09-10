@@ -26,6 +26,7 @@
     "Answers per day, per workspace": "Ответов в день на пространство",
     "Applies to": "Применяется к",
     "Approve": "Одобрить",
+    "Approved": "Одобрено",
     "Ask a follow-up…": "Задайте уточняющий вопрос…",
     "Ask anything about your workspace.": "Спросите что угодно о вашем рабочем пространстве.",
     "Assistant": "Ассистент",
@@ -46,6 +47,7 @@
     "Create one and paste it into your agent.": "Создайте токен и вставьте его в своего агента.",
     "Create token": "Создать токен",
     "Created": "Создан",
+    "Deciding…": "Решение принимается…",
     "Delete": "Удалить",
     "Done": "Готово",
     "Duration": "Длительность",
@@ -107,6 +109,7 @@
     "Resets at midnight.": "Сброс в полночь.",
     "Resets at midnight; all token kinds, as reported by the provider.": "Сбрасывается в полночь; все виды токенов, как сообщает провайдер.",
     "Resets at midnight; counted inside each workspace.": "Сбрасывается в полночь; считаются внутри каждого пространства.",
+    "Result": "Результат",
     "Retry": "Повторить",
     "Revoke": "Отозвать",
     "Rolling summary": "Скользящее резюме",
@@ -172,5 +175,6 @@
     "inherit (:value)": "наследуется (:value)",
     "never": "никогда",
     "the assistant starts from a summary of it.": "ассистент начинает с его краткого содержания.",
+    "{0} no arguments|{1} :count argument|[2,*] :count arguments": "{0} без аргументов|{1} :count аргумент|[2,*] :count аргумента",
     "~:used of :budget tokens": "~:used из :budget токенов"
 }

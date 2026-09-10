@@ -14,6 +14,7 @@ use Illuminate\Support\Str;
 use Laravel\Ai\AiManager;
 use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Models\ConversationMessage;
+use Packstub\Agents\Ai\ApprovableTool;
 use Packstub\Agents\Facades\Agents;
 use Packstub\Agents\Filament\FilamentContext;
 use Packstub\Agents\Mcp\AgentTool;
@@ -104,7 +105,7 @@ class Chat extends Page
         }
 
         $feedback = AgentMessageFeedback::query()->where('user_id', auth()->id())->pluck('rating', 'message_id');
-        $writeTools = self::writeToolNames();
+        $writeTools = self::writeTools();
         $idle = $this->idle();
 
         $list = ConversationMessage::query()
@@ -125,15 +126,17 @@ class Chat extends Page
                     'role' => $m->role,
                     'text' => (string) $m->content,
                     'html' => $m->role === 'assistant' ? self::markdown((string) $m->content) : e((string) $m->content),
-                    // A write tool stays a card (proposal / done / rejected) after the decision, when the paused list is empty again.
+                    // A write tool stays a proposal row (waiting / approved / rejected) after the decision, when the paused list is empty again.
                     'tools' => collect($m->tool_calls ?? [])->map(fn ($call) => [
                         'id' => $call['id'] ?? null,
                         'name' => Str::headline((string) ($call['name'] ?? '')),
+                        'tool' => (string) ($call['name'] ?? ''),
+                        'question' => self::question($writeTools->get($call['name'] ?? ''), $call['name'] ?? '', $call['arguments'] ?? []),
                         'arguments' => $call['arguments'] ?? [],
                         'pending' => $pending->contains($call['id'] ?? null),
                         'result' => $results->get($call['id'] ?? null)['result'] ?? null,
                         'rejected' => (bool) ($results->get($call['id'] ?? null)['denied'] ?? false),
-                        'readOnly' => ! in_array($call['name'] ?? '', $writeTools, true) && ! $everPaused->contains($call['id'] ?? null),
+                        'readOnly' => ! $writeTools->has($call['name'] ?? '') && ! $everPaused->contains($call['id'] ?? null),
                     ])->values()->all(),
                     'charts' => $charts,
                     'tables' => $tables,
@@ -450,12 +453,49 @@ class Chat extends Page
      */
     public static function writeToolNames(): array
     {
+        return self::writeTools()->keys()->all();
+    }
+
+    /**
+     * The tools that change data, keyed by name.
+     *
+     * @return Collection<string, object>
+     */
+    public static function writeTools(): Collection
+    {
         return collect(Agents::toolClasses())
             ->map(fn (string $class) => app($class))
             ->reject(fn ($tool) => $tool instanceof AgentTool ? $tool->isReadOnly() : AgentTool::hasReadOnlyAnnotation($tool))
-            ->map(fn ($tool) => $tool->name())
-            ->values()
-            ->all();
+            ->keyBy(fn ($tool) => $tool->name());
+    }
+
+    /**
+     * The proposal as a question the person can answer (ApprovableTool::question); a tool that is no longer
+     * registered reads as its name and the first argument.
+     *
+     * @param  array<string, mixed>  $arguments
+     */
+    public static function question(?object $tool, string $name, array $arguments): string
+    {
+        if ($tool) {
+            return ApprovableTool::question($tool, $arguments);
+        }
+
+        $first = collect($arguments)->first(fn ($value) => is_scalar($value) && $value !== '');
+
+        return rtrim(Str::headline($name).($first === null ? '' : ' '.$first), '?').'?';
+    }
+
+    /** A tool result for the proposal's fold: JSON pretty-printed, anything else as it came. */
+    public static function resultText(mixed $result): ?string
+    {
+        if ($result === null || $result === '') {
+            return null;
+        }
+
+        $decoded = is_string($result) ? json_decode($result, true) : $result;
+
+        return is_array($decoded) ? json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : (string) $result;
     }
 
     public function feedback(string $messageId, string $rating): void

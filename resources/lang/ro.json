@@ -26,6 +26,7 @@
     "Answers per day, per workspace": "Răspunsuri pe zi, per spațiu",
     "Applies to": "Se aplică la",
     "Approve": "Aprobă",
+    "Approved": "Aprobat",
     "Ask a follow-up…": "Continuă conversația…",
     "Ask anything about your workspace.": "Întreabă orice despre spațiul tău de lucru.",
     "Assistant": "Asistent",
@@ -46,6 +47,7 @@
     "Create one and paste it into your agent.": "Creează unul și lipește-l în agentul tău.",
     "Create token": "Creează token",
     "Created": "Creat",
+    "Deciding…": "Se decide…",
     "Delete": "Șterge",
     "Done": "Gata",
     "Duration": "Durată",
@@ -107,6 +109,7 @@
     "Resets at midnight.": "Se resetează la miezul nopții.",
     "Resets at midnight; all token kinds, as reported by the provider.": "Se resetează la miezul nopții; toate tipurile de tokeni, așa cum le raportează furnizorul.",
     "Resets at midnight; counted inside each workspace.": "Se resetează la miezul nopții; numărați în fiecare spațiu.",
+    "Result": "Rezultat",
     "Retry": "Reîncearcă",
     "Revoke": "Revocă",
     "Rolling summary": "Rezumat curent",
@@ -172,5 +175,6 @@
     "inherit (:value)": "moștenit (:value)",
     "never": "niciodată",
     "the assistant starts from a summary of it.": "asistentul pornește de la un rezumat al ei.",
+    "{0} no arguments|{1} :count argument|[2,*] :count arguments": "{0} fără argumente|{1} :count argument|[2,*] :count argumente",
     "~:used of :budget tokens": "~:used din :budget tokeni"
 }

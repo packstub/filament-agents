@@ -13,6 +13,7 @@ use Packstub\Agents\Support\AgentLimits;
 use Packstub\Agents\Support\AgentModels;
 use Packstub\Agents\Support\PageContext;
 use Packstub\Agents\Tests\Fixtures\Filament\Resources\Widgets\WidgetResource;
+use Packstub\Agents\Tests\Fixtures\Tools\RetireWidget;
 use Packstub\Agents\Tests\Fixtures\WidgetAgent;
 use RuntimeException;
 
@@ -154,6 +155,17 @@ it('carries the record being viewed into the chat as page context', function () 
     expect((new WidgetAgent(pageContext: 'widgets/'.$alpha->id))->dynamicInstructions())->toContain('opened this chat from Widget Alpha', '"name":"Alpha"');
 });
 
+it('phrases a proposal from the tool title and the first argument when the tool has no describe(), and from the call alone when the tool is gone', function () {
+    actingAs($this->user());
+
+    expect(Chat::question(app(RetireWidget::class), 'retire-widget', ['id' => 12]))->toBe('Retire Widget 12?')
+        ->and(Chat::question(null, 'archive-widget', ['id' => 3, 'reason' => 'old']))->toBe('Archive Widget 3?')
+        ->and(Chat::question(null, 'archive-widget', []))->toBe('Archive Widget?')
+        ->and(Chat::resultText('{"renamed":true,"widget":{"id":1}}'))->toBe("{\n    \"renamed\": true,\n    \"widget\": {\n        \"id\": 1\n    }\n}")
+        ->and(Chat::resultText('plain text'))->toBe('plain text')
+        ->and(Chat::resultText(null))->toBeNull();
+});
+
 it('keeps a decided proposal as a card and lets the model carry on after a rejection', function () {
     $user = $this->user();
     actingAs($user);
@@ -182,9 +194,21 @@ it('keeps a decided proposal as a card and lets the model carry on after a rejec
 
     expect(Chat::writeToolNames())->toBe(['rename-widget']);
 
-    livewire(Chat::class, ['conversation' => $conversation->id])
-        ->assertSeeInOrder(['Rename Widget', 'Rejected', 'Rename Widget', 'Done', 'Rename Widget', 'Approve', 'Reject'])
-        ->assertSee('Alpha II');
+    // Each proposal is one question with its decision: the tool's own sentence, the outcome in place once decided,
+    // Approve / Reject while it waits; the exact call (tool name, arguments, the result) folds under the question.
+    $page = livewire(Chat::class, ['conversation' => $conversation->id])
+        ->assertSeeInOrder([
+            "Rename widget #{$alpha->id} to Alpha II?", 'Rejected',
+            "Rename widget #{$alpha->id} to Alpha III?", 'Approved', 'Result', '"renamed": true',
+            "Rename widget #{$alpha->id} to Alpha IV?", 'Approve', 'Reject',
+        ])
+        ->assertSeeInOrder(['rename-widget', '2 arguments', 'Alpha II'])
+        ->assertDontSee('Done')
+        ->assertDontSee('The user rejected this tool call.'); // a rejection has no result to show
+    $html = $page->html();
+    expect(substr_count($html, 'fi-chat-proposal-pending'))->toBe(1)
+        ->and(substr_count($html, 'fi-chat-proposal-approved'))->toBe(1)
+        ->and(substr_count($html, 'fi-chat-proposal-rejected'))->toBe(1);
 
     // Rejecting hands the model a reason instead of a bare "no", so the turn continues and the model can answer.
     WidgetAgent::fake(['Understood, I left the name as it is.']);

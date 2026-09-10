@@ -36,11 +36,13 @@ From `history.meter_share` of the window a small ring shows in the composer, nex
 
 ### Approvals
 
-When the agent calls a write tool, laravel/ai pauses the turn. The chat shows a card with the tool's title and arguments and two buttons, **Approve** and **Reject**; the turn resumes with the decision and the tool either runs or reports that it was rejected. The generic rules ask the model not to claim something was done until the tool result confirms it and never to chain destructive changes with anything else in one turn.
+When the agent calls a write tool, laravel/ai pauses the turn. The chat shows the proposal as one question with a decision: an icon, the call as the person reads it ("Confirm order RO-00020 for Halvorsen & Co.?"), **Approve** and **Reject** on the right, and the exact call folded under the question — the tool name and how many arguments; click it for the argument list. The turn resumes with the decision and the tool either runs or reports that it was rejected. The generic rules ask the model not to claim something was done until the tool result confirms it and never to chain destructive changes with anything else in one turn.
 
-The card sits in the conversation like any other answer, with the composer underneath for the follow-up:
+While it waits the proposal is the most prominent element on the page; once decided the same row shows **Approved** or **Rejected** where the buttons were, with the tool's result in the fold, so nothing moves. The question comes from the tool: give a write tool a `describe(array $arguments): ?string` and it phrases its own calls; without one the question is the tool's title and the first argument ("Confirm Order RO-00020?"). See [The proposal as a question](https://packstub.dev/docs/agents/tools#the-proposal-as-a-question) in the engine's docs.
 
-![A request to confirm an order paused as a Confirm Order card with the order number and Approve and Reject buttons, the composer with the model picker under it](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-approval.png)
+The proposal sits in the conversation like any other answer, with the composer underneath for the follow-up:
+
+![A request to confirm an order paused as the question "Confirm order RO-00020 for Halvorsen & Co.?" with Approve and Reject buttons and the folded confirm-order call under it, the composer with the model picker underneath](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-approval.png)
 
 ### When the chat is hidden
 

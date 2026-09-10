@@ -26,6 +26,7 @@
     "Answers per day, per workspace": "Respuestas por día, por espacio de trabajo",
     "Applies to": "Se aplica a",
     "Approve": "Aprobar",
+    "Approved": "Aprobado",
     "Ask a follow-up…": "Haga otra pregunta…",
     "Ask anything about your workspace.": "Pregunta lo que quieras sobre tu espacio de trabajo.",
     "Assistant": "Asistente",
@@ -46,6 +47,7 @@
     "Create one and paste it into your agent.": "Cree uno y péguelo en su agente.",
     "Create token": "Crear token",
     "Created": "Creado",
+    "Deciding…": "Decidiendo…",
     "Delete": "Eliminar",
     "Done": "Hecho",
     "Duration": "Duración",
@@ -107,6 +109,7 @@
     "Resets at midnight.": "Se restablece a medianoche.",
     "Resets at midnight; all token kinds, as reported by the provider.": "Se reinicia a medianoche; todos los tipos de tokens, según informa el proveedor.",
     "Resets at midnight; counted inside each workspace.": "Se restablece a medianoche; se cuentan dentro de cada espacio de trabajo.",
+    "Result": "Resultado",
     "Retry": "Reintentar",
     "Revoke": "Revocar",
     "Rolling summary": "Resumen continuo",
@@ -172,5 +175,6 @@
     "inherit (:value)": "heredado (:value)",
     "never": "nunca",
     "the assistant starts from a summary of it.": "el asistente parte de un resumen de él.",
+    "{0} no arguments|{1} :count argument|[2,*] :count arguments": "{0} sin argumentos|{1} :count argumento|[2,*] :count argumentos",
     "~:used of :budget tokens": "~:used de :budget tokens"
 }
