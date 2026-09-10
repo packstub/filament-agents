@@ -5,6 +5,7 @@ namespace Packstub\Agents\Filament\Pages;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
+use Filament\Facades\Filament;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -13,6 +14,7 @@ use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
 use Laravel\Ai\Models\Conversation;
+use Packstub\Agents\Facades\Agents;
 use Packstub\Agents\Support\AgentModels;
 
 /** Every conversation the current person had with the assistant in this workspace. */
@@ -20,9 +22,7 @@ class Chats extends Page implements HasTable
 {
     use InteractsWithTable;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChatBubbleLeftRight;
-
-    protected static bool $shouldRegisterNavigation = false;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSparkles;
 
     protected static ?string $slug = 'chats';
 
@@ -31,6 +31,27 @@ class Chats extends Page implements HasTable
     public static function canAccess(): bool
     {
         return AgentModels::enabled();
+    }
+
+    /**
+     * A panel with a sidebar lists the recent chats there (the sidebar hook) and needs no item for this page. A panel
+     * with top navigation has no such place, so it gets an "Ask …" item — the assistant's name and icon — that leads
+     * here and stays active on a chat; the topbar button keeps opening a new chat with the record being viewed.
+     */
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canAccess() && (Filament::getCurrentOrDefaultPanel()?->hasTopNavigation() ?? false);
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return Agents::name();
+    }
+
+    /** @return string|array<string> */
+    public static function getNavigationItemActiveRoutePattern(): string|array
+    {
+        return [static::getRouteName(), Chat::getRouteName()];
     }
 
     public function getTitle(): string|Htmlable

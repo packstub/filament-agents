@@ -19,9 +19,44 @@
 .fi-chat-md th { font-weight: 600; color: var(--gray-500); }
 .fi-chat-md strong { font-weight: 600; }
 
-/* The composer card highlights on focus, so the textarea must not draw the browser's own outline. It grows with the text (agent-chat.js). */
-.fi-agent-composer textarea:focus { outline: none; box-shadow: none; }
-.fi-agent-composer textarea { min-height: 3.25rem; max-height: 15rem; overflow-y: auto; }
+/* The composer: one row — the field, then the tools (the context ring), Stop while an answer runs, the model and a square
+   Send. The field grows with the text up to a few lines (agent-chat.js) and the actions stay on its last line. The card
+   highlights on focus, so the textarea must not draw the browser's own outline. */
+.fi-agent-composer-row { display: flex; align-items: flex-end; gap: 0.5rem; padding: 0.375rem 0.375rem 0.375rem 1rem; }
+.fi-agent-composer-input { flex: 1; min-width: 0; min-height: 2.5rem; max-height: 12rem; overflow-y: auto; padding: 0.5rem 0; line-height: 1.5rem; }
+.fi-agent-composer-input:focus { outline: none; box-shadow: none; }
+.fi-agent-composer-actions { display: flex; flex: none; align-items: center; gap: 0.25rem; height: 2.5rem; }
+.fi-agent-composer-send { width: 2.25rem; height: 2.25rem; }
+.fi-agent-composer-stop { margin-inline-end: 0.125rem; }
+/* The model: a small text button; the list under it says what each entry runs. */
+.fi-agent-composer-model { display: inline-flex; align-items: center; gap: 0.125rem; max-width: 11rem; height: 2rem; padding: 0 0.25rem 0 0.5rem; border-radius: 0.5rem; font-size: 0.8125rem; font-weight: 500; color: var(--gray-600); cursor: pointer; white-space: nowrap; }
+.fi-agent-composer-model:hover, .fi-agent-composer-model:focus-visible, .fi-agent-composer-model[aria-expanded="true"] { color: var(--gray-900); background: rgb(0 0 0 / 0.05); outline: none; }
+.dark .fi-agent-composer-model { color: var(--gray-400); }
+.dark .fi-agent-composer-model:hover, .dark .fi-agent-composer-model:focus-visible, .dark .fi-agent-composer-model[aria-expanded="true"] { color: #fff; background: rgb(255 255 255 / 0.08); }
+.fi-agent-composer-model svg { width: 1rem; height: 1rem; flex: none; color: var(--gray-400); }
+.fi-agent-composer-models .fi-dropdown-list-item-label { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; width: 100%; }
+.fi-agent-composer-model-option { display: flex; flex-direction: column; min-width: 0; text-align: start; }
+.fi-agent-composer-model-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fi-agent-composer-model-detail { font-size: 0.75rem; color: var(--gray-500); }
+.fi-agent-composer-model-picked .fi-agent-composer-model-label { color: var(--primary-600); font-weight: 600; }
+.dark .fi-agent-composer-model-picked .fi-agent-composer-model-label { color: var(--primary-400); }
+.fi-agent-composer-model-check { width: 1rem; height: 1rem; flex: none; color: var(--primary-600); }
+.dark .fi-agent-composer-model-check { color: var(--primary-400); }
+@media (max-width: 480px) { .fi-agent-composer-model { max-width: 7rem; } }
+
+/* A new chat: the assistant's name and its starter questions, each a pill that sends on click. */
+.fi-chat-empty { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 2.5rem 0 1rem; text-align: center; }
+.fi-chat-empty-icon { display: inline-flex; width: 3rem; height: 3rem; align-items: center; justify-content: center; border-radius: 9999px; color: var(--primary-600); background: color-mix(in srgb, var(--primary-500) 12%, transparent); }
+.dark .fi-chat-empty-icon { color: var(--primary-400); }
+.fi-chat-empty-icon svg { width: 1.5rem; height: 1.5rem; }
+.fi-chat-empty-title { margin: 0.5rem 0 0; font-size: 1.25rem; font-weight: 600; color: var(--gray-950); }
+.dark .fi-chat-empty-title { color: #fff; }
+.fi-chat-empty-lead { margin: 0; font-size: 0.875rem; color: var(--gray-500); }
+.fi-chat-suggestions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; margin-top: 1rem; max-width: 40rem; }
+.fi-chat-suggestion { padding: 0.5rem 1rem; border: 1px solid rgb(0 0 0 / 0.1); border-radius: 9999px; background: #fff; font-size: 0.875rem; color: var(--gray-700); cursor: pointer; transition: border-color 0.15s, color 0.15s, background-color 0.15s; }
+.fi-chat-suggestion:hover, .fi-chat-suggestion:focus-visible { border-color: var(--primary-500); color: var(--primary-700); background: color-mix(in srgb, var(--primary-500) 6%, #fff); outline: none; }
+.dark .fi-chat-suggestion { border-color: rgb(255 255 255 / 0.12); background: rgb(255 255 255 / 0.04); color: var(--gray-300); }
+.dark .fi-chat-suggestion:hover, .dark .fi-chat-suggestion:focus-visible { border-color: var(--primary-400); color: var(--primary-300); background: color-mix(in srgb, var(--primary-500) 12%, transparent); }
 
 /* A question waiting its turn behind the answer that is streaming. */
 .fi-chat-queued { border: 1px dashed var(--primary-400); color: var(--primary-800); background: color-mix(in srgb, var(--primary-500) 8%, transparent); }
@@ -47,10 +82,13 @@
 .dark .fi-chat-ring-panel dd { color: var(--gray-200); }
 .fi-chat-ring-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 
-/* Controls on the last exchange (edit the question, regenerate the answer) show on hover, always on touch screens. */
-.fi-chat-exchange-tools { opacity: 0; transition: opacity 0.15s; }
-.fi-chat-exchange:hover .fi-chat-exchange-tools, .fi-chat-exchange:focus-within .fi-chat-exchange-tools { opacity: 1; }
-@media (hover: none) { .fi-chat-exchange-tools { opacity: 1; } }
+/* Controls on an exchange (edit the question; under an answer the thumbs, regenerate and the time) show on hover or focus
+   and stay put meanwhile, so nothing shifts; a rating that was given (fi-chat-rated) and the notes on how the answer ended
+   are always on. Hover does not exist on a touch screen: everything shows there. */
+.fi-chat-exchange-tools, .fi-chat-answer-tool { opacity: 0; transition: opacity 0.15s; }
+.fi-chat-exchange:hover .fi-chat-exchange-tools, .fi-chat-exchange:focus-within .fi-chat-exchange-tools,
+.fi-chat-exchange:hover .fi-chat-answer-tool, .fi-chat-exchange:focus-within .fi-chat-answer-tool { opacity: 1; }
+@media (hover: none) { .fi-chat-exchange-tools, .fi-chat-answer-tool { opacity: 1; } }
 
 /* A proposed change: a question with a decision. While it waits it is the loudest thing on the page (primary border and tint);
    once decided it recedes to a thin bordered line with the outcome where the buttons were, so nothing moves. */

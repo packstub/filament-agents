@@ -100,7 +100,8 @@ it('offers entries of more than one provider on one picker', function () {
     AgentModels::remember('flash');
     expect(AgentModels::current())->toBe('flash');
     actingAs($this->user());
-    livewire(Chat::class)->assertSee('Gemini Flash')->assertSeeHtml('<optgroup label="Gemini">')->assertSeeHtml('<optgroup label="Anthropic">')->assertDontSee('GPT');
+    // The model list of the composer: the entries under provider headings, the remembered one ticked.
+    livewire(Chat::class)->assertSee('Gemini Flash')->assertSeeInOrder(['fi-dropdown-header', 'Anthropic', 'fi-dropdown-header', 'Gemini', 'fi-agent-composer-model-picked', 'Gemini Flash'])->assertDontSee('GPT');
 
     // The chat is on as long as some listed entry has a key.
     config(['packstub-agents.enabled' => null, 'ai.providers.anthropic.key' => null]);

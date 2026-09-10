@@ -97,6 +97,49 @@ class Chat extends Page
         return PageContext::resolve($this->context)['label'] ?? null;
     }
 
+    /**
+     * The starter questions an empty chat offers (Agent::suggestions, with the page context): none once the
+     * conversation exists.
+     *
+     * @return list<string>
+     */
+    public function suggestions(): array
+    {
+        if ($this->conversation || ! AgentModels::enabled()) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map('strval', Agents::agent($this->context, $this->model)->suggestions()), fn (string $s) => trim($s) !== ''));
+    }
+
+    /**
+     * The model picker's entries by the provider they run on (AgentModels::groups): the label, and under it what the
+     * label leaves out — the model's name for an entry with a label of its own ("Fast" → "Claude Haiku 4.5"), the
+     * key for one named after its model ("Claude Opus 5" → "Auto").
+     *
+     * @return array<string, array<string, array{label: string, detail: ?string}>>
+     */
+    public static function modelMenu(): array
+    {
+        $catalog = AgentModels::catalog();
+
+        return collect(AgentModels::groups())->map(fn (array $entries) => collect($entries)->map(function (string $label, string $key) use ($catalog) {
+            $detail = null;
+
+            if (($catalog[$key]['label'] ?? null) !== null) {
+                try {
+                    $detail = AgentModels::modelName(AgentModels::modelFor($catalog[$key]['provider'], $key));
+                } catch (Throwable) {
+                    $detail = null;
+                }
+            } else {
+                $detail = Str::headline($key);
+            }
+
+            return ['label' => $label, 'detail' => $detail === null || Str::contains($label, $detail, ignoreCase: true) ? null : $detail];
+        })->all())->all();
+    }
+
     /** @return Collection<int, array<string, mixed>> */
     public function messages(): Collection
     {
