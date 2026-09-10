@@ -1,5 +1,6 @@
 <?php
 
+use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Laravel\Ai\Models\Conversation;
@@ -45,6 +46,14 @@ it('streams a chat into a persisted conversation and records feedback', function
         ->call('feedback', $messages[1]->id, 'up');
 
     expect(AgentMessageFeedback::query()->where('message_id', $messages[1]->id)->value('rating'))->toBe('up');
+
+    // Under the answer the thumbs, Regenerate and the time show on hover; the rating that was given stays visible.
+    $html = livewire(Chat::class, ['conversation' => $conversation->id])->html();
+    expect($html)->toContain('fi-chat-rated text-success-600')
+        ->toContain('fi-chat-answer-tool" title="'.__('Not helpful').'"')
+        ->not->toContain('fi-chat-answer-tool" title="'.__('Helpful').'"')
+        ->toMatch('/fi-chat-answer-tool[^>]*title="'.preg_quote(__('Regenerate'), '/').'"/')
+        ->toMatch('/fi-chat-answer-tool ml-1 text-xs">\d\d:\d\d</');
 
     livewire(Chats::class)->assertCanSeeTableRecords([$conversation]);
 
@@ -373,4 +382,78 @@ it('keeps the chat script off a click handler context for deferred work', functi
         ->not->toContain('this.$wire.$refresh()')
         ->toContain('self.$wire.$refresh()')
         ->toContain('self.timer = setTimeout(() => self.poll(), delay)');
+});
+
+it('opens a new chat on starter questions and drops them once the conversation exists', function () {
+    actingAs($this->user());
+    [$alpha] = $this->widgets();
+
+    // The engine's defaults: what needs attention, the latest records of the agent resources, what the assistant can do.
+    $html = livewire(Chat::class)
+        ->assertSee('Ask Widgets')
+        ->assertSee(__('Ask anything about your workspace, or start with one of these.'))
+        ->assertSeeInOrder(['What needs attention today?', 'Show me the latest widgets.', 'What can you help me with?'])
+        ->html();
+    expect($html)->toContain('x-on:click="enqueue(\'What needs attention today?\')"');
+
+    // Opened from a record: two questions about it.
+    $this->get(Chat::getUrl(['context' => 'widgets/'.$alpha->id]))
+        ->assertOk()
+        ->assertSee(__('Ask anything about :record, or start with one of these.', ['record' => 'Widget Alpha']))
+        ->assertSee('What should I know about Widget Alpha?')
+        ->assertSee('What is the next step for Widget Alpha?');
+
+    WidgetAgent::fake(['Nothing urgent.']);
+    livewire(Chat::class)
+        ->call('send', 'What needs attention today?')
+        ->assertSee('Nothing urgent.')
+        ->assertDontSee('or start with one of these');
+});
+
+it('shows a one-row composer with the assistant\'s name as placeholder and the models as a list', function () {
+    actingAs($this->user());
+
+    $html = livewire(Chat::class)->html();
+
+    expect($html)
+        ->toContain('placeholder="Ask Widgets…"')
+        ->toContain('fi-agent-composer-row', 'fi-agent-composer-send', 'fi-agent-composer-model')
+        ->not->toContain('Ask a follow-up')
+        ->not->toContain('<select')
+        // The list: the picked entry ticked, each entry with what it runs under it.
+        ->toContain('fi-agent-composer-model-picked')
+        ->toContain('wire:click="$set(\'model\', \'fast\')"')
+        ->toContain('Test Claude Fast');
+
+    expect(Chat::modelMenu())->toHaveKey('anthropic')
+        ->and(Chat::modelMenu()['anthropic']['fast'])->toBe(['label' => 'Fast', 'detail' => 'Test Claude Fast']);
+
+    // An entry named after its model says its key instead; one that already does says nothing more.
+    config(['packstub-agents.models.anthropic' => [
+        'auto' => ['label' => null, 'model' => 'claude-opus-5', 'effort' => null],
+        'deep' => ['label' => null, 'model' => 'claude-opus-5', 'effort' => 'xhigh'],
+    ]]);
+    expect(Chat::modelMenu()['anthropic'])->toBe([
+        'auto' => ['label' => 'Claude Opus 5', 'detail' => 'Auto'],
+        'deep' => ['label' => 'Claude Opus 5 · Deep', 'detail' => null],
+    ]);
+});
+
+it('registers an "Ask …" navigation item on a panel with top navigation only', function () {
+    actingAs($this->user());
+
+    // A sidebar panel lists the recent chats in the sidebar and needs no item.
+    expect(Chats::shouldRegisterNavigation())->toBeFalse();
+
+    // A top-navigation panel: the assistant's name and icon, active on the chats list and on a chat.
+    Filament::getCurrentOrDefaultPanel()->topNavigation();
+
+    expect(Chats::shouldRegisterNavigation())->toBeTrue()
+        ->and(Chats::getNavigationLabel())->toBe('Ask Widgets')
+        ->and(Chats::getNavigationItemActiveRoutePattern())->toBe(['filament.admin.pages.chats', 'filament.admin.pages.chat.{conversation?}']);
+    $this->get(Chats::getUrl())->assertOk()->assertSeeInOrder(['fi-topbar-item fi-active', 'fi-topbar-item-icon', 'Ask Widgets']);
+    $this->get(Chat::getUrl())->assertOk()->assertSeeInOrder(['fi-topbar-item fi-active', 'Ask Widgets']);
+
+    config(['packstub-agents.enabled' => false]);
+    expect(Chats::shouldRegisterNavigation())->toBeFalse();
 });

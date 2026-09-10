@@ -249,7 +249,7 @@ export default function agentChat() {
         autosize() {
             const input = this.$refs.input
             input.style.height = 'auto'
-            input.style.height = Math.min(input.scrollHeight, 240) + 'px'
+            input.style.height = Math.min(input.scrollHeight, 192) + 'px'
         },
 
         nearBottom() {

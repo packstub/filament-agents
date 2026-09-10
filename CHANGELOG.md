@@ -2,6 +2,20 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## 1.9.0 — 2026-09-10
+
+Upgrading: nothing to run. The plugin requires `packstub/agents` ^1.2 (Composer updates it); give your agent a `suggestions()` for starter questions from your domain.
+
+### Added
+
+- **Starter questions on a new chat.** An empty chat shows the assistant's name and a row of questions to click instead of a bare composer: what needs attention today, the latest records of the first agent resources ("Show me the latest orders."), what the assistant can do — or, opened from a record, "What should I know about Order RO-00012?" and "What is the next step for it?". They come from `Agent::suggestions()` in the engine, so an app returns its own ("Which orders are waiting for a phone call?"); a click sends the question. (#22)
+- **"Ask …" in the top navigation.** A panel with `topNavigation()` has no sidebar for the recent chats, so the Chats page registers a navigation item with the assistant's name and icon, active on the chats list and on a chat; the topbar button keeps opening a new chat with the record being viewed. A sidebar panel is unchanged. (#39)
+
+### Changed
+
+- **A one-row composer.** The question, the context ring, Stop while an answer runs, the model and a square Send sit on one line; the field grows with the text up to eight lines. The placeholder is the assistant's name ("Ask Acme…") and, while an answer runs, the note that the next question waits its turn. The model is a small text button that opens a list — each entry with what it runs under it, the picked one ticked, provider headings when entries of more than one provider are listed — instead of a native select. (#44)
+- **Answer controls on hover.** The thumbs, Regenerate and the time under an answer appear when the answer is hovered or focused, so a long chat is no longer a column of grey controls; a rating that was given stays visible, and so do the "(stopped)", "(cut short)" and "(answered by …)" notes. A touch screen, which has no hover, shows them always. (#44)
+
 ## 1.8.0 — 2026-09-10
 
 Upgrading: nothing to run. The plugin requires `packstub/agents` ^1.1 (Composer updates it); a write tool may add `describe(array $arguments): ?string` to phrase its own proposals.

@@ -24,6 +24,21 @@
 
         @php($context = $this->history())
 
+        @if ($suggestions = $this->suggestions())
+            {{-- A new chat: the assistant's name and its starter questions (Agent::suggestions), each sent on click. Gone
+                 the moment a question is on its way (busy), and not rendered once the conversation exists. --}}
+            <div class="fi-chat-empty" x-show="! busy">
+                <span class="fi-chat-empty-icon"><x-filament::icon icon="heroicon-o-sparkles" /></span>
+                <p class="fi-chat-empty-title">{{ \Packstub\Agents\Facades\Agents::name() }}</p>
+                <p class="fi-chat-empty-lead">{{ $this->contextLabel() ? __('Ask anything about :record, or start with one of these.', ['record' => $this->contextLabel()]) : __('Ask anything about your workspace, or start with one of these.') }}</p>
+                <div class="fi-chat-suggestions">
+                    @foreach ($suggestions as $suggestion)
+                        <button type="button" class="fi-chat-suggestion" x-on:click="enqueue(@js($suggestion))">{{ $suggestion }}</button>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
         <div class="flex flex-col gap-5" x-ref="transcript">
             @if ($context && $context['source'])
                 <p class="text-xs text-gray-500">
@@ -165,20 +180,22 @@
                         @endforeach
 
                         @if (trim($message['html']) !== '' || $message['stopped'])
-                            <div class="flex items-center gap-1 text-gray-400">
-                                <button type="button" wire:click="feedback('{{ $message['id'] }}', 'up')" class="rounded p-1 hover:text-success-600 {{ $message['rating'] === 'up' ? 'text-success-600' : '' }}" title="{{ __('Helpful') }}">
+                            {{-- The controls under an answer show when it is hovered or focused (always on a touch screen); a rating
+                                 that was given stays visible, and so do the notes on how the answer ended. --}}
+                            <div class="fi-chat-answer-footer flex items-center gap-1 text-gray-400">
+                                <button type="button" wire:click="feedback('{{ $message['id'] }}', 'up')" class="rounded p-1 hover:text-success-600 {{ $message['rating'] === 'up' ? 'fi-chat-rated text-success-600' : 'fi-chat-answer-tool' }}" title="{{ __('Helpful') }}">
                                     <x-filament::icon icon="heroicon-m-hand-thumb-up" class="h-4 w-4" />
                                 </button>
-                                <button type="button" wire:click="feedback('{{ $message['id'] }}', 'down')" class="rounded p-1 hover:text-danger-600 {{ $message['rating'] === 'down' ? 'text-danger-600' : '' }}" title="{{ __('Not helpful') }}">
+                                <button type="button" wire:click="feedback('{{ $message['id'] }}', 'down')" class="rounded p-1 hover:text-danger-600 {{ $message['rating'] === 'down' ? 'fi-chat-rated text-danger-600' : 'fi-chat-answer-tool' }}" title="{{ __('Not helpful') }}">
                                     <x-filament::icon icon="heroicon-m-hand-thumb-down" class="h-4 w-4" />
                                 </button>
                                 @if ($message['regenerable'])
                                     {{-- The last answer: produce it again. --}}
-                                    <button type="button" class="fi-chat-exchange-tools rounded p-1 hover:text-gray-700 dark:hover:text-gray-200" title="{{ __('Regenerate') }}" x-show="! busy" x-on:click="regenerate()">
+                                    <button type="button" class="fi-chat-answer-tool rounded p-1 hover:text-gray-700 dark:hover:text-gray-200" title="{{ __('Regenerate') }}" x-show="! busy" x-on:click="regenerate()">
                                         <x-filament::icon icon="heroicon-m-arrow-path" class="h-4 w-4" />
                                     </button>
                                 @endif
-                                <span class="ml-1 text-xs">{{ $message['at']?->format('H:i') }}</span>
+                                <span class="fi-chat-answer-tool ml-1 text-xs">{{ $message['at']?->format('H:i') }}</span>
                                 @if ($message['stopped'])
                                     <span class="ml-1 text-xs">· {{ __('(stopped)') }}</span>
                                 @endif
@@ -253,7 +270,7 @@
             </button>
         </div>
 
-        <x-packstub-agents::composer method="send" class="sticky bottom-4 shadow-lg">
+        <x-packstub-agents::composer method="send" :model="$model" class="sticky bottom-4 shadow-lg">
             @if ($context && $context['meter'])
                 {{-- The context ring: how full the history window is, from history.meter_share on. Click for what fills it, what the chat cost so far, Compress now and Continue in a new chat. --}}
                 <x-slot:tools>

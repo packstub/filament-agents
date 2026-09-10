@@ -108,7 +108,7 @@ AgentsPlugin::make()
 | `roleLabelUsing(fn (): ?string)` | the person's role label for the prompt and refusals |
 | `credentialsUsing(fn (): ?WorkspaceCredentials)` | where a workspace's own provider, key and model come from |
 | `history(?int $maxTokens, ?int $keepToolResultsTurns, ?float $noticeShare, ?float $meterShare, ?int $compressKeepTurns)` | what a long chat replays and when the context ring shows; each argument given is mirrored into the `history.*` key of the same name |
-| `chat(bool $enabled, ?string $driver)` | the Chat and Chats pages, the topbar button and the sidebar block; `driver` is `queue` (a worker) or `sync` (inside the request), mirrored into `chat.driver` |
+| `chat(bool $enabled, ?string $driver)` | the Chat and Chats pages, the topbar button and the sidebar block (an "Ask …" navigation item on a panel with top navigation); `driver` is `queue` (a worker) or `sync` (inside the request), mirrored into `chat.driver` |
 | `agentAccess(bool $enabled, ?string $ability, Closure\|string\|null $group)` | the token page, its gate and navigation group |
 | `limits(bool $enabled, ?Closure $authorize)` | the operator's AI limits resource and who may edit it (default: any signed-in user of the panel) |
 | `turnLog(bool $enabled)` | the operator's AI turns page (one row per turn: who, model, tokens, tools, duration, how it ended), gated like the limits; default: shown wherever `limits()` is |

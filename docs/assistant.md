@@ -4,9 +4,11 @@
 
 `AgentsPlugin` adds three things to the panel when `chat()` is on (the default):
 
-- a **Chat** page (`/chat/{conversation?}`) where the answer streams in while the agent calls tools, with a model picker next to the composer (Claude Opus 5, Claude Haiku 4.5, Claude Opus 5 · Deep out of the box);
+- a **Chat** page (`/chat/{conversation?}`) where the answer streams in while the agent calls tools, with a model picker in the composer (Claude Opus 5, Claude Haiku 4.5, Claude Opus 5 · Deep out of the box);
 - an **Ask …** button in the topbar, which opens a new chat and, on a record page of a resource that implements `AgentResource`, carries that record along as page context ("About Order RO-00012");
-- the recent conversations at the end of the sidebar, plus a **Chats** page listing all of the person's conversations.
+- the recent conversations at the end of the sidebar, plus a **Chats** page listing all of the person's conversations. A panel with `topNavigation()` has no sidebar, so the Chats page registers an "Ask …" navigation item there instead — the assistant's name and icon, active on the list and on a chat.
+
+A new chat opens on the assistant's name and a row of starter questions; click one and it is sent. They come from your agent's `suggestions()` (see [The Agent class](#the-agent-class)): by default what needs attention today, "Show me the latest orders." for the first two agent resources and what the assistant can do, or, when the chat was opened from a record, "What should I know about Order RO-00012?" and "What is the next step for Order RO-00012?".
 
 An answer about records renders the resource's own table under itself, narrowed to what the answer says, with the same search, sorting and row actions as the list page:
 
@@ -18,9 +20,9 @@ An answer about numbers renders a chart, from `draw-chart` or from a reporting t
 
 Conversations and messages are laravel/ai's `Conversation` and `ConversationMessage` models, stored in the `agent_conversations` and `agent_conversation_messages` tables, so a reload never loses anything and one person never sees another person's chats. A question is recorded before the provider is called: if the provider fails or times out, the question stays in the conversation with a Retry link under it.
 
-The composer never locks. A question appears in the transcript the moment it is sent; Enter sends and Shift+Enter breaks the line. Anything typed while an answer is still streaming waits its turn on the conversation and is sent next, one turn at a time — a waiting question can be edited or removed until then, and ↑ in an empty composer pulls the last waiting question back for editing (or the last one sent, to send it again). **Stop** next to Send cuts the running answer short: what the assistant had written stays as its answer, marked "(stopped)". An answer the provider ended early — a stream that closed mid-answer, the model's length limit, a content filter — is kept the same way, marked "(cut short)" with the reason on hover, and can be produced again. The page follows the answer as it streams unless you scroll up to read, with a "Jump to latest" button to catch up. Every answer can be rated with a thumbs up or down (`agent_message_feedback`), which your app can read to find the questions that go wrong.
+The composer is one row: the question, the model, and a square Send; the field grows with the text up to eight lines, and the placeholder is the assistant's name ("Ask Acme…"). The model is a small text button that opens the list — each entry with what it runs under it ("Claude Haiku 4.5 · Fast"), the picked one ticked, provider headings when entries of more than one provider are listed — remembered per session. The composer never locks. A question appears in the transcript the moment it is sent; Enter sends and Shift+Enter breaks the line. Anything typed while an answer is still streaming waits its turn on the conversation and is sent next, one turn at a time (the placeholder says so meanwhile) — a waiting question can be edited or removed until then, and ↑ in an empty composer pulls the last waiting question back for editing (or the last one sent, to send it again). **Stop** next to the model cuts the running answer short: what the assistant had written stays as its answer, marked "(stopped)". An answer the provider ended early — a stream that closed mid-answer, the model's length limit, a content filter — is kept the same way, marked "(cut short)" with the reason on hover, and can be produced again. The page follows the answer as it streams unless you scroll up to read, with a "Jump to latest" button to catch up. Every answer can be rated with a thumbs up or down (`agent_message_feedback`), which your app can read to find the questions that go wrong.
 
-On the last exchange, a pencil next to the question puts it back in the composer — send it and the answer is replaced — and an arrow under the answer produces it again; both drop the previous answer and its rating.
+On the last exchange, a pencil next to the question puts it back in the composer — send it and the answer is replaced — and an arrow under the answer produces it again; both drop the previous answer and its rating. The thumbs, the arrow and the time show when the answer is hovered or focused (always on a touch screen); a rating that was given stays visible, and so do the "(stopped)", "(cut short)" and "(answered by …)" notes.
 
 ### How a turn runs
 
@@ -90,8 +92,20 @@ class Assistant extends Agent
             'Warehouses: '.Warehouse::query()->pluck('code')->join(', ').'.',
         ];
     }
+
+    /** @return list<string> */
+    public function suggestions(): array
+    {
+        return [
+            'What needs attention today?',
+            'Which orders are waiting for a phone call?',
+            'Revenue this week by store, compared to last week',
+        ];
+    }
 }
 ```
+
+`suggestions()` is what a new chat offers as one-click starter questions, in the person's language; the default set is generic (see [The chat](#the-chat)), and a chat opened from a record (`$this->pageContext`) gets two questions about it. Return your own from the domain, and keep the parent's page-context ones with `[...parent::suggestions(), …]` when a record is open.
 
 Register it with `AgentsPlugin::make()->agent(Assistant::class)`. Until you do, the package's `DefaultAgent` answers with only the registered tools and a generic persona.
 
