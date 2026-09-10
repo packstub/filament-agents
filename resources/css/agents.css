@@ -10,13 +10,13 @@
 .fi-chat-md h1, .fi-chat-md h2, .fi-chat-md h3 { font-weight: 600; margin: 1rem 0 0.5rem; }
 .fi-chat-md h1 { font-size: 1.125rem; }
 .fi-chat-md h2 { font-size: 1rem; }
-.fi-chat-md a { color: var(--color-primary-600); text-decoration: underline; text-underline-offset: 2px; }
+.fi-chat-md a { color: var(--primary-600); text-decoration: underline; text-underline-offset: 2px; }
 .fi-chat-md code { font-size: 0.8125rem; background: rgb(0 0 0 / 0.06); border-radius: 0.25rem; padding: 0.1rem 0.3rem; }
 .dark .fi-chat-md code { background: rgb(255 255 255 / 0.1); }
 .fi-chat-md table { width: 100%; border-collapse: collapse; margin: 0.5rem 0 1rem; font-size: 0.8125rem; display: block; overflow-x: auto; }
 .fi-chat-md th, .fi-chat-md td { text-align: left; padding: 0.375rem 0.625rem; border-bottom: 1px solid rgb(0 0 0 / 0.08); vertical-align: top; white-space: nowrap; }
 .dark .fi-chat-md th, .dark .fi-chat-md td { border-color: rgb(255 255 255 / 0.1); }
-.fi-chat-md th { font-weight: 600; color: var(--color-gray-500); }
+.fi-chat-md th { font-weight: 600; color: var(--gray-500); }
 .fi-chat-md strong { font-weight: 600; }
 
 /* The composer card highlights on focus, so the textarea must not draw the browser's own outline. It grows with the text (agent-chat.js). */
@@ -24,33 +24,78 @@
 .fi-agent-composer textarea { min-height: 3.25rem; max-height: 15rem; overflow-y: auto; }
 
 /* A question waiting its turn behind the answer that is streaming. */
-.fi-chat-queued { border: 1px dashed var(--color-primary-400); color: var(--color-primary-800); background: color-mix(in srgb, var(--color-primary-500) 8%, transparent); }
-.dark .fi-chat-queued { color: var(--color-primary-200); }
+.fi-chat-queued { border: 1px dashed var(--primary-400); color: var(--primary-800); background: color-mix(in srgb, var(--primary-500) 8%, transparent); }
+.dark .fi-chat-queued { color: var(--primary-200); }
 
 /* The context ring in the composer: how full the history window is (the stroke), warning colour once the chat is long. */
-.fi-chat-ring { display: inline-flex; width: 1.5rem; height: 1.5rem; padding: 0.125rem; border-radius: 9999px; color: var(--color-gray-500); cursor: pointer; }
+.fi-chat-ring { display: inline-flex; width: 1.5rem; height: 1.5rem; padding: 0.125rem; border-radius: 9999px; color: var(--gray-500); cursor: pointer; }
 .fi-chat-ring:hover, .fi-chat-ring:focus-visible { background: rgb(0 0 0 / 0.05); outline: none; }
 .dark .fi-chat-ring:hover, .dark .fi-chat-ring:focus-visible { background: rgb(255 255 255 / 0.08); }
 .fi-chat-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
 .fi-chat-ring circle { fill: none; stroke-width: 3; }
 .fi-chat-ring-track { stroke: rgb(0 0 0 / 0.1); }
 .dark .fi-chat-ring-track { stroke: rgb(255 255 255 / 0.15); }
-.fi-chat-ring-fill { stroke: var(--color-primary-500); stroke-linecap: round; transition: stroke-dasharray 0.3s; }
-.fi-chat-ring-fill-high { stroke: var(--color-warning-500); }
+.fi-chat-ring-fill { stroke: var(--primary-500); stroke-linecap: round; transition: stroke-dasharray 0.3s; }
+.fi-chat-ring-fill-high { stroke: var(--warning-500); }
 /* The popup: 24rem (the dropdown's sm cap; its max-width is layered !important, so the width is set instead), never wider than
    the screen. On a phone the dropdown shifts it into view flush with the edge and the margin centres it. */
 .fi-dropdown-panel:has(> .fi-chat-ring-panel) { width: min(24rem, calc(100vw - 2rem)); }
 @media (max-width: 640px) { .fi-dropdown-panel:has(> .fi-chat-ring-panel) { margin-inline-start: 1rem; } }
 .fi-chat-ring-panel { width: 100%; }
 .fi-chat-ring-panel dl { display: grid; grid-template-columns: 1fr auto; gap: 0.25rem 1rem; }
-.fi-chat-ring-panel dd { text-align: end; font-variant-numeric: tabular-nums; color: var(--color-gray-800); }
-.dark .fi-chat-ring-panel dd { color: var(--color-gray-200); }
+.fi-chat-ring-panel dd { text-align: end; font-variant-numeric: tabular-nums; color: var(--gray-800); }
+.dark .fi-chat-ring-panel dd { color: var(--gray-200); }
 .fi-chat-ring-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 
 /* Controls on the last exchange (edit the question, regenerate the answer) show on hover, always on touch screens. */
 .fi-chat-exchange-tools { opacity: 0; transition: opacity 0.15s; }
 .fi-chat-exchange:hover .fi-chat-exchange-tools, .fi-chat-exchange:focus-within .fi-chat-exchange-tools { opacity: 1; }
 @media (hover: none) { .fi-chat-exchange-tools { opacity: 1; } }
+
+/* A proposed change: a question with a decision. While it waits it is the loudest thing on the page (primary border and tint);
+   once decided it recedes to a thin bordered line with the outcome where the buttons were, so nothing moves. */
+.fi-chat-proposal { border: 1px solid rgb(0 0 0 / 0.1); border-radius: 0.75rem; padding: 0.75rem 1rem; transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s; }
+.dark .fi-chat-proposal { border-color: rgb(255 255 255 / 0.1); }
+.fi-chat-proposal-pending { border-color: var(--primary-500); background: color-mix(in srgb, var(--primary-500) 7%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-500) 18%, transparent); }
+.fi-chat-proposal-row { display: flex; align-items: flex-start; gap: 0.75rem; }
+.fi-chat-proposal-icon { width: 1.25rem; height: 1.25rem; flex: none; margin-top: 0.125rem; color: var(--gray-400); }
+.fi-chat-proposal-pending .fi-chat-proposal-icon { color: var(--primary-600); }
+.dark .fi-chat-proposal-pending .fi-chat-proposal-icon { color: var(--primary-400); }
+.fi-chat-proposal-approved .fi-chat-proposal-icon { color: var(--success-600); }
+.dark .fi-chat-proposal-approved .fi-chat-proposal-icon { color: var(--success-400); }
+.fi-chat-proposal-body { min-width: 0; flex: 1; }
+.fi-chat-proposal-question { margin: 0; font-size: 0.875rem; font-weight: 500; line-height: 1.5rem; color: var(--gray-700); overflow-wrap: anywhere; }
+.dark .fi-chat-proposal-question { color: var(--gray-300); }
+.fi-chat-proposal-pending .fi-chat-proposal-question { font-size: 1rem; font-weight: 600; color: var(--gray-950); }
+.dark .fi-chat-proposal-pending .fi-chat-proposal-question { color: #fff; }
+.fi-chat-proposal-rejected .fi-chat-proposal-question { text-decoration: line-through; text-decoration-color: rgb(0 0 0 / 0.25); }
+.dark .fi-chat-proposal-rejected .fi-chat-proposal-question { text-decoration-color: rgb(255 255 255 / 0.3); }
+/* The exact call, folded: the tool name and how many arguments; opens on click. */
+.fi-chat-proposal-call { display: inline-flex; align-items: center; gap: 0.25rem; margin-top: 0.125rem; margin-inline-start: -0.25rem; padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-size: 0.75rem; color: var(--gray-500); cursor: pointer; }
+.fi-chat-proposal-call:hover, .fi-chat-proposal-call:focus-visible { color: var(--gray-800); background: rgb(0 0 0 / 0.04); outline: none; }
+.dark .fi-chat-proposal-call:hover, .dark .fi-chat-proposal-call:focus-visible { color: var(--gray-200); background: rgb(255 255 255 / 0.06); }
+.fi-chat-proposal-call code { font-size: 0.75rem; }
+.fi-chat-proposal-chevron { width: 0.875rem; height: 0.875rem; transition: transform 0.15s; }
+.fi-chat-proposal-chevron-open { transform: rotate(90deg); }
+.fi-chat-proposal-decision { flex: none; display: flex; align-items: center; min-height: 1.5rem; }
+.fi-chat-proposal-actions { display: flex; gap: 0.5rem; }
+.fi-chat-proposal-outcome { font-size: 0.75rem; font-weight: 600; color: var(--gray-500); }
+.fi-chat-proposal-approved .fi-chat-proposal-outcome { color: var(--success-600); }
+.dark .fi-chat-proposal-approved .fi-chat-proposal-outcome { color: var(--success-400); }
+.fi-chat-proposal-error { display: flex; align-items: flex-start; gap: 0.375rem; margin: 0.5rem 0 0; font-size: 0.75rem; color: var(--danger-600); }
+.dark .fi-chat-proposal-error { color: var(--danger-400); }
+.fi-chat-proposal-error svg { width: 1rem; height: 1rem; flex: none; }
+.fi-chat-proposal-details { margin-top: 0.625rem; padding-top: 0.625rem; border-top: 1px solid rgb(0 0 0 / 0.08); font-size: 0.8125rem; }
+.dark .fi-chat-proposal-details { border-color: rgb(255 255 255 / 0.1); }
+.fi-chat-proposal-details dl { display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 1rem; margin: 0; }
+.fi-chat-proposal-details dt { color: var(--gray-500); }
+.fi-chat-proposal-details dd { margin: 0; color: var(--gray-800); overflow-wrap: anywhere; }
+.dark .fi-chat-proposal-details dd { color: var(--gray-200); }
+.fi-chat-proposal-label { margin: 0.625rem 0 0.25rem; font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--gray-500); }
+.fi-chat-proposal-details pre { margin: 0; max-height: 14rem; overflow: auto; padding: 0.5rem 0.625rem; border-radius: 0.5rem; background: rgb(0 0 0 / 0.04); font-size: 0.75rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.dark .fi-chat-proposal-details pre { background: rgb(255 255 255 / 0.06); }
+/* On a narrow screen the decision drops under the question. */
+@media (max-width: 480px) { .fi-chat-proposal-row { flex-wrap: wrap; } .fi-chat-proposal-decision { width: 100%; justify-content: flex-end; margin-top: 0.25rem; } }
 
 /* A caret at the end of the answer while it streams. */
 .fi-chat-streaming::after { content: ''; display: inline-block; width: 0.5rem; height: 1em; margin-inline-start: 0.125rem; vertical-align: text-bottom; background: currentColor; opacity: 0.6; animation: fi-chat-blink 1s steps(2) infinite; }
@@ -69,15 +114,15 @@
 .fi-agent-tools { border: 1px solid rgb(0 0 0 / 0.1); border-radius: 0.75rem; overflow: hidden; }
 .dark .fi-agent-tools { border-color: rgb(255 255 255 / 0.1); }
 .fi-agent-tools table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 0.875rem; }
-.fi-agent-tools th { background: rgb(0 0 0 / 0.03); color: var(--color-gray-500); font-size: 0.75rem; font-weight: 600; text-align: start; padding: 0.5rem 0.75rem; }
+.fi-agent-tools th { background: rgb(0 0 0 / 0.03); color: var(--gray-500); font-size: 0.75rem; font-weight: 600; text-align: start; padding: 0.5rem 0.75rem; }
 .dark .fi-agent-tools th { background: rgb(255 255 255 / 0.04); }
 .fi-agent-tools td { padding: 0.5rem 0.75rem; border-top: 1px solid rgb(0 0 0 / 0.06); vertical-align: middle; }
 .dark .fi-agent-tools td { border-color: rgb(255 255 255 / 0.08); }
 .fi-agent-tools th:nth-child(2), .fi-agent-tools td:nth-child(2) { width: 11rem; }
 .fi-agent-tools th:nth-child(3), .fi-agent-tools td:nth-child(3) { width: 5.5rem; }
 .fi-agent-tools-check { width: 2.5rem; text-align: center; }
-.fi-agent-tools-name label { font-weight: 500; color: var(--color-gray-950); cursor: pointer; }
+.fi-agent-tools-name label { font-weight: 500; color: var(--gray-950); cursor: pointer; }
 .dark .fi-agent-tools-name label { color: #fff; }
-.fi-agent-tools-desc { color: var(--color-gray-500); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: help; }
+.fi-agent-tools-desc { color: var(--gray-500); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: help; }
 .fi-agent-tools-off { opacity: 0.45; }
 .fi-agent-tools-off label { cursor: not-allowed; }

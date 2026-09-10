@@ -20,7 +20,23 @@ Put `{tenant}` in the path so an external agent works inside one workspace:
 3. checks that the token carries `tenant:{slug}` (403 when it was issued for another workspace, even when the person is a member there);
 4. sets the panel's guard to the token's user and calls `Filament::setTenant($tenant)`.
 
-That last step fires Filament's `TenantSet` event, the same one a page request fires, so anything that listens to it, [Filament Tenancy](https://packstub.dev/plugins/filament-tenancy) switching the database connection for instance, does exactly what it does for a page. Tools do not need to know they run over MCP.
+That last step fires Filament's `TenantSet` event, the same one a page request fires, so anything that listens to it, [Filament Tenancy](https://packstub.dev/plugins/filament-tenancy) switching the database connection for instance, does exactly what it does for a page. Tools do not need to know they run over MCP. The queue worker that runs a chat turn enters the workspace the same way.
+
+A turn also records the guard it was asked on, and the worker signs the person in on that guard (`agent_turns.guard`), so a panel with its own guard keeps its identity on the worker.
+
+Tenant *middleware* does not run on either path — there is no request. If your roles are bound to the workspace through middleware, as [Filament Shield](https://github.com/bezhanSalleh/filament-shield)'s `SyncShieldTenant` does, do the same on the event, or the worker sees no role and lists no write tool:
+
+```php
+use Filament\Events\TenantSet;
+use Illuminate\Support\Facades\Event;
+use Spatie\Permission\PermissionRegistrar;
+
+Event::listen(TenantSet::class, function (TenantSet $event): void {
+    setPermissionsTeamId($event->getTenant()->getKey());
+    auth()->user()?->unsetRelation('roles')->unsetRelation('permissions');
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+});
+```
 
 The Agent access page shows the workspace's URL (`https://acme.test/mcp/acme`) and adds the `tenant:acme` ability to every token it mints there.
 

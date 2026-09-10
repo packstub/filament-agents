@@ -11,7 +11,7 @@
 | laravel/mcp | ^0.9 |
 | laravel/sanctum | ^4 (tokens for MCP clients) |
 
-The plugin requires [packstub/agents](https://packstub.dev/docs/agents) — the engine: `laravel/ai`, `laravel/mcp`, `laravel/sanctum`, the tools, the MCP server, the turn job, budgets and limits — so Composer installs it and them for you. The engine runs in a plain Laravel app too; this plugin is what a Filament panel adds on top.
+The plugin requires [packstub/agents](https://packstub.dev/docs/agents) ^1.1 — the engine: `laravel/ai`, `laravel/mcp`, `laravel/sanctum`, the tools, the MCP server, the turn job, budgets and limits — so Composer installs it and them for you. The engine runs in a plain Laravel app too; this plugin is what a Filament panel adds on top.
 
 ## Install
 
@@ -26,6 +26,8 @@ The install command publishes `config/packstub-agents.php`, offers to run the mi
 ## A queue worker
 
 The chat produces every answer in a queued job (`Packstub\Agents\Jobs\RunAgentTurn`), so the page never holds a request open while the model works and an answer keeps coming after a reload or in a second tab. Run a worker as you would for any queued job (`php artisan queue:work`, Horizon, Laravel Cloud's workers); `chat.queue_connection` and `chat.queue` pick where the jobs go.
+
+A question that sits on the queue for `chat.worker_wait` seconds (10) without a worker taking it says so under the composer, with the command to run, instead of "Thinking…" until the job timeout.
 
 No worker? Set `chat.driver` to `sync` (`AGENT_TURN_DRIVER=sync`, or `AgentsPlugin::make()->chat(driver: 'sync')`) and the job runs inside the request that asked, whatever the app's queue connection is — everything else the same, except that an answer dies with the tab that asked for it. See [The assistant](assistant.md#how-a-turn-runs).
 

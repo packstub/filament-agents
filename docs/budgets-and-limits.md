@@ -67,7 +67,7 @@ Every turn leaves a record on its `agent_turns` row when it ends: the provider a
 
 ### The AI turns page
 
-The operator panel that registers `limits()` also gets **AI turns**: one row per turn, newest first, with who asked (and in which workspace, in a panel with tenancy), the status, model and provider, tokens in and out, the number of tools called (the names on hover), the duration and how it ended; the error message and the turn id are behind the column toggle. Filter by status or provider. The page is gated like the limits resource (`limits(authorize: …)`).
+The operator panel that registers `limits()` also gets **AI turns** (`/agent-turns`): one row per turn, newest first, with who asked (and in which workspace, in a panel with tenancy), the status, model and provider, tokens in and out, the number of tools called (the names on hover), the duration and how it ended; the error message and the turn id are behind the column toggle. Filter by status or provider. The page is gated like the limits resource (`limits(authorize: …)`).
 
 ```php
 AgentsPlugin::make()->limits()                     // AI limits and AI turns

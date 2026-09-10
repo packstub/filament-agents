@@ -14,7 +14,7 @@
 | `models` | see below | `AGENT_MODEL`, `AGENT_MODEL_FAST`, `AGENT_MODEL_DEEP` | the picker entries per provider: model, effort, an optional label (the model's name otherwise) and optionally the provider the entry runs on |
 | `max_steps` | `12` | | tool round-trips one turn may take before the agent has to answer |
 | `max_tokens` | `4096` | | answer length |
-| `max_conversation_messages` | `40` | | how many earlier messages a long chat replays |
+| `max_conversation_messages` | `40` | | a second ceiling on the history window: at most this many earlier messages are replayed, whatever `history.max_tokens` allows — raise both to widen a long chat's window |
 | `middleware` | `[]` | | your own agent middleware, run on every turn after the package's guard rails; see [Middleware](assistant.md#middleware) |
 | `history.max_tokens` | `24000` | `AGENT_HISTORY_MAX_TOKENS` | the history window, in estimated tokens; what no longer fits is folded into a rolling summary the model reads first |
 | `history.keep_tool_results_turns` | `3` | | tool results older than this many turns are replaced by a one-line placeholder when replayed |
@@ -25,12 +25,13 @@
 | `chat.queue_connection` | `null` | `AGENT_QUEUE_CONNECTION` | the queue connection the turn job runs on with the `queue` driver; `null` = the app's default |
 | `chat.queue` | `null` | `AGENT_QUEUE` | the queue name; `null` = the connection's default |
 | `chat.job_timeout` | `600` | `AGENT_JOB_TIMEOUT` | how long one turn may run on the worker, in seconds; a turn whose job went quiet for longer is shown as failed, with a Retry |
+| `chat.worker_wait` | `10` | `AGENT_WORKER_WAIT` | how long a question may wait for a worker before the status line says none has taken it, in seconds (the queue driver only) |
 | `chat.poll_interval` | `600` | `AGENT_POLL_INTERVAL` | how often the page asks for the answer so far while a turn runs, in milliseconds |
 | `chat.path` | `agents` | | without a panel, where the poll endpoint lives: `GET {path}/chat/{conversation}/turn`, see [Agents for Laravel](https://packstub.dev/docs/agents/installation#routes) |
 | `chat.middleware` | `['web', 'auth']` | | the middleware of that endpoint; a panel that shows the chat registers its own on the panel's routes |
 | `chat.keep_turns_days` | `90` | `AGENT_KEEP_TURNS_DAYS` | how long ended turns (the per-turn record) are kept for the AI turns page; `null` keeps them; pruned by `model:prune --model=Packstub\Agents\Models\AgentTurn` |
 | `log.channel` | `null` | `AGENT_LOG_CHANNEL` | the log channel that gets one line per ended turn (provider, model, tokens, tools, duration, how it ended); `null` logs nothing. See [What each turn cost](budgets-and-limits.md#what-each-turn-cost) |
-| `limits.*` | see [Budgets and limits](budgets-and-limits.md) | `AGENT_TURNS_PER_MINUTE` … | the platform ceiling |
+| `limits.*` | see [Budgets and limits](budgets-and-limits.md) | `AGENT_TURNS_PER_MINUTE`, `AGENT_TURNS_PER_DAY`, `AGENT_TOKENS_PER_DAY`, `AGENT_TOKENS_PER_MONTH`, `AGENT_USER_TOKENS_PER_DAY`, `AGENT_USER_TOKENS_PER_MONTH`, `AGENT_PROMPT_MAX_CHARS` | the platform ceiling |
 | `limits_connection` | `null` | `AGENT_LIMITS_CONNECTION` | the connection of the `agent_limits` table (the central one in a database-per-tenant app) |
 | `mcp.enabled` | `true` | `AGENT_MCP_ENABLED` | the MCP endpoint and the Agent access page |
 | `mcp.path` | `mcp` | | the endpoint path; `mcp/{tenant}` in a panel with tenancy |
@@ -113,11 +114,11 @@ AgentsPlugin::make()
 | `turnLog(bool $enabled)` | the operator's AI turns page (one row per turn: who, model, tokens, tools, duration, how it ended), gated like the limits; default: shown wherever `limits()` is |
 | `hideAskButtonOn(array $routePatterns)` | route name patterns without the topbar button (the chat itself is always excluded) |
 
-Two panels may register the plugin: the tenant panel with the chat and the token page, the operator panel with `chat(false)->agentAccess(false)->limits()`.
+Two panels may register the plugin: the tenant panel with the chat and the token page, the operator panel with `chat(false)->agentAccess(false)->limits()`. The plugin's id is `packstub-agents` (`$panel->getPlugin('packstub-agents')`).
 
 ## The Agents facade
 
-`Packstub\Agents\Facades\Agents` reads back what the app told the package: `name()`, `tenant()`, `inPanel()`, `toolClasses()`, `resourceClasses()`, `middleware()`, `allows($ability)`, `roleLabel()`, `credentials()`, `canManageLimits()`, and `context()` — the `AgentContext` that knows who is acting and where (the panel's `FilamentContext`, whose `panel()` is the panel the assistant lives in, or the `LaravelContext` of a plain app). Tools and views use it; your own code may too. Without a panel the same facade is how the app registers itself — `useAgent()`, `useServer()`, `useTools()`, `authorizeUsing()`, `tenantUsing()`, `tenantModel()` — see [Agents for Laravel](https://packstub.dev/docs/agents/installation).
+`Packstub\Agents\Facades\Agents` reads back what the app told the package: `name()`, `tenant()`, `inPanel()`, `toolClasses()`, `resourceClasses()`, `middleware()`, `allows($ability)`, `roleLabel()`, `credentials()`, `canManageLimits()`, `registeredResources()`, `agentAccess()`, `agentAccessAbility()`, `agentAccessGroup()`, `askButtonHiddenOn($routeName)`, the tenancy hooks (`tenantModelClass()`, `tenantSlugAttribute()`, `tenantResolver()`, `tenantEnterHook()`), and `context()` — the `AgentContext` that knows who is acting and where (the panel's `FilamentContext`, whose `panel()` is the panel the assistant lives in, or the `LaravelContext` of a plain app). Tools and views use it; your own code may too. Without a panel the same facade is how the app registers itself — `useAgent()`, `useServer()`, `useTools()`, `addTools()`, `useResources()`, `useMiddleware()`, `authorizeUsing()`, `roleLabelUsing()`, `credentialsUsing()`, `limitsAuthorizeUsing()`, `tenantUsing()`, `tenantModel()`, `enteringTenant()` — see [Agents for Laravel](https://packstub.dev/docs/agents/installation).
 
 ## Translations and views
 

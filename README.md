@@ -18,7 +18,7 @@ An in-panel AI assistant and an MCP server for your Filament v5 panel, built on 
 
 - **[One tool list, two front doors](#writing-tools)** — every capability is a `laravel/mcp` tool. The in-panel chat calls it through laravel/ai's bridge; external agents call it over HTTP with a token minted in the panel. Add a tool to the list and it is everywhere.
 - **[Authorization is the panel's](#writing-tools)** — a tool declares the ability string that gates the resource or action it mirrors. The assistant can never do more than the signed-in person could by hand, and a token narrows that further for external agents: read-only, or just the tools they need.
-- **[Writes are approved where the human is](#the-chat)** — in the chat, a write tool is a proposal with Approve and Reject buttons (laravel/ai approvals). Over MCP, a write token runs it directly with the person's role.
+- **[Writes are approved where the human is](#the-chat)** — in the chat, a write tool is a question with Approve and Reject ("Confirm order RO-00020 for Halvorsen & Co.?"; laravel/ai approvals). Over MCP, a write token runs it directly with the person's role.
 - **[Answers that show the real thing](#live-tables-and-charts)** — `show-table` renders the resource's own Filament table under the answer, with its search, filters, sorting and row actions. A tool result with a `chart` key becomes a chart. Page context tells the assistant which record the person opened the chat from.
 - **[A bounded bill](#budgets-and-the-operator-page)** — a per-user burst limit, answers per day and tokens per month per workspace, tokens per day and per month per user, and a prompt length cap, all checked before a turn reaches the provider and editable per workspace and per user on an operator page.
 - **[Your assistant, your prompt](#the-assistant)** — a scaffolded agent class with two slots to fill (who it is, what the workspace is) on top of generic working and answering rules, provider-cached instructions and a model picker (Claude Opus 5, Claude Haiku 4.5, Claude Opus 5 · Deep) for Anthropic, OpenAI, Gemini or xAI — any other laravel/ai provider, Ollama included, runs on its smartest and cheapest models. A failover list (`AGENT_FAILOVER=gemini,openai`) keeps answering when a provider is overloaded, with a note on the answer that says who did.
@@ -31,6 +31,8 @@ An in-panel AI assistant and an MCP server for your Filament v5 panel, built on 
 | --- | --- | --- | --- | --- | --- |
 | 1.x | 5.x | 13.x | 8.4+ | ^0.11 | ^0.9 |
 
+1.8 and later require [packstub/agents](https://github.com/packstub/agents) ^1.1, which Composer installs with the plugin.
+
 ## Installation
 
 ```bash
@@ -39,7 +41,7 @@ php artisan packstub-agents:install
 php artisan filament:assets
 ```
 
-The install command publishes the config, runs the migrations and scaffolds `app/Ai/Agents/Assistant.php`. Filament v5 only compiles plugin views into a custom theme, so add the package views to yours:
+The install command publishes the config, offers to run the migrations and scaffolds `app/Ai/Agents/Assistant.php`. Filament v5 only compiles plugin views into a custom theme, so add the package views to yours:
 
 ```css
 @source '../../../../vendor/packstub/filament-agents/resources/views';
@@ -124,7 +126,7 @@ class AcmeServer extends \Packstub\Agents\Mcp\AgentServer
 
 ## The chat
 
-The assistant lives on a chat page with an "Ask …" button in the topbar and the recent conversations in the sidebar. Answers are produced by a queued job and stream into the page while the agent calls tools — a reload, a closed tab or a second tab picks the answer up where it is, and Stop cuts it short (run `php artisan queue:work`, or set `AGENT_TURN_DRIVER=sync` to run the job inside the request). Long chats replay a token-budgeted window with a rolling summary; a context ring in the composer shows the breakdown and what the chat cost, with Compress now and Continue in a new chat. A proposed change shows up as a card with Approve and Reject, and the turn resumes with the decision. Conversations are stored with laravel/ai's models, follow-ups wait their turn per conversation, the last exchange can be regenerated or edited and sent again, and every answer can be rated with a thumbs up or down. A model picker next to the composer offers the models by name (Claude Opus 5, Claude Haiku 4.5, Claude Opus 5 · Deep out of the box; entries of more than one provider under provider headings), remembered per session.
+The assistant lives on a chat page with an "Ask …" button in the topbar and the recent conversations in the sidebar. Answers are produced by a queued job and stream into the page while the agent calls tools — a reload, a closed tab or a second tab picks the answer up where it is, and Stop cuts it short (run `php artisan queue:work`, or set `AGENT_TURN_DRIVER=sync` to run the job inside the request). Long chats replay a token-budgeted window with a rolling summary; a context ring in the composer shows the breakdown and what the chat cost, with Compress now and Continue in a new chat. A proposed change shows up as a question with Approve and Reject ("Confirm order RO-00020 for Halvorsen & Co.?", the exact call folded under it), and the turn resumes with the decision. Conversations are stored with laravel/ai's models, follow-ups wait their turn per conversation, the last exchange can be regenerated or edited and sent again, and every answer can be rated with a thumbs up or down. A model picker next to the composer offers the models by name (Claude Opus 5, Claude Haiku 4.5, Claude Opus 5 · Deep out of the box; entries of more than one provider under provider headings), remembered per session.
 
 Ask for records and the answer comes with the resource's own table under it, filtered the way the answer says, with the row actions the person's role allows:
 
@@ -134,15 +136,17 @@ Ask for a trend and the numbers come back drawn as a chart, from `draw-chart` or
 
 ![A question about order value over four weeks answered with a sentence and a bar chart, Order value by week](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-chart.png)
 
-Ask for a change and the turn pauses on a card until the person approves or rejects it; the composer with the model picker waits underneath:
+Ask for a change and the turn pauses on a question until the person approves or rejects it; the composer with the model picker waits underneath:
 
-![A request to confirm an order paused as a Confirm Order card with the order number and Approve and Reject buttons, the composer with the model picker under it](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-approval.png)
+![A request to confirm an order paused as the question "Confirm order RO-00020 for Halvorsen & Co.?" with Approve and Reject buttons and the folded confirm-order call under it, the composer with the model picker underneath](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-approval.png)
 
 Read more: [The assistant](https://packstub.dev/docs/filament-agents/assistant).
 
 ## The assistant
 
 `packstub-agents:agent` scaffolds `App\Ai\Agents\Assistant`, a subclass of `Packstub\Agents\Ai\Agent` with two slots to fill: `persona()` (who it is) and `domain()` (what the workspace is). The base class supplies the generic working and answering rules, the dynamic context (date, workspace, person, role, language, page context — sent with the question, so the system prompt and the history stay cacheable) and the provider options (Anthropic cache breakpoints on the instructions and the settled history, reasoning effort or thinking level per model). Append to any of them by overriding `workRules()`, `answerRules()` or `context()` and merging the parent's list.
+
+Your own agent middleware — an audit log, redaction, a tenant check — goes in `middleware()` on the agent, in `AgentsPlugin::make()->middleware([...])` or in the `middleware` config key, and runs on every turn after the package's guard rails.
 
 ```php
 class Assistant extends Agent
@@ -218,6 +222,8 @@ to get the **AI limits** resource: one global row, optional rows per workspace a
 
 ![The AI limits resource on an operator panel: platform defaults, two workspace rows and one user switched off](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/ai-limits.png)
 
+The same panel gets an **AI turns** page (`/agent-turns`, `->turnLog()`): one row per turn with who asked, the model, tokens in and out, the tools called, the duration and how it ended. Every turn also writes one log line to `log.channel` (`AGENT_LOG_CHANNEL`).
+
 Read more: [Budgets and limits](https://packstub.dev/docs/filament-agents/budgets-and-limits).
 
 ## Tenancy
@@ -237,12 +243,15 @@ AgentsPlugin::make()
     ->server(AcmeServer::class)                          // the MCP server class with the tool list
     ->tools([...])                                       // or a plain tool list, chat only
     ->resources([OrderResource::class])                  // explicit AgentResource list (default: discovered)
+    ->middleware([AuditLog::class])                      // your own agent middleware, after the guard rails
     ->authorizeUsing(fn (string $ability) => ...)        // how an ability is checked for the current person
     ->roleLabelUsing(fn () => ...)                       // the person's role, for the prompt and refusals
     ->credentialsUsing(fn () => new WorkspaceCredentials(...)) // a workspace's own provider key
     ->chat(true)                                         // the chat pages, the Ask button and recent chats
+    ->history(maxTokens: 24000)                          // the history window and the context ring
     ->agentAccess(ability: 'setup.view', group: 'Setup') // the token page
     ->limits(authorize: fn () => ...)                    // the operator's AI limits resource
+    ->turnLog(true)                                      // the operator's AI turns page
     ->hideAskButtonOn(['*.pages.dashboard']);            // route patterns without the topbar button
 ```
 

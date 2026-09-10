@@ -76,28 +76,54 @@
 
                         @foreach ($message['tools'] as $tool)
                             @unless ($tool['readOnly'])
-                                <div class="rounded-xl border {{ $tool['pending'] ? 'border-warning-300 bg-warning-50 dark:border-warning-500/40 dark:bg-warning-500/10' : 'border-gray-200 bg-gray-50 dark:border-white/10 dark:bg-white/5' }} p-4">
-                                    <div class="flex items-center gap-2 text-sm font-semibold text-gray-950 dark:text-white">
-                                        <x-filament::icon icon="heroicon-m-bolt" class="h-4 w-4 text-warning-600" />
-                                        {{ $tool['name'] }}
-                                        @if (! $tool['pending'] && $tool['result'] !== null)
-                                            <x-filament::badge :color="$tool['rejected'] ? 'gray' : 'success'" size="sm">
-                                                {{ $tool['rejected'] ? __('Rejected') : __('Done') }}
-                                            </x-filament::badge>
+                                {{-- A proposed change: one question with a decision while it waits (the most prominent thing on the page),
+                                     the outcome in the same place once decided. The exact call folds under the question. --}}
+                                @php($state = $tool['pending'] ? 'pending' : ($tool['rejected'] ? 'rejected' : 'approved'))
+                                <div class="fi-chat-proposal fi-chat-proposal-{{ $state }}" x-data="{ open: false }" wire:key="proposal-{{ $message['id'] }}-{{ $tool['id'] }}" data-state="{{ $state }}">
+                                    <div class="fi-chat-proposal-row">
+                                        <x-filament::icon :icon="$tool['pending'] ? 'heroicon-m-question-mark-circle' : ($tool['rejected'] ? 'heroicon-m-x-circle' : 'heroicon-m-check-circle')" class="fi-chat-proposal-icon" />
+                                        <div class="fi-chat-proposal-body">
+                                            <p class="fi-chat-proposal-question">{{ $tool['question'] }}</p>
+                                            <button type="button" class="fi-chat-proposal-call" x-on:click="open = ! open" x-bind:aria-expanded="open">
+                                                <x-filament::icon icon="heroicon-m-chevron-right" class="fi-chat-proposal-chevron" x-bind:class="{ 'fi-chat-proposal-chevron-open': open }" />
+                                                <code>{{ $tool['tool'] }}</code>
+                                                <span>{{ trans_choice('{0} no arguments|{1} :count argument|[2,*] :count arguments', count($tool['arguments'])) }}</span>
+                                            </button>
+                                        </div>
+                                        <div class="fi-chat-proposal-decision">
+                                            @if ($tool['pending'])
+                                                <div class="fi-chat-proposal-actions" x-show="! busy">
+                                                    {{-- Bound attributes: a Blade directive inside a component tag's attribute is not compiled. --}}
+                                                    <x-filament::button size="sm" icon="heroicon-m-check" :x-on:click="'decide('.\Illuminate\Support\Js::from($tool['id']).', true)'">{{ __('Approve') }}</x-filament::button>
+                                                    <x-filament::button size="sm" color="gray" outlined :x-on:click="'decide('.\Illuminate\Support\Js::from($tool['id']).', false)'">{{ __('Reject') }}</x-filament::button>
+                                                </div>
+                                                <span class="fi-chat-proposal-outcome" x-show="busy" x-cloak>{{ __('Deciding…') }}</span>
+                                            @else
+                                                <span class="fi-chat-proposal-outcome">{{ $tool['rejected'] ? __('Rejected') : __('Approved') }}</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    @if ($tool['pending'] && ($live['ended']['decision'] ?? false) && ($live['ended']['status'] ?? null) === \Packstub\Agents\Models\AgentTurn::FAILED)
+                                        {{-- The decision turn failed (the worker died, the provider or the history rejected it): say so here, where the buttons came back. --}}
+                                        <p class="fi-chat-proposal-error" x-show="! busy">
+                                            <x-filament::icon icon="heroicon-m-exclamation-circle" />
+                                            <span>{{ __('The decision could not be applied.') }} {{ $live['ended']['error'] }}</span>
+                                        </p>
+                                    @endif
+                                    <div class="fi-chat-proposal-details" x-show="open" x-collapse x-cloak>
+                                        @if ($tool['arguments'])
+                                            <dl>
+                                                @foreach ($tool['arguments'] as $key => $value)
+                                                    <dt>{{ \Illuminate\Support\Str::headline($key) }}</dt>
+                                                    <dd>{{ is_scalar($value) ? $value : json_encode($value, JSON_UNESCAPED_UNICODE) }}</dd>
+                                                @endforeach
+                                            </dl>
+                                        @endif
+                                        @if (! $tool['rejected'] && ($result = \Packstub\Agents\Filament\Pages\Chat::resultText($tool['result'])) !== null)
+                                            <p class="fi-chat-proposal-label">{{ __('Result') }}</p>
+                                            <pre>{{ $result }}</pre>
                                         @endif
                                     </div>
-                                    <dl class="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-                                        @foreach ($tool['arguments'] as $key => $value)
-                                            <dt class="text-gray-500">{{ \Illuminate\Support\Str::headline($key) }}</dt>
-                                            <dd class="text-gray-800 dark:text-gray-200">{{ is_scalar($value) ? $value : json_encode($value, JSON_UNESCAPED_UNICODE) }}</dd>
-                                        @endforeach
-                                    </dl>
-                                    @if ($tool['pending'])
-                                        <div class="mt-3 flex gap-2" x-show="! busy">
-                                            <x-filament::button size="sm" icon="heroicon-m-check" x-on:click="decide(@js($tool['id']), true)">{{ __('Approve') }}</x-filament::button>
-                                            <x-filament::button size="sm" color="gray" outlined x-on:click="decide(@js($tool['id']), false)">{{ __('Reject') }}</x-filament::button>
-                                        </div>
-                                    @endif
                                 </div>
                             @endunless
                         @endforeach

@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Models\ConversationMessage;
@@ -11,8 +12,10 @@ use Packstub\Agents\Models\AgentTurn;
 use Packstub\Agents\Support\AgentBudget;
 use Packstub\Agents\Support\AgentLimits;
 use Packstub\Agents\Support\AgentModels;
+use Packstub\Agents\Support\AgentTurns;
 use Packstub\Agents\Support\PageContext;
 use Packstub\Agents\Tests\Fixtures\Filament\Resources\Widgets\WidgetResource;
+use Packstub\Agents\Tests\Fixtures\Tools\RetireWidget;
 use Packstub\Agents\Tests\Fixtures\WidgetAgent;
 use RuntimeException;
 
@@ -154,6 +157,17 @@ it('carries the record being viewed into the chat as page context', function () 
     expect((new WidgetAgent(pageContext: 'widgets/'.$alpha->id))->dynamicInstructions())->toContain('opened this chat from Widget Alpha', '"name":"Alpha"');
 });
 
+it('phrases a proposal from the tool title and the first argument when the tool has no describe(), and from the call alone when the tool is gone', function () {
+    actingAs($this->user());
+
+    expect(Chat::question(app(RetireWidget::class), 'retire-widget', ['id' => 12]))->toBe('Retire Widget 12?')
+        ->and(Chat::question(null, 'archive-widget', ['id' => 3, 'reason' => 'old']))->toBe('Archive Widget 3?')
+        ->and(Chat::question(null, 'archive-widget', []))->toBe('Archive Widget?')
+        ->and(Chat::resultText('{"renamed":true,"widget":{"id":1}}'))->toBe("{\n    \"renamed\": true,\n    \"widget\": {\n        \"id\": 1\n    }\n}")
+        ->and(Chat::resultText('plain text'))->toBe('plain text')
+        ->and(Chat::resultText(null))->toBeNull();
+});
+
 it('keeps a decided proposal as a card and lets the model carry on after a rejection', function () {
     $user = $this->user();
     actingAs($user);
@@ -182,9 +196,23 @@ it('keeps a decided proposal as a card and lets the model carry on after a rejec
 
     expect(Chat::writeToolNames())->toBe(['rename-widget']);
 
-    livewire(Chat::class, ['conversation' => $conversation->id])
-        ->assertSeeInOrder(['Rename Widget', 'Rejected', 'Rename Widget', 'Done', 'Rename Widget', 'Approve', 'Reject'])
-        ->assertSee('Alpha II');
+    // Each proposal is one question with its decision: the tool's own sentence, the outcome in place once decided,
+    // Approve / Reject while it waits; the exact call (tool name, arguments, the result) folds under the question.
+    $page = livewire(Chat::class, ['conversation' => $conversation->id])
+        ->assertSeeInOrder([
+            "Rename widget #{$alpha->id} to Alpha II?", 'Rejected',
+            "Rename widget #{$alpha->id} to Alpha III?", 'Approved', 'Result', '"renamed": true',
+            "Rename widget #{$alpha->id} to Alpha IV?", 'Approve', 'Reject',
+        ])
+        ->assertSeeInOrder(['rename-widget', '2 arguments', 'Alpha II'])
+        ->assertDontSee('Done')
+        ->assertDontSee('The user rejected this tool call.'); // a rejection has no result to show
+    $html = $page->html();
+    // The buttons carry a compiled Alpine expression (a directive inside a component tag's attribute is not compiled).
+    expect($html)->toContain('decide(&#039;c3&#039;, true)', 'decide(&#039;c3&#039;, false)')->not->toContain('@js(');
+    expect(substr_count($html, 'fi-chat-proposal-pending'))->toBe(1)
+        ->and(substr_count($html, 'fi-chat-proposal-approved'))->toBe(1)
+        ->and(substr_count($html, 'fi-chat-proposal-rejected'))->toBe(1);
 
     // Rejecting hands the model a reason instead of a bare "no", so the turn continues and the model can answer.
     WidgetAgent::fake(['Understood, I left the name as it is.']);
@@ -196,6 +224,41 @@ it('keeps a decided proposal as a card and lets the model carry on after a rejec
         return $decision?->isRejected() && $decision->result === Chat::rejectionResult();
     });
     expect(ConversationMessage::query()->where('conversation_id', $conversation->id)->where('content', 'like', '%left the name%')->exists())->toBeTrue();
+});
+
+it('reports a decision turn that failed on the proposal row, with the buttons back', function () {
+    $user = $this->user();
+    actingAs($user);
+    [$alpha] = $this->widgets();
+    Queue::fake();
+
+    $conversation = Conversation::query()->create(['id' => (string) Str::uuid(), 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id, 'title' => 'Renames']);
+    $row = ['conversation_id' => $conversation->id, 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id, 'agent' => WidgetAgent::class, 'attachments' => [], 'meta' => [], 'usage' => []];
+    ConversationMessage::query()->create($row + ['id' => (string) Str::uuid7(), 'role' => 'user', 'content' => 'Rename Alpha, please.', 'tool_calls' => [], 'tool_results' => [], 'created_at' => now()->subMinutes(5)]);
+    usleep(1100);
+    $call = ['id' => 'c1', 'name' => 'rename-widget', 'arguments' => ['id' => $alpha->id, 'name' => 'Alpha II']];
+    ConversationMessage::query()->create($row + ['id' => (string) Str::uuid7(), 'role' => 'assistant', 'content' => '', 'tool_calls' => [$call], 'tool_results' => [], 'approval_state' => ['pending' => ['c1' => ['name' => 'rename-widget']]], 'created_at' => now()->subMinutes(5)->addSeconds(6)]);
+
+    // The decision is queued as a turn; the worker fails it (a history the loop could not match, a dead worker…),
+    // so the call is still pending and the buttons return — with the reason, where the person is looking.
+    livewire(Chat::class, ['conversation' => $conversation->id])->call('decide', 'c1', true);
+    $turn = AgentTurn::query()->forConversation($conversation->id)->sole();
+    expect($turn->decisions())->toBe(['c1' => true]);
+    app(AgentTurns::class)->finish($turn, AgentTurn::FAILED, 'Approval decisions do not match the pending tool calls.');
+
+    livewire(Chat::class, ['conversation' => $conversation->id])
+        ->assertSeeInOrder(['Approve', 'Reject', __('The decision could not be applied.'), 'Approval decisions do not match the pending tool calls.'])
+        ->assertDontSee(__('The assistant could not answer.'))
+        ->assertDontSee(__('Retry'));
+
+    // A question that failed is reported on the question, not on an earlier proposal.
+    usleep(1100);
+    ConversationMessage::query()->create($row + ['id' => (string) Str::uuid7(), 'role' => 'user', 'content' => 'And Beta?', 'tool_calls' => [], 'tool_results' => [], 'created_at' => now()->addSeconds(2)]);
+    AgentTurn::query()->whereKey($turn->id)->update(['input' => json_encode(['prompt' => 'And Beta?'])]);
+
+    livewire(Chat::class, ['conversation' => $conversation->id])
+        ->assertSee(__('The assistant could not answer.'))
+        ->assertDontSee(__('The decision could not be applied.'));
 });
 
 it('keeps a question the provider could not answer and answers it on retry', function () {

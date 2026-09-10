@@ -199,6 +199,24 @@ it('keeps the follow-ups per conversation, in order, editable until they start',
     Queue::assertPushed(RunAgentTurn::class, fn (RunAgentTurn $job) => $job->turnId === $fourth->id);
 });
 
+it('names a missing worker on the status line once a turn has waited for one', function () {
+    $user = $this->user();
+    actingAs($user);
+    Queue::fake();
+
+    livewire(Chat::class)->call('send', 'Anyone there?');
+    $conversation = Conversation::query()->where('participant_id', $user->id)->firstOrFail();
+    $hint = __('No queue worker has taken this turn yet. Run php artisan queue:work, or set AGENT_TURN_DRIVER=sync to answer inside the request.');
+    $url = Filament::getPanel('admin')->route('packstub-agents.turn', ['conversation' => $conversation->id]);
+
+    expect(livewire(Chat::class, ['conversation' => $conversation->id])->instance()->live()['active']['statusText'])->toBe(__('Thinking…'));
+    get($url)->assertOk()->assertJsonPath('active.statusText', __('Thinking…'));
+
+    $this->travel(AgentTurns::workerWait() + 1)->seconds();
+    expect(livewire(Chat::class, ['conversation' => $conversation->id])->instance()->live()['active']['statusText'])->toBe($hint);
+    get($url)->assertOk()->assertJsonPath('active.statusText', $hint);
+});
+
 it('shows a turn whose worker went quiet as failed, with a retry', function () {
     $user = $this->user();
     actingAs($user);
