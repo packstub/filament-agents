@@ -11,7 +11,7 @@
 | laravel/mcp | ^0.9 |
 | laravel/sanctum | ^4 (tokens for MCP clients) |
 
-The plugin requires [packstub/agents](https://packstub.dev/docs/agents) — the engine: `laravel/ai`, `laravel/mcp`, `laravel/sanctum`, the tools, the MCP server, the turn job, budgets and limits — so Composer installs it and them for you. The engine runs in a plain Laravel app too; this plugin is what a Filament panel adds on top.
+The plugin requires [packstub/agents](https://packstub.dev/docs/agents) ^1.1 — the engine: `laravel/ai`, `laravel/mcp`, `laravel/sanctum`, the tools, the MCP server, the turn job, budgets and limits — so Composer installs it and them for you. The engine runs in a plain Laravel app too; this plugin is what a Filament panel adds on top.
 
 ## Install
 

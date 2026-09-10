@@ -65,9 +65,23 @@ class SearchOrders extends AgentTool
 
 | | Read-only tool | Write tool |
 | --- | --- | --- |
-| In the chat | runs directly | wrapped as an `ApprovableTool`: the person sees the tool and its arguments and approves or rejects it before it runs |
+| In the chat | runs directly | wrapped as an `ApprovableTool`: the chat shows the call as a question with Approve and Reject, the exact call folded under it, and nothing runs until the person approves |
 | Over MCP with a `read` token | runs | refused ("This access token is read-only.") |
 | Over MCP with a `write` token | runs | runs directly with the token holder's role |
+
+A write tool phrases its own proposals with `describe()`; without it the question is the tool's title and the first argument ("Confirm Order RO-00020?"):
+
+```php
+/** The proposal as the person reads it: the order and who placed it, not the tool name. */
+public function describe(array $arguments): ?string
+{
+    $order = Order::query()->where('number', $arguments['number'] ?? null)->first();
+
+    return $order ? "Confirm order {$order->number} for {$order->customer}?" : null;
+}
+```
+
+Return `null` to fall back to the default. The sentence is stored with the pending approval, so a chat surface of your own can show it too — see [The proposal as a question](https://packstub.dev/docs/agents/tools#the-proposal-as-a-question) in the engine's docs. Should the turn that carries the decision fail, the chat shows the buttons again with the reason under the question.
 
 There is no separate "destructive" tier: a write is a write. If a change needs extra care, say so in the description, read the record first inside `run()` and refuse when the state is wrong.
 

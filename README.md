@@ -31,6 +31,8 @@ An in-panel AI assistant and an MCP server for your Filament v5 panel, built on 
 | --- | --- | --- | --- | --- | --- |
 | 1.x | 5.x | 13.x | 8.4+ | ^0.11 | ^0.9 |
 
+1.8 and later require [packstub/agents](https://github.com/packstub/agents) ^1.1, which Composer installs with the plugin.
+
 ## Installation
 
 ```bash
@@ -39,7 +41,7 @@ php artisan packstub-agents:install
 php artisan filament:assets
 ```
 
-The install command publishes the config, runs the migrations and scaffolds `app/Ai/Agents/Assistant.php`. Filament v5 only compiles plugin views into a custom theme, so add the package views to yours:
+The install command publishes the config, offers to run the migrations and scaffolds `app/Ai/Agents/Assistant.php`. Filament v5 only compiles plugin views into a custom theme, so add the package views to yours:
 
 ```css
 @source '../../../../vendor/packstub/filament-agents/resources/views';
@@ -144,6 +146,8 @@ Read more: [The assistant](https://packstub.dev/docs/filament-agents/assistant).
 
 `packstub-agents:agent` scaffolds `App\Ai\Agents\Assistant`, a subclass of `Packstub\Agents\Ai\Agent` with two slots to fill: `persona()` (who it is) and `domain()` (what the workspace is). The base class supplies the generic working and answering rules, the dynamic context (date, workspace, person, role, language, page context — sent with the question, so the system prompt and the history stay cacheable) and the provider options (Anthropic cache breakpoints on the instructions and the settled history, reasoning effort or thinking level per model). Append to any of them by overriding `workRules()`, `answerRules()` or `context()` and merging the parent's list.
 
+Your own agent middleware — an audit log, redaction, a tenant check — goes in `middleware()` on the agent, in `AgentsPlugin::make()->middleware([...])` or in the `middleware` config key, and runs on every turn after the package's guard rails.
+
 ```php
 class Assistant extends Agent
 {
@@ -218,6 +222,8 @@ to get the **AI limits** resource: one global row, optional rows per workspace a
 
 ![The AI limits resource on an operator panel: platform defaults, two workspace rows and one user switched off](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/ai-limits.png)
 
+The same panel gets an **AI turns** page (`/agent-turns`, `->turnLog()`): one row per turn with who asked, the model, tokens in and out, the tools called, the duration and how it ended. Every turn also writes one log line to `log.channel` (`AGENT_LOG_CHANNEL`).
+
 Read more: [Budgets and limits](https://packstub.dev/docs/filament-agents/budgets-and-limits).
 
 ## Tenancy
@@ -237,12 +243,15 @@ AgentsPlugin::make()
     ->server(AcmeServer::class)                          // the MCP server class with the tool list
     ->tools([...])                                       // or a plain tool list, chat only
     ->resources([OrderResource::class])                  // explicit AgentResource list (default: discovered)
+    ->middleware([AuditLog::class])                      // your own agent middleware, after the guard rails
     ->authorizeUsing(fn (string $ability) => ...)        // how an ability is checked for the current person
     ->roleLabelUsing(fn () => ...)                       // the person's role, for the prompt and refusals
     ->credentialsUsing(fn () => new WorkspaceCredentials(...)) // a workspace's own provider key
     ->chat(true)                                         // the chat pages, the Ask button and recent chats
+    ->history(maxTokens: 24000)                          // the history window and the context ring
     ->agentAccess(ability: 'setup.view', group: 'Setup') // the token page
     ->limits(authorize: fn () => ...)                    // the operator's AI limits resource
+    ->turnLog(true)                                      // the operator's AI turns page
     ->hideAskButtonOn(['*.pages.dashboard']);            // route patterns without the topbar button
 ```
 
