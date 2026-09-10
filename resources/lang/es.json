@@ -125,6 +125,7 @@
     "Stopping…": "Deteniendo…",
     "The assistant could not answer": "El asistente no ha podido responder",
     "The assistant could not answer.": "El asistente no pudo responder.",
+    "The decision could not be applied.": "La decisión no se pudo aplicar.",
     "The assistant did not answer.": "El asistente no respondió.",
     "The assistant reads a summary of them from the next question on.": "A partir de la próxima pregunta el asistente lee un resumen de ellos.",
     "The chat could not be summarized": "No se pudo resumir el chat",

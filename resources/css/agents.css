@@ -82,6 +82,9 @@
 .fi-chat-proposal-outcome { font-size: 0.75rem; font-weight: 600; color: var(--gray-500); }
 .fi-chat-proposal-approved .fi-chat-proposal-outcome { color: var(--success-600); }
 .dark .fi-chat-proposal-approved .fi-chat-proposal-outcome { color: var(--success-400); }
+.fi-chat-proposal-error { display: flex; align-items: flex-start; gap: 0.375rem; margin: 0.5rem 0 0; font-size: 0.75rem; color: var(--danger-600); }
+.dark .fi-chat-proposal-error { color: var(--danger-400); }
+.fi-chat-proposal-error svg { width: 1rem; height: 1rem; flex: none; }
 .fi-chat-proposal-details { margin-top: 0.625rem; padding-top: 0.625rem; border-top: 1px solid rgb(0 0 0 / 0.08); font-size: 0.8125rem; }
 .dark .fi-chat-proposal-details { border-color: rgb(255 255 255 / 0.1); }
 .fi-chat-proposal-details dl { display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 1rem; margin: 0; }

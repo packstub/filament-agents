@@ -185,7 +185,7 @@ class Chat extends Page
      * The turn that runs on this conversation, the questions waiting behind it, and how the last turn ended
      * when the last question has no answer.
      *
-     * @return array{active: ?array{id: string, status: string, statusText: string, html: string}, queued: list<array{id: string, text: string}>, ended: ?array{status: string, reason: ?string, error: ?string}}
+     * @return array{active: ?array{id: string, status: string, statusText: string, html: string}, queued: list<array{id: string, text: string}>, ended: ?array{status: string, reason: ?string, error: ?string, decision: bool}}
      */
     public function live(): array
     {
@@ -210,7 +210,7 @@ class Chat extends Page
                 'html' => filled($active->text) ? self::markdown((string) $active->text) : '',
             ] : null,
             'queued' => $turns->queued($this->conversation)->map(fn (AgentTurn $t) => ['id' => $t->id, 'text' => (string) $t->prompt()])->values()->all(),
-            'ended' => $latest && in_array($latest->status, [AgentTurn::FAILED, AgentTurn::STOPPED], true) ? ['status' => $latest->status, 'reason' => $latest->finish_reason, 'error' => $latest->error] : null,
+            'ended' => $latest && in_array($latest->status, [AgentTurn::FAILED, AgentTurn::STOPPED], true) ? ['status' => $latest->status, 'reason' => $latest->finish_reason, 'error' => $latest->error, 'decision' => $latest->decisions() !== null] : null,
         ];
     }
 

@@ -125,6 +125,7 @@
     "Stopping…": "Останавливается…",
     "The assistant could not answer": "Ассистент не смог ответить",
     "The assistant could not answer.": "Ассистент не смог ответить.",
+    "The decision could not be applied.": "Решение не удалось применить.",
     "The assistant did not answer.": "Ассистент не ответил.",
     "The assistant reads a summary of them from the next question on.": "Со следующего вопроса ассистент читает их резюме.",
     "The chat could not be summarized": "Не удалось составить краткое содержание чата",

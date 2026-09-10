@@ -9,6 +9,7 @@ Upgrading: nothing to run. The plugin requires `packstub/agents` ^1.1 (Composer 
 ### Changed
 
 - **A proposed change is a question with a decision.** A write tool waiting for approval is one row: an icon, the call as a question ("Confirm order RO-00016 for Nordwind GmbH?"), Approve and Reject on the right, the exact call folded under it (the tool name and how many arguments; click to open the argument list). The question comes from the tool's `describe()` in the engine, or its title and the first argument. While it waits the row is the most prominent element on the page (primary border and tint); once decided the same row shows Approved or Rejected where the buttons were, with the tool's result in the fold, so nothing moves. The stylesheet reads the panel's own colour variables (`--primary-500`, `--gray-500`…) instead of Tailwind's, so it renders the same whatever the app's CSS build includes. (#43)
+- **A decision that could not be applied says so.** When the turn that carries an Approve or Reject fails (a worker that died, a history the provider or laravel/ai could not match), the buttons come back with the reason under the question, instead of returning silently as before.
 
 ### Fixed
 

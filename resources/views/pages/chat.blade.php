@@ -103,6 +103,13 @@
                                             @endif
                                         </div>
                                     </div>
+                                    @if ($tool['pending'] && ($live['ended']['decision'] ?? false) && ($live['ended']['status'] ?? null) === \Packstub\Agents\Models\AgentTurn::FAILED)
+                                        {{-- The decision turn failed (the worker died, the provider or the history rejected it): say so here, where the buttons came back. --}}
+                                        <p class="fi-chat-proposal-error" x-show="! busy">
+                                            <x-filament::icon icon="heroicon-m-exclamation-circle" />
+                                            <span>{{ __('The decision could not be applied.') }} {{ $live['ended']['error'] }}</span>
+                                        </p>
+                                    @endif
                                     <div class="fi-chat-proposal-details" x-show="open" x-collapse x-cloak>
                                         @if ($tool['arguments'])
                                             <dl>
