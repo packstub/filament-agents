@@ -93,8 +93,9 @@
                                         <div class="fi-chat-proposal-decision">
                                             @if ($tool['pending'])
                                                 <div class="fi-chat-proposal-actions" x-show="! busy">
-                                                    <x-filament::button size="sm" icon="heroicon-m-check" x-on:click="decide(@js($tool['id']), true)">{{ __('Approve') }}</x-filament::button>
-                                                    <x-filament::button size="sm" color="gray" outlined x-on:click="decide(@js($tool['id']), false)">{{ __('Reject') }}</x-filament::button>
+                                                    {{-- Bound attributes: a Blade directive inside a component tag's attribute is not compiled. --}}
+                                                    <x-filament::button size="sm" icon="heroicon-m-check" :x-on:click="'decide('.\Illuminate\Support\Js::from($tool['id']).', true)'">{{ __('Approve') }}</x-filament::button>
+                                                    <x-filament::button size="sm" color="gray" outlined :x-on:click="'decide('.\Illuminate\Support\Js::from($tool['id']).', false)'">{{ __('Reject') }}</x-filament::button>
                                                 </div>
                                                 <span class="fi-chat-proposal-outcome" x-show="busy" x-cloak>{{ __('Deciding…') }}</span>
                                             @else

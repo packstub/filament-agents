@@ -206,6 +206,8 @@ it('keeps a decided proposal as a card and lets the model carry on after a rejec
         ->assertDontSee('Done')
         ->assertDontSee('The user rejected this tool call.'); // a rejection has no result to show
     $html = $page->html();
+    // The buttons carry a compiled Alpine expression (a directive inside a component tag's attribute is not compiled).
+    expect($html)->toContain('decide(&#039;c3&#039;, true)', 'decide(&#039;c3&#039;, false)')->not->toContain('@js(');
     expect(substr_count($html, 'fi-chat-proposal-pending'))->toBe(1)
         ->and(substr_count($html, 'fi-chat-proposal-approved'))->toBe(1)
         ->and(substr_count($html, 'fi-chat-proposal-rejected'))->toBe(1);
