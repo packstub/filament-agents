@@ -10,7 +10,7 @@ The same tools the chat uses are served over HTTP as an MCP server, so Claude Co
 AgentsPlugin::make()->agentAccess(ability: 'setup.view', group: fn () => __('Setup'))
 ```
 
-![The Agent access page listing two tokens: one scoped to three tools and expiring, one read-only](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/agent-access.png)
+![The Agent access page listing two tokens: one scoped to three tools and expiring, one read-only](https://raw.githubusercontent.com/packstub/art/main/filament-agents/docs/agent-access.png)
 
 The page mints Sanctum personal access tokens for the signed-in person:
 
@@ -20,7 +20,7 @@ The page mints Sanctum personal access tokens for the signed-in person:
 - optionally, **only these tools**: the modal lists the tools the person's role allows right now in one table, each with its title, a Read or Write badge and what it does (the full description on hover; write rows are switched off until Write is ticked). Ticking some stores them as `tool:{name}` abilities and the token is limited to exactly those. Ticking none keeps the token at every tool the role allows;
 - in a panel with tenancy, the token also carries `tenant:{slug}` so it only works on that workspace's URL.
 
-![The Create token modal: read and write abilities, an expiry, and the tools table with a Read or Write badge per tool](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/create-token.png)
+![The Create token modal: read and write abilities, an expiry, and the tools table with a Read or Write badge per tool](https://raw.githubusercontent.com/packstub/art/main/filament-agents/docs/create-token.png)
 
 A token can only narrow what the role allows, never widen it: the picker offers only the tools the person may run, and the role is checked again on every call, so a tool the role loses later is refused even when the token names it. A typical split is one read-only token for a reporting agent and a second one scoped to `confirm-order` and `search-orders` for the agent that works the queue.
 

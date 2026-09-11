@@ -2,7 +2,7 @@
 
 <div class="filament-hidden">
 
-![Filament Agents — an in-panel AI assistant and an MCP server for Filament panels](https://raw.githubusercontent.com/packstub/filament-agents/main/art/banner.jpg)
+![Filament Agents — an in-panel AI assistant and an MCP server for Filament panels](https://raw.githubusercontent.com/packstub/art/main/filament-agents/banner.jpg)
 
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/packstub/filament-agents.svg?style=flat-square)](https://packagist.org/packages/packstub/filament-agents)
 [![Tests](https://img.shields.io/github/actions/workflow/status/packstub/filament-agents/tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/packstub/filament-agents/actions/workflows/tests.yml)
@@ -128,19 +128,19 @@ class AcmeServer extends \Packstub\Agents\Mcp\AgentServer
 
 The assistant lives on a chat page with an "Ask …" button in the topbar and the recent conversations in the sidebar (an "Ask …" navigation item on a panel with top navigation). A new chat opens on a row of starter questions from your agent's `suggestions()`, each sent on click. Answers are produced by a queued job and stream into the page while the agent calls tools — a reload, a closed tab or a second tab picks the answer up where it is, and Stop cuts it short (run `php artisan queue:work`, or set `AGENT_TURN_DRIVER=sync` to run the job inside the request). Long chats replay a token-budgeted window with a rolling summary; a context ring in the composer shows the breakdown and what the chat cost, with Compress now and Continue in a new chat. A proposed change shows up as a question with Approve and Reject ("Confirm order RO-00020 for Halvorsen & Co.?", the exact call folded under it), and the turn resumes with the decision. Conversations are stored with laravel/ai's models, follow-ups wait their turn per conversation, the last exchange can be regenerated or edited and sent again, and every answer can be rated with a thumbs up or down. The composer is one row — the question, the model and Send — and the model is a small text button that opens the list by name (Claude Opus 5, Claude Haiku 4.5, Claude Opus 5 · Deep out of the box; entries of more than one provider under provider headings), remembered per session.
 
-![A new chat: the "Ask Acme" item active in the top navigation, the assistant's name over four starter questions as pills, and the one-row composer with the model button and Send](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-new.png)
+![A new chat: the "Ask Acme" item active in the top navigation, the assistant's name over four starter questions as pills, and the one-row composer with the model button and Send](https://raw.githubusercontent.com/packstub/art/main/filament-agents/docs/chat-new.png)
 
 Ask for records and the answer comes with the resource's own table under it, filtered the way the answer says, with the row actions the person's role allows:
 
-![A question about pending orders answered with a short summary and the live Orders table under it, filtered to the three pending rows, with Confirm and Edit actions](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-table.png)
+![A question about pending orders answered with a short summary and the live Orders table under it, filtered to the three pending rows, with Confirm and Edit actions](https://raw.githubusercontent.com/packstub/art/main/filament-agents/docs/chat-table.png)
 
 Ask for a trend and the numbers come back drawn as a chart, from `draw-chart` or from a reporting tool of your own that returns one:
 
-![A question about order value over four weeks answered with a sentence and a bar chart, Order value by week](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-chart.png)
+![A question about order value over four weeks answered with a sentence and a bar chart, Order value by week](https://raw.githubusercontent.com/packstub/art/main/filament-agents/docs/chat-chart.png)
 
 Ask for a change and the turn pauses on a question until the person approves or rejects it; the composer with the model picker waits underneath:
 
-![A request to confirm an order paused as the question "Confirm order RO-00020 for Halvorsen & Co.?" with Approve and Reject buttons and the folded confirm-order call under it, the one-row composer underneath](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-approval.png)
+![A request to confirm an order paused as the question "Confirm order RO-00020 for Halvorsen & Co.?" with Approve and Reject buttons and the folded confirm-order call under it, the one-row composer underneath](https://raw.githubusercontent.com/packstub/art/main/filament-agents/docs/chat-approval.png)
 
 Read more: [The assistant](https://packstub.dev/docs/filament-agents/assistant).
 
@@ -198,7 +198,7 @@ class OrderResource extends Resource implements AgentResource
 
 From that, `show-table` builds its schema, the embedded table applies the same filters, and the topbar button carries the current record into the chat as page context. `draw-chart` renders bar, line, pie and doughnut charts from numbers the model already retrieved, and any tool can return a `chart` key of its own.
 
-![The Ask Acme button in the topbar of the Orders resource](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/orders-ask-button.png)
+![The Ask Acme button in the topbar of the Orders resource](https://raw.githubusercontent.com/packstub/art/main/filament-agents/docs/orders-ask-button.png)
 
 Read more: [Tables and charts](https://packstub.dev/docs/filament-agents/tables-and-charts).
 
@@ -206,9 +206,9 @@ Read more: [Tables and charts](https://packstub.dev/docs/filament-agents/tables-
 
 An **Agent access** page lets a person mint a token for Claude Code, Claude Desktop, Cursor or any MCP client: read or read-and-write, optionally limited to a few named tools, optionally expiring. The token is shown once, carries the workspace when the panel has tenancy, and can be revoked from the same page. The MCP endpoint is `POST /mcp` by default, behind `throttle`, `auth:sanctum` and the package's own middleware, so external agents get exactly the tools the person's role and their token allow.
 
-![The Agent access page listing two tokens: one scoped to three tools and expiring, one read-only](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/agent-access.png)
+![The Agent access page listing two tokens: one scoped to three tools and expiring, one read-only](https://raw.githubusercontent.com/packstub/art/main/filament-agents/docs/agent-access.png)
 
-![The Create token modal: read and write abilities, an expiry, and the tools table with a Read or Write badge per tool](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/create-token.png)
+![The Create token modal: read and write abilities, an expiry, and the tools table with a Read or Write badge per tool](https://raw.githubusercontent.com/packstub/art/main/filament-agents/docs/create-token.png)
 
 Read more: [MCP clients](https://packstub.dev/docs/filament-agents/mcp-clients).
 
@@ -222,7 +222,7 @@ Read more: [MCP clients](https://packstub.dev/docs/filament-agents/mcp-clients).
 
 to get the **AI limits** resource: one global row, optional rows per workspace and per user, empty fields inherit. `AgentBudget::summary()` gives the numbers for a settings page.
 
-![The AI limits resource on an operator panel: platform defaults, two workspace rows and one user switched off](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/ai-limits.png)
+![The AI limits resource on an operator panel: platform defaults, two workspace rows and one user switched off](https://raw.githubusercontent.com/packstub/art/main/filament-agents/docs/ai-limits.png)
 
 The same panel gets an **AI turns** page (`/agent-turns`, `->turnLog()`): one row per turn with who asked, the model, tokens in and out, the tools called, the duration and how it ended. Every turn also writes one log line to `log.channel` (`AGENT_LOG_CHANNEL`).
 

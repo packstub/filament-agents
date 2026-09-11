@@ -10,15 +10,15 @@
 
 A new chat opens on the assistant's name and a row of starter questions; click one and it is sent. They come from your agent's `suggestions()` (see [The Agent class](#the-agent-class)): by default what needs attention today, "Show me the latest orders." for the first two agent resources and what the assistant can do, or, when the chat was opened from a record, "What should I know about Order RO-00012?" and "What is the next step for Order RO-00012?".
 
-![A new chat: the "Ask Acme" item active in the top navigation, the assistant's name over four starter questions as pills, and the one-row composer with the model button and Send](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-new.png)
+![A new chat: the "Ask Acme" item active in the top navigation, the assistant's name over four starter questions as pills, and the one-row composer with the model button and Send](https://raw.githubusercontent.com/packstub/art/main/filament-agents/docs/chat-new.png)
 
 An answer about records renders the resource's own table under itself, narrowed to what the answer says, with the same search, sorting and row actions as the list page:
 
-![A question about pending orders answered with a short summary and the live Orders table under it, filtered to the three pending rows, with Confirm and Edit actions](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-table.png)
+![A question about pending orders answered with a short summary and the live Orders table under it, filtered to the three pending rows, with Confirm and Edit actions](https://raw.githubusercontent.com/packstub/art/main/filament-agents/docs/chat-table.png)
 
 An answer about numbers renders a chart, from `draw-chart` or from a reporting tool of your own that returns one (see [Tables and charts](tables-and-charts.md)):
 
-![A question about order value over four weeks answered with a sentence and a bar chart, Order value by week](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-chart.png)
+![A question about order value over four weeks answered with a sentence and a bar chart, Order value by week](https://raw.githubusercontent.com/packstub/art/main/filament-agents/docs/chat-chart.png)
 
 Conversations and messages are laravel/ai's `Conversation` and `ConversationMessage` models, stored in the `agent_conversations` and `agent_conversation_messages` tables, so a reload never loses anything and one person never sees another person's chats. A question is recorded before the provider is called: if the provider fails or times out, the question stays in the conversation with a Retry link under it.
 
@@ -46,7 +46,7 @@ While it waits the proposal is the most prominent element on the page; once deci
 
 The proposal sits in the conversation like any other answer, with the composer underneath for the follow-up:
 
-![A request to confirm an order paused as the question "Confirm order RO-00020 for Halvorsen & Co.?" with Approve and Reject buttons and the folded confirm-order call under it, the one-row composer underneath](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-approval.png)
+![A request to confirm an order paused as the question "Confirm order RO-00020 for Halvorsen & Co.?" with Approve and Reject buttons and the folded confirm-order call under it, the one-row composer underneath](https://raw.githubusercontent.com/packstub/art/main/filament-agents/docs/chat-approval.png)
 
 ### When the chat is hidden
 

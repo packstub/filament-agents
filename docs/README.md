@@ -1,6 +1,6 @@
 # Filament Agents
 
-![Filament Agents](https://raw.githubusercontent.com/packstub/filament-agents/main/art/banner.jpg)
+![Filament Agents](https://raw.githubusercontent.com/packstub/art/main/filament-agents/banner.jpg)
 
 An in-panel AI assistant and an MCP server for Filament v5 panels, built on laravel/ai and laravel/mcp. One tool list serves both: the chat inside the panel and Claude Code, Claude Desktop, Cursor or any other MCP client, with the panel's own authorization deciding who may run what. Free and open source (MIT).
 
