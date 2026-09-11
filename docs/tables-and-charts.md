@@ -82,7 +82,7 @@ The generic answering rules tell the model to use `show-table` whenever someone 
 
 In the chat, the answer is one or two sentences and the table does the rest:
 
-![A question about pending orders answered with a short summary and the live Orders table under it, filtered to the three pending rows, with Confirm and Edit actions](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-table.png)
+![A question about pending orders answered with a short summary and the live Orders table under it, filtered to the three pending rows, with Confirm and Edit actions](https://raw.githubusercontent.com/packstub/art/main/filament-agents/docs/chat-table.png)
 
 ## Charts
 
@@ -99,7 +99,7 @@ The rules tell the model to pass only values that came from a tool result, never
 
 A chart from the model's own `draw-chart` call, with the numbers it took from `search-orders`:
 
-![A question about order value over four weeks answered with a sentence and a bar chart, Order value by week](https://raw.githubusercontent.com/packstub/filament-agents/main/docs/images/chat-chart.png)
+![A question about order value over four weeks answered with a sentence and a bar chart, Order value by week](https://raw.githubusercontent.com/packstub/art/main/filament-agents/docs/chat-chart.png)
 
 ## Page context
 
