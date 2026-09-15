@@ -70,9 +70,21 @@ The provider keys themselves live in laravel/ai's `config/ai.php` (`ANTHROPIC_AP
 ],
 ```
 
-Rename, remove or add entries; the picker shows whatever is there. A `null` label names the entry after the model it runs — Claude Opus 5, Claude Haiku 4.5 — and a second unlabelled entry on the same model adds its key to tell them apart (Claude Opus 5 · Deep); set a label to show something else (`'label' => 'Fast'`). A `null` model resolves to the provider's smartest model (or cheapest for the `fast` key), and the entry is named after the model that resolves. A provider with no entries at all (Ollama, OpenRouter, Mistral, Groq, DeepSeek…) gets its smartest (`auto`) and cheapest (`fast`) models with no effort; add an entry to pin models or to offer a `deep` one. Effort is passed as Anthropic's `output_config.effort`, OpenAI's and xAI's `reasoning.effort` (reasoning models only) or Gemini's thinking level (`low`, `medium`, `high`; `xhigh` is sent as `high`). When you pin a model that rejects the parameter, set its effort to `null`.
+Each entry is one item in the picker. Its fields:
 
-A provider without entries runs on the two models laravel/ai names for it; on OpenRouter those are Claude Opus 5 and Claude Haiku 4.5 through OpenRouter. To run the models you chose it for, give it entries of its own, each with an OpenRouter model id (`vendor/model`, as listed on [openrouter.ai/models](https://openrouter.ai/models)):
+| Field | Meaning |
+| --- | --- |
+| `label` | what the picker shows; `null` names the entry after its model (Claude Opus 5). A second unlabelled entry on the same model gets its key added (Claude Opus 5 · Deep) |
+| `model` | the model id, in the provider's own terms; `null` is the provider's smartest model, or its cheapest on the `fast` key |
+| `effort` | Anthropic's `output_config.effort`, OpenAI's and xAI's `reasoning.effort` (reasoning models only) or Gemini's thinking level: `low`, `medium`, `high` (`xhigh` is sent as `high`). `null` sends nothing; use it for a model that rejects the parameter |
+| `provider` | optional: the provider the entry runs on, when it is not the list's own. See [Mixing providers](#mixing-providers) |
+| `failover` | optional: this entry's own fallback list, replacing the global `failover`; `[]` means none |
+
+The picker shows the list of the provider in use: `models[provider]`, or the workspace's own provider when it brings a key. Rename, remove or add entries; the keys are yours.
+
+#### A provider without entries
+
+Ollama, OpenRouter, Mistral, Groq, DeepSeek… get two entries: `auto` on the provider's smartest model and `fast` on its cheapest, as laravel/ai names them, with no effort. On OpenRouter those are Claude Opus 5 and Claude Haiku 4.5, routed through OpenRouter. To run the models you chose the provider for, add its list, with an OpenRouter model id (`vendor/model`, from [openrouter.ai/models](https://openrouter.ai/models)) in each entry:
 
 ```php
 'models' => [
@@ -84,9 +96,37 @@ A provider without entries runs on the two models laravel/ai names for it; on Op
 ],
 ```
 
-The key is `OPENROUTER_API_KEY` in `.env`, read by laravel/ai's `openrouter` entry in `config/ai.php`; the same entry takes a `url` for a compatible gateway and the `http_referer` and `x_title` headers OpenRouter uses for app attribution. Effort stays `null` on OpenRouter: the reasoning knob differs per model behind it.
+The key is `OPENROUTER_API_KEY` in `.env`, read by the `openrouter` entry of laravel/ai's `config/ai.php`; that entry also takes a `url` for a compatible gateway and the `http_referer` and `x_title` headers OpenRouter uses for app attribution. Effort stays `null` on OpenRouter, since the reasoning knob differs per model behind it.
 
-The picker shows the list of the provider in use (`provider`, or the workspace's own). An entry in that list may name another provider to run on — `'provider' => 'gemini'` on the commented `flash` entry above puts Gemini Flash next to Claude on an Anthropic install. Such an entry is listed only when its provider has a key in `config/ai.php`; when the picker holds entries of more than one provider, they sit under provider headings, the picker's own provider first. Its model and effort are in that provider's terms (a Gemini thinking level on a Gemini entry), and it fails over down the `failover` list like any entry, with its own provider left out — the platform provider included when it is listed. Give an entry its own `failover` list to override the global one: `[]` keeps a local Ollama model local, for data that must not leave the server. A workspace on its own key sees only the entries of its provider; see [Tenancy](tenancy.md#a-workspaces-own-key). The chat is on when the provider in use has a key, or when any listed entry's provider has one.
+#### Mixing providers
+
+One list can offer models of several providers. An entry names the provider it runs on with `provider`; its `model` and `effort` are in that provider's terms. Claude as the default, Gemini Flash for cheap questions and a local Ollama model for data that must not leave the server:
+
+```php
+'provider' => 'anthropic',
+'failover' => ['gemini'],
+
+'models' => [
+    'anthropic' => [
+        'auto' => ['label' => null, 'model' => 'claude-opus-5', 'effort' => 'medium'],
+        'fast' => ['label' => null, 'model' => 'claude-haiku-4-5', 'effort' => null],
+        'flash' => ['label' => 'Gemini Flash', 'provider' => 'gemini', 'model' => 'gemini-3.5-flash-lite', 'effort' => 'low'],
+        'local' => ['label' => 'Local', 'provider' => 'ollama', 'model' => 'llama3.3', 'effort' => null, 'failover' => []],
+    ],
+],
+```
+
+```dotenv
+ANTHROPIC_API_KEY=sk-ant-…
+GEMINI_API_KEY=AIza…
+OLLAMA_API_KEY=local
+```
+
+- The entries live under the platform provider's list (`anthropic` here); `AGENT_PROVIDER` picks the list, `provider` on an entry picks where that entry runs.
+- An entry on another provider is listed only when that provider has a key in `config/ai.php`. Without `GEMINI_API_KEY`, Gemini Flash is left out, quietly. Ollama needs no key, so give `OLLAMA_API_KEY` any value for its entry to count as configured.
+- The picker groups the entries under provider headings, the platform provider first: Anthropic, then Gemini, then Ollama.
+- Failover works per entry: the global `failover` list applies to every entry, with the entry's own provider skipped and the platform provider included when it is listed. Here Claude falls back to Gemini, and Gemini Flash has nothing to fall back to. An entry's own `failover` replaces the global list; `[]` on `local` keeps that model local.
+- A workspace on its own key sees only the entries of its provider, see [Tenancy](tenancy.md#a-workspaces-own-key). The chat is on when the provider in use has a key, or when any listed entry's provider has one.
 
 ## AgentsPlugin
 
