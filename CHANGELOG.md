@@ -11,6 +11,7 @@ Upgrading: nothing to run. The plugin requires `packstub/agents` ^1.2.1 (Compose
 - **A typed "Yes, go ahead." decides.** Over a proposal waiting for Approve / Reject, a short reply in words is the decision (yes, go ahead, ok, confirm… approve; no, cancel… reject; also in German, Spanish, Romanian and Russian), the reply shown like any question and the proposal marked as decided; anything else is a question of its own and the proposal is declined first, with a note the model reads. An answer that proposed two changes can be decided one at a time: the first decision waits, shown on its row ("Approved, once the other proposal is decided"), and both run together once the second is in. Before, a question over a pending proposal left two proposals that no decision could be applied to. (engine 1.2.1)
 
 - **A quieter table under the answer.** The table `show-table` embeds starts without the resource's search box and filter button: the assistant chose the filters and the answer says what the table shows, so the rows, the sorting, the pagination and the row actions are what is left. `AgentsPlugin::make()->embeddedTable(search: true, filters: true)` keeps either.
+- **Docs.** The README and the docs index link the [60-second demo](https://youtu.be/-O5P8rHw4S4) on YouTube.
 
 ### Fixed
 
