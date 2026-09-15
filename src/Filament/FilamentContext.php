@@ -84,6 +84,7 @@ class FilamentContext implements AgentContext
         $panel = $this->resolvePanel($context['panel'] ?? null);
         if ($panel) {
             Filament::setCurrentPanel($panel);
+            $this->scopeResourcesToTenant($panel);
         }
 
         $guardName = (string) ($context['guard'] ?? $panel?->getAuthGuard() ?? config('auth.defaults.guard'));
@@ -122,6 +123,28 @@ class FilamentContext implements AgentContext
             Filament::setCurrentPanel($previousPanel);
             app()->setLocale($previousLocale);
         };
+    }
+
+    /**
+     * A panel's resources are scoped to its tenant by a global scope that Panel::boot() registers, and the
+     * boot runs in a panel request only. A worker or an MCP request never gets it, so without this a
+     * tool's query (`OrderResource::getEloquentQuery()`) would read every workspace's rows. Registered
+     * once per model, the way the boot does it; a request that booted the panel already is left alone.
+     */
+    protected function scopeResourcesToTenant(Panel $panel): void
+    {
+        if (! $panel->hasTenancy()) {
+            return;
+        }
+
+        foreach ($panel->getResources() as $resource) {
+            if (! $resource::isScopedToTenant() || ! class_exists($model = $resource::getModel()) || $model::hasGlobalScope($panel->getTenancyScopeName())) {
+                continue;
+            }
+
+            $resource::observeTenancyModelCreation($panel);
+            $resource::registerTenancyModelGlobalScope($panel);
+        }
     }
 
     public function tenantModel(): ?string

@@ -10,7 +10,9 @@ use Packstub\Agents\Mcp\Tools\DrawChart;
 use Packstub\Agents\Mcp\Tools\ShowTable;
 use Packstub\Agents\Support\AgentRuntime;
 use Packstub\Agents\Support\Installed;
+use Packstub\Agents\Tests\Fixtures\Filament\Resources\Widgets\WidgetResource;
 use Packstub\Agents\Tests\Fixtures\Models\Team;
+use Packstub\Agents\Tests\Fixtures\Models\Widget;
 use Packstub\Agents\Tests\Fixtures\Tools\WhoAmI;
 
 use function Orchestra\Testbench\Pest\defineEnvironment;
@@ -80,4 +82,22 @@ it('fires TenantSet when a worker or an MCP request enters a workspace', functio
 
     auth()->forgetGuards();
     $call('globex')->assertNotFound();
+});
+
+it('scopes the panel\'s resources to the workspace a worker enters', function () {
+    $owner = $this->user();
+    $acme = Team::query()->create(['owner_id' => $owner->id, 'name' => 'Acme', 'slug' => 'acme']);
+    $globex = Team::query()->create(['owner_id' => $this->user()->id, 'name' => 'Globex', 'slug' => 'globex']);
+    Widget::query()->create(['name' => 'Acme widget', 'team_id' => $acme->id]);
+    Widget::query()->create(['name' => 'Globex widget', 'team_id' => $globex->id]);
+    Filament::getPanel('admin')->tenant(Team::class, slugAttribute: 'slug');
+
+    // The panel's boot (a request middleware) never ran here, as on a queue worker: entering the workspace
+    // registers the tenancy scope, so a tool's query sees Acme's rows only.
+    $leave = AgentRuntime::enter(['panel' => 'admin', 'tenant' => $acme->id, 'user' => $owner->id]);
+    expect(WidgetResource::getEloquentQuery()->pluck('name')->all())->toBe(['Acme widget'])
+        ->and(Widget::query()->create(['name' => 'New widget'])->team_id)->toBe($acme->id);
+
+    $leave();
+    expect(WidgetResource::getEloquentQuery()->count())->toBe(3);
 });
