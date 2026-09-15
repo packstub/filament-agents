@@ -179,5 +179,7 @@
     "never": "никогда",
     "the assistant starts from a summary of it.": "ассистент начинает с его краткого содержания.",
     "{0} no arguments|{1} :count argument|[2,*] :count arguments": "{0} без аргументов|{1} :count аргумент|[2,*] :count аргумента",
-    "~:used of :budget tokens": "~:used из :budget токенов"
+    "~:used of :budget tokens": "~:used из :budget токенов",
+    "Approved, once the other proposal is decided": "Одобрено, как только будет решено другое предложение",
+    "Rejected, once the other proposal is decided": "Отклонено, как только будет решено другое предложение"
 }

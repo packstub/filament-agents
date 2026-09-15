@@ -7,6 +7,7 @@ use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Models\ConversationMessage;
 use Packstub\Agents\Filament\Pages\Chat;
 use Packstub\Agents\Filament\Pages\Chats;
+use Packstub\Agents\Jobs\RunAgentTurn;
 use Packstub\Agents\Models\AgentLimit;
 use Packstub\Agents\Models\AgentMessageFeedback;
 use Packstub\Agents\Models\AgentTurn;
@@ -233,6 +234,41 @@ it('keeps a decided proposal as a card and lets the model carry on after a rejec
         return $decision?->isRejected() && $decision->result === Chat::rejectionResult();
     });
     expect(ConversationMessage::query()->where('conversation_id', $conversation->id)->where('content', 'like', '%left the name%')->exists())->toBeTrue();
+});
+
+it('decides two proposals of one answer one at a time, the first waiting on its row until the second is in', function () {
+    $user = $this->user();
+    actingAs($user);
+    [$alpha, $beta] = $this->widgets();
+    Queue::fake();
+
+    $conversation = Conversation::query()->create(['id' => (string) Str::uuid(), 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id, 'title' => 'Renames']);
+    $row = ['conversation_id' => $conversation->id, 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id, 'agent' => WidgetAgent::class, 'attachments' => [], 'meta' => [], 'usage' => []];
+    ConversationMessage::query()->create($row + ['id' => (string) Str::uuid7(), 'role' => 'user', 'content' => 'Rename Alpha and Beta, please.', 'tool_calls' => [], 'tool_results' => [], 'created_at' => now()->subMinutes(5)]);
+    usleep(1100);
+    ConversationMessage::query()->create($row + ['id' => (string) Str::uuid7(), 'role' => 'assistant', 'content' => '', 'tool_calls' => [
+        ['id' => 'c1', 'name' => 'rename-widget', 'arguments' => ['id' => $alpha->id, 'name' => 'Alpha II']],
+        ['id' => 'c2', 'name' => 'rename-widget', 'arguments' => ['id' => $beta->id, 'name' => 'Beta II']],
+    ], 'tool_results' => [], 'approval_state' => ['pending' => ['c1' => 'Rename Alpha?', 'c2' => 'Rename Beta?']], 'created_at' => now()->subMinutes(5)->addSeconds(6)]);
+
+    // Approve on Alpha: held (laravel/ai applies the decisions of one pause together), said on its row; Beta keeps its buttons.
+    livewire(Chat::class, ['conversation' => $conversation->id])->call('decide', 'c1', true);
+    Queue::assertNothingPushed();
+    $turn = AgentTurn::query()->forConversation($conversation->id)->sole();
+    expect($turn->status)->toBe(AgentTurn::QUEUED)->and($turn->decisions())->toBe(['c1' => true]);
+
+    $html = livewire(Chat::class, ['conversation' => $conversation->id])
+        ->assertSee(__('Approved, once the other proposal is decided'))
+        ->html();
+    expect($html)->toContain('decide(&#039;c2&#039;, true)')->not->toContain('decide(&#039;c1&#039;, true)')
+        ->and($html)->toContain('data-turns="[]"'); // a held decision is not a queued question
+
+    // Reject on Beta: the waiting turn takes it and starts with both.
+    livewire(Chat::class, ['conversation' => $conversation->id])->call('decide', 'c2', false);
+    expect(AgentTurn::query()->forConversation($conversation->id)->count())->toBe(1)
+        ->and($turn->fresh()->status)->toBe(AgentTurn::PENDING)
+        ->and($turn->fresh()->decisions())->toBe(['c1' => true, 'c2' => false]);
+    Queue::assertPushed(RunAgentTurn::class, fn (RunAgentTurn $job) => $job->turnId === $turn->id);
 });
 
 it('reports a decision turn that failed on the proposal row, with the buttons back', function () {

@@ -106,7 +106,10 @@
                                             </button>
                                         </div>
                                         <div class="fi-chat-proposal-decision">
-                                            @if ($tool['pending'])
+                                            @if ($tool['pending'] && $tool['held'] !== null)
+                                                {{-- Decided; it runs together with the other proposal of this answer once that one is decided too. --}}
+                                                <span class="fi-chat-proposal-outcome">{{ $tool['held'] ? __('Approved, once the other proposal is decided') : __('Rejected, once the other proposal is decided') }}</span>
+                                            @elseif ($tool['pending'])
                                                 <div class="fi-chat-proposal-actions" x-show="! busy">
                                                     {{-- Bound attributes: a Blade directive inside a component tag's attribute is not compiled. --}}
                                                     <x-filament::button size="sm" icon="heroicon-m-check" :x-on:click="'decide('.\Illuminate\Support\Js::from($tool['id']).', true)'">{{ __('Approve') }}</x-filament::button>

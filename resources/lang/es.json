@@ -179,5 +179,7 @@
     "never": "nunca",
     "the assistant starts from a summary of it.": "el asistente parte de un resumen de él.",
     "{0} no arguments|{1} :count argument|[2,*] :count arguments": "{0} sin argumentos|{1} :count argumento|[2,*] :count argumentos",
-    "~:used of :budget tokens": "~:used de :budget tokens"
+    "~:used of :budget tokens": "~:used de :budget tokens",
+    "Approved, once the other proposal is decided": "Aprobado, cuando se decida la otra propuesta",
+    "Rejected, once the other proposal is decided": "Rechazado, cuando se decida la otra propuesta"
 }
