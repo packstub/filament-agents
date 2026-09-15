@@ -4,6 +4,7 @@ namespace Packstub\Agents;
 
 use Closure;
 use Filament\Contracts\Plugin;
+use Filament\Facades\Filament;
 use Filament\Panel;
 use Filament\Support\Facades\FilamentView;
 use Filament\View\PanelsRenderHook;
@@ -82,9 +83,45 @@ class AgentsPlugin implements Plugin
     /** @var list<string> */
     protected array $askButtonHiddenOn = [];
 
+    /** The table under an answer: the assistant already filtered it, so its search box and filter button start hidden. */
+    protected bool $embeddedTableSearch = false;
+
+    protected bool $embeddedTableFilters = false;
+
     public static function make(): static
     {
         return new static;
+    }
+
+    /** The plugin of the current panel, if it has one. */
+    public static function current(): ?static
+    {
+        $panel = Filament::getCurrentPanel();
+
+        return $panel?->hasPlugin('packstub-agents') ? $panel->getPlugin('packstub-agents') : null;
+    }
+
+    /**
+     * The table show-table embeds under an answer: whether it keeps the resource's search box and its filter button.
+     * Both start hidden, since the assistant chose the filters and the answer says what the table shows; the
+     * columns, sorting, pagination and row actions stay.
+     */
+    public function embeddedTable(bool $search = false, bool $filters = false): static
+    {
+        $this->embeddedTableSearch = $search;
+        $this->embeddedTableFilters = $filters;
+
+        return $this;
+    }
+
+    public function hasEmbeddedTableSearch(): bool
+    {
+        return $this->embeddedTableSearch;
+    }
+
+    public function hasEmbeddedTableFilters(): bool
+    {
+        return $this->embeddedTableFilters;
     }
 
     public function getId(): string

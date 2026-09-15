@@ -8,6 +8,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -50,6 +51,7 @@ class WidgetResource extends Resource implements AgentResource
                 TextColumn::make('status')->badge(),
                 TextColumn::make('price')->toggleable(),
             ])
+            ->filters([SelectFilter::make('status')->options(['draft' => 'Draft', 'live' => 'Live', 'retired' => 'Retired'])])
             ->recordActions([EditAction::make()]);
     }
 
