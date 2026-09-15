@@ -179,5 +179,7 @@
     "never": "nie",
     "the assistant starts from a summary of it.": "der Assistent beginnt mit einer Zusammenfassung davon.",
     "{0} no arguments|{1} :count argument|[2,*] :count arguments": "{0} keine Argumente|{1} :count Argument|[2,*] :count Argumente",
-    "~:used of :budget tokens": "~:used von :budget Tokens"
+    "~:used of :budget tokens": "~:used von :budget Tokens",
+    "Approved, once the other proposal is decided": "Genehmigt, sobald der andere Vorschlag entschieden ist",
+    "Rejected, once the other proposal is decided": "Abgelehnt, sobald der andere Vorschlag entschieden ist"
 }

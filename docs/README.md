@@ -8,6 +8,7 @@ An in-panel AI assistant and an MCP server for Filament v5 panels, built on lara
 - Repository: [github.com/packstub/filament-agents](https://github.com/packstub/filament-agents)
 - Packagist: [packstub/filament-agents](https://packagist.org/packages/packstub/filament-agents)
 - Support: [GitHub issues](https://github.com/packstub/filament-agents/issues)
+- Demo: [the 60-second video](https://youtu.be/-O5P8rHw4S4) — a question answered with the live orders table, a chart, and a write approved as a proposal
 
 ## What you get
 

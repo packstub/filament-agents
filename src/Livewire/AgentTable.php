@@ -14,6 +14,7 @@ use Filament\Tables\Table;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Model;
 use Livewire\Component;
+use Packstub\Agents\AgentsPlugin;
 use Packstub\Agents\Support\AgentResources;
 
 /**
@@ -69,6 +70,19 @@ class AgentTable extends Component implements HasActions, HasSchemas, HasTable
             if ($column->isToggleable()) {
                 $column->toggleable(isToggledHiddenByDefault: true);
             }
+        }
+
+        // The search box and the filter button start hidden (AgentsPlugin::embeddedTable): the assistant already
+        // filtered the table and the answer says what it shows.
+        $plugin = AgentsPlugin::current();
+        if (! $plugin?->hasEmbeddedTableSearch()) {
+            $table->searchable(false);
+            foreach ($table->getColumns() as $column) {
+                $column->searchable(false);
+            }
+        }
+        if (! $plugin?->hasEmbeddedTableFilters()) {
+            $table->filters([]);
         }
 
         $table->recordActions($actions)->heading($this->title ?: null);

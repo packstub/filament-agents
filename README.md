@@ -9,10 +9,15 @@
 [![Total Downloads](https://img.shields.io/packagist/dt/packstub/filament-agents.svg?style=flat-square)](https://packagist.org/packages/packstub/filament-agents)
 [![License](https://img.shields.io/packagist/l/packstub/filament-agents.svg?style=flat-square)](https://github.com/packstub/filament-agents/blob/main/LICENSE.md)
 [![Sponsor](https://img.shields.io/badge/sponsor-%E2%9D%A4-ea4aaa?style=flat-square&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/icaliman)
+[![Listed on filamentphp.com](https://img.shields.io/badge/filamentphp.com-listed-fb7185?style=flat-square&logo=filament&logoColor=white)](https://filamentphp.com/plugins/packstub-agents)
 
 </div>
 
 An in-panel AI assistant and an MCP server for your Filament v5 panel, built on [laravel/ai](https://github.com/laravel/ai) and [laravel/mcp](https://github.com/laravel/mcp). Write a tool once and it serves both the chat inside the panel and Claude Code, Claude Desktop, Cursor or any other MCP client, with the panel's own authorization deciding who may run it.
+
+[![Watch the 60-second demo: a question answered with the live orders table, a chart, and a write approved as a proposal](https://img.youtube.com/vi/-O5P8rHw4S4/maxresdefault.jpg)](https://youtu.be/-O5P8rHw4S4)
+
+**[Watch the 60-second demo](https://youtu.be/-O5P8rHw4S4)** — a question answered with the live orders table, a chart, and a write that arrives as a proposal.
 
 ## Features
 

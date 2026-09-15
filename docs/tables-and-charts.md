@@ -76,7 +76,14 @@ $schema = AgentResources::filterSchema($schema, 'orders');   // for the tool's s
 
 Add `Packstub\Agents\Mcp\Tools\ShowTable` to the tool list. Its description and schema are generated from the resources: the `table` argument is an enum of the agent keys, `filters` is the union of every table's vocabulary (each key described per table), and `title` is an optional caption.
 
-When the model calls it, the tool checks `canViewAny()` on the resource, normalizes the filters, counts the rows and returns the total plus a note telling the model that an interactive table is rendered under the answer. The chat then embeds the resource's own `table()`, with the resource's query narrowed by the filters as the base query, so the person gets the same columns, search, sorting, pagination and row actions their role allows on the list page.
+When the model calls it, the tool checks `canViewAny()` on the resource, normalizes the filters, counts the rows and returns the total plus a note telling the model that an interactive table is rendered under the answer. The chat then embeds the resource's own `table()`, with the resource's query narrowed by the filters as the base query, so the person gets the same columns, sorting, pagination and row actions their role allows on the list page.
+
+The search box and the filter button start hidden: the assistant chose the filters and the answer says what the table shows. Bring the resource's own back on the plugin:
+
+```php
+AgentsPlugin::make()
+    ->embeddedTable(search: true, filters: true)
+```
 
 The generic answering rules tell the model to use `show-table` whenever someone wants to see or work through records ("show me", "list", more than a handful of rows) and to use the search tools when it needs the data itself.
 

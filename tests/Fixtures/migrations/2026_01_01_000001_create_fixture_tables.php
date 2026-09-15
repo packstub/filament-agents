@@ -29,6 +29,7 @@ return new class extends Migration
 
         Schema::create('widgets', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('team_id')->nullable();
             $table->string('name');
             $table->string('status')->default('draft');
             $table->decimal('price', 10, 2)->default(0);

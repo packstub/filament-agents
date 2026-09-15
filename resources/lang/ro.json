@@ -179,5 +179,7 @@
     "never": "niciodată",
     "the assistant starts from a summary of it.": "asistentul pornește de la un rezumat al ei.",
     "{0} no arguments|{1} :count argument|[2,*] :count arguments": "{0} fără argumente|{1} :count argument|[2,*] :count argumente",
-    "~:used of :budget tokens": "~:used din :budget tokeni"
+    "~:used of :budget tokens": "~:used din :budget tokeni",
+    "Approved, once the other proposal is decided": "Aprobat, după ce se decide și cealaltă propunere",
+    "Rejected, once the other proposal is decided": "Respins, după ce se decide și cealaltă propunere"
 }

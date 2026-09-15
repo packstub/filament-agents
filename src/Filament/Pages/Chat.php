@@ -150,6 +150,8 @@ class Chat extends Page
         $feedback = AgentMessageFeedback::query()->where('user_id', auth()->id())->pluck('rating', 'message_id');
         $writeTools = self::writeTools();
         $idle = $this->idle();
+        // Decisions waiting for the other proposal of the same answer (the engine holds them until every proposal has one).
+        $held = app(AgentTurns::class)->queued($this->conversation)->first(fn (AgentTurn $t) => $t->decisions() !== null)?->decisions() ?? [];
 
         $list = ConversationMessage::query()
             ->where('conversation_id', $this->conversation)
@@ -157,7 +159,7 @@ class Chat extends Page
             ->orderByRaw("case when role = 'user' then 0 else 1 end") // a question and its answer can share a second
             ->orderBy('id')
             ->get()
-            ->map(function (ConversationMessage $m) use ($feedback, $writeTools) {
+            ->map(function (ConversationMessage $m) use ($feedback, $writeTools, $held) {
                 $results = collect($m->tool_results ?? [])->keyBy('id');
                 $everPaused = collect($m->approval_state['pending'] ?? [])->keys();
                 $pending = $everPaused->reject(fn ($id) => $results->has($id));
@@ -177,6 +179,7 @@ class Chat extends Page
                         'question' => self::question($writeTools->get($call['name'] ?? ''), $call['name'] ?? '', $call['arguments'] ?? []),
                         'arguments' => $call['arguments'] ?? [],
                         'pending' => $pending->contains($call['id'] ?? null),
+                        'held' => $held[$call['id'] ?? ''] ?? null,
                         'result' => $results->get($call['id'] ?? null)['result'] ?? null,
                         'rejected' => (bool) ($results->get($call['id'] ?? null)['denied'] ?? false),
                         'readOnly' => ! $writeTools->has($call['name'] ?? '') && ! $everPaused->contains($call['id'] ?? null),
@@ -252,7 +255,7 @@ class Chat extends Page
                 'statusText' => $turns->statusText($active), // what the job reports, or the missing-worker hint
                 'html' => filled($active->text) ? self::markdown((string) $active->text) : '',
             ] : null,
-            'queued' => $turns->queued($this->conversation)->map(fn (AgentTurn $t) => ['id' => $t->id, 'text' => (string) $t->prompt()])->values()->all(),
+            'queued' => $turns->queued($this->conversation)->filter(fn (AgentTurn $t) => $t->prompt() !== null)->map(fn (AgentTurn $t) => ['id' => $t->id, 'text' => (string) $t->prompt()])->values()->all(),
             'ended' => $latest && in_array($latest->status, [AgentTurn::FAILED, AgentTurn::STOPPED], true) ? ['status' => $latest->status, 'reason' => $latest->finish_reason, 'error' => $latest->error, 'decision' => $latest->decisions() !== null] : null,
         ];
     }

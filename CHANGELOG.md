@@ -2,6 +2,21 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## 1.9.1 — 2026-09-15
+
+Upgrading: nothing to run. The plugin requires `packstub/agents` ^1.2.1 (Composer updates it). The table under an answer no longer shows its search box and filter button; `AgentsPlugin::make()->embeddedTable(search: true, filters: true)` brings them back.
+
+### Changed
+
+- **A typed "Yes, go ahead." decides.** Over a proposal waiting for Approve / Reject, a short reply in words is the decision (yes, go ahead, ok, confirm… approve; no, cancel… reject; also in German, Spanish, Romanian and Russian), the reply shown like any question and the proposal marked as decided; anything else is a question of its own and the proposal is declined first, with a note the model reads. An answer that proposed two changes can be decided one at a time: the first decision waits, shown on its row ("Approved, once the other proposal is decided"), and both run together once the second is in. Before, a question over a pending proposal left two proposals that no decision could be applied to. (engine 1.2.1)
+
+- **A quieter table under the answer.** The table `show-table` embeds starts without the resource's search box and filter button: the assistant chose the filters and the answer says what the table shows, so the rows, the sorting, the pagination and the row actions are what is left. `AgentsPlugin::make()->embeddedTable(search: true, filters: true)` keeps either.
+- **Docs.** The README and the docs index link the [60-second demo](https://youtu.be/-O5P8rHw4S4) on YouTube. The installation page shows the OpenRouter key next to the other providers. The configuration page's `models` section is a field table and two worked examples: a provider without entries of its own (OpenRouter, pinned to Mercury 2.5, GLM 5.3 Flash and DeepSeek 4.1 Flash) and a mixed picker (Claude, Gemini Flash and a local Ollama model, with the keys and the failover rules as a list); the assistant page points there instead of repeating the rules.
+
+### Fixed
+
+- **A worker's tool queries stay inside the workspace.** Filament scopes a panel's resources to the tenant with a global scope that the panel's boot registers, and that boot runs in a panel request only; a chat turn on the queue (and an MCP request) entered the workspace without it, so a tool that reads through the resource (`OrderResource::getEloquentQuery()`, the count behind `show-table`) saw every workspace's rows while the table under the answer, rendered in the request, showed the right ones. Entering the panel now registers the scope and the tenant-on-create observer for its resources, once per model.
+
 ## 1.9.0 — 2026-09-10
 
 Upgrading: nothing to run. The plugin requires `packstub/agents` ^1.2 (Composer updates it); give your agent a `suggestions()` for starter questions from your domain.

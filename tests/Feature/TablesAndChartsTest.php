@@ -4,6 +4,7 @@ use Illuminate\Support\Str;
 use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Models\ConversationMessage;
 use Laravel\Mcp\Request;
+use Packstub\Agents\AgentsPlugin;
 use Packstub\Agents\Filament\Pages\Chat;
 use Packstub\Agents\Filters\Filter;
 use Packstub\Agents\Livewire\AgentTable;
@@ -90,9 +91,21 @@ it('embeds a live resource table in the chat with the resource\'s own actions', 
         ->assertSee('Alpha')
         ->assertDontSee('Beta');
 
+    // The assistant chose the filters and the answer says what the table shows: the search box and the filter
+    // button start hidden; AgentsPlugin::embeddedTable() brings the resource's own back.
     livewire(AgentTable::class, ['resource' => 'widgets', 'filters' => ['live_only' => true], 'title' => 'Live ones'])
         ->assertCanSeeTableRecords([$alpha])
-        ->assertTableActionExists('edit');
+        ->assertTableActionExists('edit')
+        ->loadTable()
+        ->assertDontSeeHtml('fi-ta-search-field')
+        ->assertDontSeeHtml('fi-ta-filters-dropdown');
+
+    AgentsPlugin::current()->embeddedTable(search: true, filters: true);
+    livewire(AgentTable::class, ['resource' => 'widgets', 'filters' => ['live_only' => true], 'title' => 'Live ones'])
+        ->loadTable()
+        ->assertSeeHtml('fi-ta-search-field')
+        ->assertSeeHtml('fi-ta-filters-dropdown');
+    AgentsPlugin::current()->embeddedTable();
 
     expect(Chat::tableFromResult(json_encode(['table' => ['resource' => 'nope']])))->toBeNull();
 });
