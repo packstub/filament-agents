@@ -72,6 +72,20 @@ The provider keys themselves live in laravel/ai's `config/ai.php` (`ANTHROPIC_AP
 
 Rename, remove or add entries; the picker shows whatever is there. A `null` label names the entry after the model it runs — Claude Opus 5, Claude Haiku 4.5 — and a second unlabelled entry on the same model adds its key to tell them apart (Claude Opus 5 · Deep); set a label to show something else (`'label' => 'Fast'`). A `null` model resolves to the provider's smartest model (or cheapest for the `fast` key), and the entry is named after the model that resolves. A provider with no entries at all (Ollama, OpenRouter, Mistral, Groq, DeepSeek…) gets its smartest (`auto`) and cheapest (`fast`) models with no effort; add an entry to pin models or to offer a `deep` one. Effort is passed as Anthropic's `output_config.effort`, OpenAI's and xAI's `reasoning.effort` (reasoning models only) or Gemini's thinking level (`low`, `medium`, `high`; `xhigh` is sent as `high`). When you pin a model that rejects the parameter, set its effort to `null`.
 
+A provider without entries runs on the two models laravel/ai names for it; on OpenRouter those are Claude Opus 5 and Claude Haiku 4.5 through OpenRouter. To run the models you chose it for, give it entries of its own, each with an OpenRouter model id (`vendor/model`, as listed on [openrouter.ai/models](https://openrouter.ai/models)):
+
+```php
+'models' => [
+    'openrouter' => [
+        'auto' => ['label' => 'Mercury 2.5', 'model' => 'inception/mercury-2.5', 'effort' => null],
+        'fast' => ['label' => 'GLM 5.3 Flash', 'model' => 'z-ai/glm-5.3-flash', 'effort' => null],
+        'deep' => ['label' => 'DeepSeek 4.1 Flash', 'model' => 'deepseek/deepseek-v4.1-flash', 'effort' => null],
+    ],
+],
+```
+
+The key is `OPENROUTER_API_KEY` in `.env`, read by laravel/ai's `openrouter` entry in `config/ai.php`; the same entry takes a `url` for a compatible gateway and the `http_referer` and `x_title` headers OpenRouter uses for app attribution. Effort stays `null` on OpenRouter: the reasoning knob differs per model behind it.
+
 The picker shows the list of the provider in use (`provider`, or the workspace's own). An entry in that list may name another provider to run on — `'provider' => 'gemini'` on the commented `flash` entry above puts Gemini Flash next to Claude on an Anthropic install. Such an entry is listed only when its provider has a key in `config/ai.php`; when the picker holds entries of more than one provider, they sit under provider headings, the picker's own provider first. Its model and effort are in that provider's terms (a Gemini thinking level on a Gemini entry), and it fails over down the `failover` list like any entry, with its own provider left out — the platform provider included when it is listed. Give an entry its own `failover` list to override the global one: `[]` keeps a local Ollama model local, for data that must not leave the server. A workspace on its own key sees only the entries of its provider; see [Tenancy](tenancy.md#a-workspaces-own-key). The chat is on when the provider in use has a key, or when any listed entry's provider has one.
 
 ## AgentsPlugin
