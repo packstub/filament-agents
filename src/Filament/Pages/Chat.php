@@ -60,7 +60,8 @@ class Chat extends Page
         $this->context = request()->query('context');
 
         if ($conversation) {
-            abort_unless($this->chat()->owns($conversation), 404);
+            // Checked on a chat without the conversation: the engine refuses another person's conversation as not found.
+            abort_unless(AgentChat::for(auth()->user())->owns($conversation), 404);
             $this->conversation = $conversation;
             $this->chat = null;
         }

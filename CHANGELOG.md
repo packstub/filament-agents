@@ -6,6 +6,10 @@ All notable changes to `packstub/filament-agents` are documented here.
 
 Upgrading: nothing to run. The plugin requires `packstub/agents` ^1.3 (Composer updates it).
 
+### Fixed
+
+- **A held decision keeps the chat busy.** Approving one of two proposals holds the decision until the other is decided; the page still offered Edit and Regenerate on the question above meanwhile, and using them deleted the paused answer and failed the held decision when it ran. The engine now counts a held decision as busy, so the page offers only the other decision until both are in. Deleting a chat now also deletes its ratings. (engine 1.3)
+
 ### Changed
 
 - **The chat logic lives in the engine.** The Chat page delegates to `Packstub\Agents\Support\AgentChat` (the transcript with its proposals, what runs and what waits, send / decide / retry / regenerate / resend / stop, the queued line, ratings, the context meter, compress and continue) and keeps what only the panel knows: the URL, the poll route, the notifications and the redirects. The Agent access page mints tokens through `AgentTokens`, the turn log labels a status through `AgentTurn::statusLabel()`, and deleting a chat goes through `AgentConversationStore::deleteConversation()`, which also drops its rolling summary. Nothing changes on screen. The page's static helpers (`Chat::question()`, `resultText()`, `writeToolNames()`, `rejectionResult()`, `modelMenu()`, `breakdownLabels()`, `duration()`, `cutShortText()`, `chartFromResult()`, `tableFromResult()`) are now `AgentChat`'s; the strings they emit moved to the engine's language files.
