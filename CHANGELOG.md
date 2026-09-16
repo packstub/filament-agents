@@ -2,6 +2,14 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## 1.10.0 — 2026-09-16
+
+Upgrading: nothing to run. The plugin requires `packstub/agents` ^1.3 (Composer updates it).
+
+### Changed
+
+- **The chat logic lives in the engine.** The Chat page delegates to `Packstub\Agents\Support\AgentChat` (the transcript with its proposals, what runs and what waits, send / decide / retry / regenerate / resend / stop, the queued line, ratings, the context meter, compress and continue) and keeps what only the panel knows: the URL, the poll route, the notifications and the redirects. The Agent access page mints tokens through `AgentTokens`, the turn log labels a status through `AgentTurn::statusLabel()`, and deleting a chat goes through `AgentConversationStore::deleteConversation()`, which also drops its rolling summary. Nothing changes on screen. The page's static helpers (`Chat::question()`, `resultText()`, `writeToolNames()`, `rejectionResult()`, `modelMenu()`, `breakdownLabels()`, `duration()`, `cutShortText()`, `chartFromResult()`, `tableFromResult()`) are now `AgentChat`'s; the strings they emit moved to the engine's language files.
+
 ## 1.9.1 — 2026-09-15
 
 Upgrading: nothing to run. The plugin requires `packstub/agents` ^1.2.1 (Composer updates it). The table under an answer no longer shows its search box and filter button; `AgentsPlugin::make()->embeddedTable(search: true, filters: true)` brings them back.

@@ -137,7 +137,7 @@
                                                 @endforeach
                                             </dl>
                                         @endif
-                                        @if (! $tool['rejected'] && ($result = \Packstub\Agents\Filament\Pages\Chat::resultText($tool['result'])) !== null)
+                                        @if (! $tool['rejected'] && ($result = \Packstub\Agents\Support\AgentChat::resultText($tool['result'])) !== null)
                                             <p class="fi-chat-proposal-label">{{ __('Result') }}</p>
                                             <pre>{{ $result }}</pre>
                                         @endif
@@ -204,7 +204,7 @@
                                 @endif
                                 @if ($message['cutShort'])
                                     {{-- The provider ended the answer early; Regenerate (above, on the last answer) produces it again. --}}
-                                    <span class="ml-1 text-xs" title="{{ \Packstub\Agents\Filament\Pages\Chat::cutShortText($message['cutShort']) }}">· {{ __('(cut short)') }}</span>
+                                    <span class="ml-1 text-xs" title="{{ \Packstub\Agents\Support\AgentChat::cutShortText($message['cutShort']) }}">· {{ __('(cut short)') }}</span>
                                 @endif
                                 @if ($message['answeredBy'])
                                     {{-- The first choice refused the turn and a failover provider took it. --}}
@@ -301,7 +301,7 @@
                                     <p class="mt-0.5">{{ __('The last question read :tokens tokens.', ['tokens' => number_format($context['turns']['last_tokens_in'])]) }}</p>
                                 @endif
                                 <dl class="mt-2">
-                                    @foreach (\Packstub\Agents\Filament\Pages\Chat::breakdownLabels() as $key => $label)
+                                    @foreach (\Packstub\Agents\Support\AgentChat::breakdownLabels() as $key => $label)
                                         @if ($context['breakdown'][$key] > 0)
                                             <dt>{{ $label }}</dt>
                                             <dd>{{ number_format($context['breakdown'][$key]) }}</dd>
@@ -323,7 +323,7 @@
                                         <dt>{{ __('Tool calls') }}</dt>
                                         <dd>{{ number_format($context['turns']['tool_calls']) }}</dd>
                                         <dt>{{ __('Time') }}</dt>
-                                        <dd>{{ \Packstub\Agents\Filament\Pages\Chat::duration($context['turns']['duration_ms']) }}</dd>
+                                        <dd>{{ \Packstub\Agents\Support\AgentChat::duration($context['turns']['duration_ms']) }}</dd>
                                     </dl>
                                 </div>
                             @endif

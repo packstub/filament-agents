@@ -11,14 +11,14 @@
 {{-- Slot `tools`: extra controls on the row, between the field and Stop (the chat page's context ring). --}}
 @php
     use Packstub\Agents\Facades\Agents;
-    use Packstub\Agents\Filament\Pages\Chat;
+    use Packstub\Agents\Support\AgentChat;
     use Packstub\Agents\Support\AgentModels;
 
     $targets ??= $method;
     $placeholder ??= Agents::name().'…';
     $label ??= __('Send');
     $hint = __('Keep typing — the next question is sent when this answer is done.');
-    $menu = Chat::modelMenu();
+    $menu = AgentChat::modelMenu();
     $picked = $model ?? AgentModels::current();
     $pickedLabel = collect($menu)->collapse()->get($picked)['label'] ?? \Illuminate\Support\Str::headline($picked);
 @endphp

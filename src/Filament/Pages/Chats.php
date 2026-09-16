@@ -15,6 +15,7 @@ use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
 use Laravel\Ai\Models\Conversation;
 use Packstub\Agents\Facades\Agents;
+use Packstub\Agents\Support\AgentConversationStore;
 use Packstub\Agents\Support\AgentModels;
 
 /** Every conversation the current person had with the assistant in this workspace. */
@@ -79,10 +80,7 @@ class Chats extends Page implements HasTable
             ])
             ->recordUrl(fn (Conversation $c) => Chat::getUrl(['conversation' => $c->id]))
             ->recordActions([
-                DeleteAction::make()->label(__('Delete'))->action(function (Conversation $record) {
-                    $record->messages()->delete();
-                    $record->delete();
-                }),
+                DeleteAction::make()->label(__('Delete'))->action(fn (Conversation $record) => app(AgentConversationStore::class)->deleteConversation($record->id)),
             ])
             ->emptyStateHeading(__('No chats yet'))
             ->emptyStateDescription(__('Ask anything about your workspace.'));

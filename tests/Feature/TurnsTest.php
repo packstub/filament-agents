@@ -12,6 +12,7 @@ use Packstub\Agents\Filament\Pages\Chat;
 use Packstub\Agents\Jobs\RunAgentTurn;
 use Packstub\Agents\Models\AgentMessageFeedback;
 use Packstub\Agents\Models\AgentTurn;
+use Packstub\Agents\Support\AgentChat;
 use Packstub\Agents\Support\AgentConversationStore;
 use Packstub\Agents\Support\AgentLimits;
 use Packstub\Agents\Support\AgentRuntime;
@@ -349,8 +350,8 @@ it('marks an answer the provider ended early so it can be produced again', funct
     app(AgentConversationStore::class)->markCutShort($conversation->id, 'length');
 
     expect(AgentConversationStore::cutShort($answer->fresh()->meta))->toBe('length')
-        ->and(Chat::cutShortText('length'))->toBe(__('The answer hit the model\'s length limit.'))
-        ->and(Chat::cutShortText('dropped'))->toBe(__('The provider closed the stream before the answer was complete.'));
+        ->and(AgentChat::cutShortText('length'))->toBe(__('The answer hit the model\'s length limit.'))
+        ->and(AgentChat::cutShortText('dropped'))->toBe(__('The provider closed the stream before the answer was complete.'));
 
     $page = livewire(Chat::class, ['conversation' => $conversation->id])
         ->assertSee('Two widgets are')
