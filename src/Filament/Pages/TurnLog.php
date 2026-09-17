@@ -108,16 +108,9 @@ class TurnLog extends Page implements HasTable
             ->emptyStateDescription(__('Turns appear here as soon as someone asks the assistant a question.'));
     }
 
+    /** @see AgentTurn::statusLabel() */
     public static function statusLabel(string $status): string
     {
-        return match ($status) {
-            AgentTurn::QUEUED => __('Queued'),
-            AgentTurn::PENDING => __('Pending'),
-            AgentTurn::RUNNING => __('Running'),
-            AgentTurn::DONE => __('Done'),
-            AgentTurn::STOPPED => __('Stopped'),
-            AgentTurn::FAILED => __('Failed'),
-            default => $status,
-        };
+        return AgentTurn::statusLabel($status);
     }
 }

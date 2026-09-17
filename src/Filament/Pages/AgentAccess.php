@@ -18,12 +18,11 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
-use Illuminate\Support\Str;
-use Laravel\Mcp\Server\Tool;
 use Laravel\Sanctum\Sanctum;
 use Packstub\Agents\Facades\Agents;
 use Packstub\Agents\Filament\Forms\ToolPicker;
 use Packstub\Agents\Mcp\AgentTool;
+use Packstub\Agents\Support\AgentTokens;
 
 /**
  * Agent access: mint a token so Claude Code, Claude Desktop or any MCP
@@ -74,9 +73,7 @@ class AgentAccess extends Page implements HasTable
 
     public function mcpUrl(): string
     {
-        $path = trim((string) config('packstub-agents.mcp.path', 'mcp'), '/');
-
-        return url('/'.str_replace('{tenant}', $this->slug() ?? '', $path));
+        return AgentTokens::mcpUrl($this->slug());
     }
 
     /** The workspace slug as it appears in the MCP path, or null in a panel without tenancy. */
@@ -95,69 +92,33 @@ class AgentAccess extends Page implements HasTable
 
     public function serverSlug(): string
     {
-        return Str::slug(Agents::name()) ?: 'assistant';
+        return AgentTokens::serverSlug();
     }
 
     /**
-     * The tools the signed-in person may run right now, as the picker shows
-     * them: name => [title, description, read-only]. A token can only be
-     * limited to tools the role allows; the role is checked again on every
-     * call, so a later role change still wins.
+     * The tools the signed-in person may run right now, as the picker shows them (AgentTokens::availableTools).
      *
      * @return array<string, array{title: string, description: string, readOnly: bool}>
      */
     public function availableTools(): array
     {
-        $tools = [];
-
-        foreach (Agents::toolClasses() as $class) {
-            /** @var Tool $tool */
-            $tool = app($class);
-
-            if (! $tool->eligibleForRegistration()) {
-                continue;
-            }
-
-            $tools[$tool->name()] = [
-                'title' => $tool->title(),
-                'description' => $tool->description(),
-                'readOnly' => $tool instanceof AgentTool ? $tool->isReadOnly() : AgentTool::hasReadOnlyAnnotation($tool),
-            ];
-        }
-
-        return $tools;
+        return AgentTokens::availableTools();
     }
 
     /**
-     * Every tool of the server by name => title, whatever the role allows,
-     * so the table can name a tool a token was scoped to even after the role
-     * lost it.
+     * Every tool of the server by name => title, whatever the role allows (AgentTokens::toolTitles).
      *
      * @return array<string, string>
      */
     public function toolTitles(): array
     {
-        $titles = [];
-
-        foreach (Agents::toolClasses() as $class) {
-            /** @var Tool $tool */
-            $tool = app($class);
-            $titles[$tool->name()] = $tool->title();
-        }
-
-        return $titles;
+        return AgentTokens::toolTitles();
     }
 
     /** @return array<string, string> */
     public static function expiryOptions(): array
     {
-        return [
-            'never' => __('Never'),
-            '7' => __(':days days', ['days' => 7]),
-            '30' => __(':days days', ['days' => 30]),
-            '90' => __(':days days', ['days' => 90]),
-            '365' => __(':days days', ['days' => 365]),
-        ];
+        return AgentTokens::expiryOptions();
     }
 
     protected function getHeaderActions(): array
@@ -184,25 +145,15 @@ class AgentAccess extends Page implements HasTable
                         ->visible($tools !== []),
                 ])
                 ->action(function (array $data): void {
-                    $abilities = array_values($data['abilities']);
-                    $canWrite = in_array('write', $abilities, true);
-
                     // Scope: every ticked tool, as "tool:{name}"; a write tool only when the token may write. None ticked = every tool the role allows.
-                    $known = $this->availableTools();
-                    foreach (array_values((array) ($data['tools'] ?? [])) as $name) {
-                        if (isset($known[$name]) && ($canWrite || $known[$name]['readOnly'])) {
-                            $abilities[] = 'tool:'.$name;
-                        }
-                    }
-
-                    if ($slug = $this->slug()) {
-                        $abilities[] = 'tenant:'.$slug;
-                    }
-
-                    $days = (string) ($data['expires'] ?? 'never');
-                    $expiresAt = $days !== 'never' && ctype_digit($days) ? now()->addDays((int) $days) : null;
-
-                    $this->plainTextToken = auth()->user()->createToken(Str::limit(trim($data['label']), 60, ''), $abilities, $expiresAt)->plainTextToken;
+                    $this->plainTextToken = AgentTokens::mint(
+                        auth()->user(),
+                        (string) $data['label'],
+                        array_values($data['abilities']),
+                        array_values((array) ($data['tools'] ?? [])),
+                        (string) ($data['expires'] ?? 'never'),
+                        $this->slug(),
+                    );
                     Notification::make()->title(__('Token created — copy it now, it is shown once.'))->success()->send();
                 }),
         ];

@@ -12,6 +12,7 @@ use Packstub\Agents\Models\AgentLimit;
 use Packstub\Agents\Models\AgentMessageFeedback;
 use Packstub\Agents\Models\AgentTurn;
 use Packstub\Agents\Support\AgentBudget;
+use Packstub\Agents\Support\AgentChat;
 use Packstub\Agents\Support\AgentLimits;
 use Packstub\Agents\Support\AgentModels;
 use Packstub\Agents\Support\AgentTurns;
@@ -170,12 +171,12 @@ it('carries the record being viewed into the chat as page context', function () 
 it('phrases a proposal from the tool title and the first argument when the tool has no describe(), and from the call alone when the tool is gone', function () {
     actingAs($this->user());
 
-    expect(Chat::question(app(RetireWidget::class), 'retire-widget', ['id' => 12]))->toBe('Retire Widget 12?')
-        ->and(Chat::question(null, 'archive-widget', ['id' => 3, 'reason' => 'old']))->toBe('Archive Widget 3?')
-        ->and(Chat::question(null, 'archive-widget', []))->toBe('Archive Widget?')
-        ->and(Chat::resultText('{"renamed":true,"widget":{"id":1}}'))->toBe("{\n    \"renamed\": true,\n    \"widget\": {\n        \"id\": 1\n    }\n}")
-        ->and(Chat::resultText('plain text'))->toBe('plain text')
-        ->and(Chat::resultText(null))->toBeNull();
+    expect(AgentChat::question(app(RetireWidget::class), 'retire-widget', ['id' => 12]))->toBe('Retire Widget 12?')
+        ->and(AgentChat::question(null, 'archive-widget', ['id' => 3, 'reason' => 'old']))->toBe('Archive Widget 3?')
+        ->and(AgentChat::question(null, 'archive-widget', []))->toBe('Archive Widget?')
+        ->and(AgentChat::resultText('{"renamed":true,"widget":{"id":1}}'))->toBe("{\n    \"renamed\": true,\n    \"widget\": {\n        \"id\": 1\n    }\n}")
+        ->and(AgentChat::resultText('plain text'))->toBe('plain text')
+        ->and(AgentChat::resultText(null))->toBeNull();
 });
 
 it('keeps a decided proposal as a card and lets the model carry on after a rejection', function () {
@@ -204,7 +205,7 @@ it('keeps a decided proposal as a card and lets the model carry on after a rejec
     // A proposal still waiting for the person.
     $message(['tool_calls' => [$call('c3', 'Alpha IV')], 'tool_results' => [], 'approval_state' => ['pending' => ['c3' => ['name' => 'rename-widget']]]]);
 
-    expect(Chat::writeToolNames())->toBe(['rename-widget']);
+    expect(AgentChat::writeToolNames())->toBe(['rename-widget']);
 
     // Each proposal is one question with its decision: the tool's own sentence, the outcome in place once decided,
     // Approve / Reject while it waits; the exact call (tool name, arguments, the result) folds under the question.
@@ -231,7 +232,7 @@ it('keeps a decided proposal as a card and lets the model carry on after a rejec
     WidgetAgent::assertPrompted(function ($prompt) {
         $decision = $prompt->approvalDecisions?->get('c3');
 
-        return $decision?->isRejected() && $decision->result === Chat::rejectionResult();
+        return $decision?->isRejected() && $decision->result === AgentChat::rejectionResult();
     });
     expect(ConversationMessage::query()->where('conversation_id', $conversation->id)->where('content', 'like', '%left the name%')->exists())->toBeTrue();
 });
@@ -461,15 +462,15 @@ it('shows a one-row composer with the assistant\'s name as placeholder and the m
         ->toContain('wire:click="$set(\'model\', \'fast\')"')
         ->toContain('Test Claude Fast');
 
-    expect(Chat::modelMenu())->toHaveKey('anthropic')
-        ->and(Chat::modelMenu()['anthropic']['fast'])->toBe(['label' => 'Fast', 'detail' => 'Test Claude Fast']);
+    expect(AgentChat::modelMenu())->toHaveKey('anthropic')
+        ->and(AgentChat::modelMenu()['anthropic']['fast'])->toBe(['label' => 'Fast', 'detail' => 'Test Claude Fast']);
 
     // An entry named after its model says its key instead; one that already does says nothing more.
     config(['packstub-agents.models.anthropic' => [
         'auto' => ['label' => null, 'model' => 'claude-opus-5', 'effort' => null],
         'deep' => ['label' => null, 'model' => 'claude-opus-5', 'effort' => 'xhigh'],
     ]]);
-    expect(Chat::modelMenu()['anthropic'])->toBe([
+    expect(AgentChat::modelMenu()['anthropic'])->toBe([
         'auto' => ['label' => 'Claude Opus 5', 'detail' => 'Auto'],
         'deep' => ['label' => 'Claude Opus 5 · Deep', 'detail' => null],
     ]);

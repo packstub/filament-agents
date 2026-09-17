@@ -10,6 +10,7 @@ use Packstub\Agents\Filters\Filter;
 use Packstub\Agents\Livewire\AgentTable;
 use Packstub\Agents\Mcp\Tools\DrawChart;
 use Packstub\Agents\Mcp\Tools\ShowTable;
+use Packstub\Agents\Support\AgentChat;
 use Packstub\Agents\Support\AgentResources;
 use Packstub\Agents\Tests\Fixtures\Abilities;
 use Packstub\Agents\Tests\Fixtures\Filament\Resources\Widgets\WidgetResource;
@@ -107,7 +108,7 @@ it('embeds a live resource table in the chat with the resource\'s own actions', 
         ->assertSeeHtml('fi-ta-filters-dropdown');
     AgentsPlugin::current()->embeddedTable();
 
-    expect(Chat::tableFromResult(json_encode(['table' => ['resource' => 'nope']])))->toBeNull();
+    expect(AgentChat::tableFromResult(json_encode(['table' => ['resource' => 'nope']])))->toBeNull();
 });
 
 it('validates drawn charts and renders a chart from a stored tool result', function () {
@@ -118,7 +119,7 @@ it('validates drawn charts and renders a chart from a stored tool result', funct
     expect($bad->isError())->toBeTrue();
 
     $payload = json_decode((string) app(DrawChart::class)->handle(new Request(['title' => 'Prices', 'type' => 'line', 'labels' => ['Alpha', 'Beta'], 'datasets' => [['label' => 'Price', 'data' => [10, 20]]]]))->content(), true);
-    $chart = Chat::chartFromResult($payload);
+    $chart = AgentChat::chartFromResult($payload);
     expect($chart['type'])->toBe('line')->and($chart['data']['labels'])->toBe(['Alpha', 'Beta'])->and($chart['data']['datasets'][0]['fill'])->toBeTrue();
 
     $conversation = Conversation::query()->create(['id' => (string) Str::uuid(), 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id, 'title' => 'Prices']);
