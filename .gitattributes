@@ -12,3 +12,5 @@
 /tests              export-ignore
 /AGENTS.md          export-ignore
 /CLAUDE.md          export-ignore
+/CHANGELOG.md       export-ignore
+/pint.json          export-ignore
