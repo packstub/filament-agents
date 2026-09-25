@@ -217,7 +217,7 @@ it('shows the context ring from meter_share on, with the breakdown and the turn 
     $history = $component->instance()->history();
     expect($history['meter'])->toBeTrue()
         ->and($history['notice'])->toBeFalse()
-        ->and($history['turns'])->toBe(['count' => 2, 'tokens_in' => 3500, 'tokens_out' => 300, 'tool_calls' => 3, 'duration_ms' => 66000, 'last_tokens_in' => 2500]);
+        ->and($history['turns'])->toBe(['count' => 2, 'tokens_in' => 3500, 'tokens_out' => 300, 'tool_calls' => 3, 'duration_ms' => 66000, 'cost' => null, 'last_tokens_in' => 2500]);
 });
 
 it('compresses a chat in place, keeping the last exchanges verbatim', function () {

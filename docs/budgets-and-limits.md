@@ -67,7 +67,7 @@ Every turn leaves a record on its `agent_turns` row when it ends: the provider a
 
 ### The AI turns page
 
-The operator panel that registers `limits()` also gets **AI turns** (`/agent-turns`): one row per turn, newest first, with who asked (and in which workspace, in a panel with tenancy), the status, model and provider, tokens in and out, the number of tools called (the names on hover), the duration and how it ended; the error message and the turn id are behind the column toggle. Filter by status or provider. The page is gated like the limits resource (`limits(authorize: …)`).
+The operator panel that registers `limits()` also gets **AI turns** (`/agent-turns`): the week's numbers on top — turns today and this week, tokens and cost this week, the share of turns that failed, the share of answers rated helpful, each with a spark line — a chart of turns per day over two weeks (answered against failed), then one row per turn, newest first, with who asked (and in which workspace, in a panel with tenancy), the status, model and provider, tokens in and out, the cost (when `pricing.models` has the model's prices, see [Cost in money](https://packstub.dev/docs/agents/budgets-and-limits#cost-in-money)), the number of tools called (the names on hover), the duration, how it ended and how the answer was rated (the person's note on hover); the error message and the turn id are behind the column toggle. Filter by status, provider or rating. The page is gated like the limits resource (`limits(authorize: …)`).
 
 ```php
 AgentsPlugin::make()->limits()                     // AI limits and AI turns

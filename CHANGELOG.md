@@ -2,7 +2,25 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
-## Unreleased
+## 1.11.0 — 2026-09-25
+
+The chat catches up with what people expect from an assistant: answers stream in as they are written, code and files are first-class, records are mentioned with `@`, chats are renamed, pinned, searched and exported, an answer is continued or paged through its earlier versions, and the "Ask …" button opens the chat over any page. The operator's AI turns page gets the week's numbers, a chart, the cost and the ratings.
+
+Upgrading: the plugin requires `packstub/agents` ^1.4 (Composer updates it); run the migrations (two new tables and three columns, see the engine's changelog). The "Ask …" button now opens a slide-over instead of leaving the page — `AgentsPlugin::make()->slideOver(false)` keeps the old link — and `Ctrl/⌘ J` opens the chat from any page (`->shortcut(null)` switches it off). Regenerate and Edit keep the earlier answer as a version instead of deleting it. Nothing else changes.
+
+### Added
+
+- **Answers stream in.** The page listens to the turn's event stream (`…/packstub-agents/chat/{conversation}/stream` on the panel's routes) and every change is pushed as it happens; the tools the assistant calls appear one by one above the answer while it runs; the poll endpoint stays as the fallback when the stream cannot be held open. The tab's title follows the chat's once it is titled or renamed (#23). (engine 1.4)
+- **The tools as a timeline** (#41): the read tools an answer called, one line each with the tool's name, its first arguments and what came back ("3 found"), the full call folded under it. Proposals keep their card.
+- **Code blocks with copy and colours, a copy button under every answer** (#20).
+- **Attachments.** A paper clip in the composer, drop or paste: files go with the question, show above it (a thumbnail for an image) and are read by the provider (config `chat.attachments`).
+- **`@` mentions a record, `/` offers the starter questions.** `@` searches the panel's agent resources on their globally searchable attributes; the picked record goes into the question as "@Order RO-00012" and its summary rides with it for the model. A draft survives a reload, per chat (#21).
+- **The slide-over and the shortcut.** The "Ask …" button opens the chat on the right of the page you are on, the record in view as context; `Ctrl/⌘ J` opens it from anywhere. `AgentsPlugin::make()->slideOver(false)`, `->shortcut('mod+shift+a')` or `->shortcut(null)`; `?embedded=1` renders the chat page without the panel's chrome.
+- **Rename, pin, export, search.** A pencil, a bookmark and an export arrow in the chat's header; pinned chats first in the sidebar and on the Chats page, whose search box now looks into the messages (with a line of the first match) and whose rows rename, pin, export and delete, with a bulk delete.
+- **Versions and Continue.** Regenerate and Edit keep the earlier answer; a `2/2` switcher under the newest answer opens the earlier ones and puts one back. An answer the length limit cut short gets **Continue**, and the continuation reads as one answer.
+- **A thumbs-down with a note**, shown to the operator on the AI turns page with the rating; `aria-pressed` on the rating buttons, a live region on the transcript, a label on every icon button.
+- **The AI turns page**: turns today and this week, tokens and cost this week, the share of failed turns and of answers rated helpful (with spark lines), a chart of turns per day over two weeks, a cost column, a rating column with the note on hover, and a rating filter.
+- The new strings ship in the German, Spanish, Romanian and Russian files.
 
 ### Changed
 
