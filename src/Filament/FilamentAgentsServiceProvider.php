@@ -8,6 +8,8 @@ use Filament\Support\Assets\Css;
 use Filament\Support\Facades\FilamentAsset;
 use Illuminate\Support\Facades\Blade;
 use Livewire\Livewire;
+use Packstub\Agents\Filament\Widgets\TurnsChart;
+use Packstub\Agents\Filament\Widgets\TurnStats;
 use Packstub\Agents\Livewire\AgentTable;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
@@ -41,6 +43,8 @@ class FilamentAgentsServiceProvider extends PackageServiceProvider
         // queued while providers register runs before any queued while they boot, whatever the package order.
         $this->app->booted(function (): void {
             Livewire::component('packstub-agents.agent-table', AgentTable::class);
+            Livewire::component('packstub-agents.turn-stats', TurnStats::class);
+            Livewire::component('packstub-agents.turns-chart', TurnsChart::class);
 
             Filament::getPanels();
         });

@@ -26,7 +26,11 @@
 | `chat.queue` | `null` | `AGENT_QUEUE` | the queue name; `null` = the connection's default |
 | `chat.job_timeout` | `600` | `AGENT_JOB_TIMEOUT` | how long one turn may run on the worker, in seconds; a turn whose job went quiet for longer is shown as failed, with a Retry |
 | `chat.worker_wait` | `10` | `AGENT_WORKER_WAIT` | how long a question may wait for a worker before the status line says none has taken it, in seconds (the queue driver only) |
-| `chat.poll_interval` | `600` | `AGENT_POLL_INTERVAL` | how often the page asks for the answer so far while a turn runs, in milliseconds |
+| `chat.poll_interval` | `600` | `AGENT_POLL_INTERVAL` | how often the page asks for the answer so far while a turn runs, in milliseconds — the fallback when the event stream cannot be held open |
+| `chat.stream_interval`, `chat.stream_seconds` | `150`, `55` | `AGENT_STREAM_INTERVAL`, `AGENT_STREAM_SECONDS` | how often the event stream checks the turn while it pushes changes, and how long one stream stays open before the browser reconnects |
+| `chat.attachments.*` | on, the default disk, 10 MB, 5 files, images / PDF / text / CSV / Markdown / JSON | `AGENT_ATTACHMENTS`, `AGENT_ATTACHMENTS_DISK`, `AGENT_ATTACHMENTS_MAX_KB`, `AGENT_ATTACHMENTS_TEMPORARY_URLS` | the files a person may attach to a question; see [Attachments](https://packstub.dev/docs/agents/assistant#attachments) |
+| `pricing.currency`, `pricing.models` | `USD`, `[]` | `AGENT_PRICING_CURRENCY` | prices per million tokens by model name, for the cost on the AI turns page and in the context ring; see [Cost in money](https://packstub.dev/docs/agents/budgets-and-limits#cost-in-money) |
+| `email.*` | off | `AGENT_EMAIL`, `AGENT_EMAIL_SECRET`, `AGENT_EMAIL_FROM` | the assistant by email; see [The assistant by email](https://packstub.dev/docs/agents/assistant#the-assistant-by-email) |
 | `chat.path` | `agents` | | without a panel, where the poll endpoint lives: `GET {path}/chat/{conversation}/turn`, see [Agents for Laravel](https://packstub.dev/docs/agents/installation#routes) |
 | `chat.middleware` | `['web', 'auth']` | | the middleware of that endpoint; a panel that shows the chat registers its own on the panel's routes |
 | `chat.keep_turns_days` | `90` | `AGENT_KEEP_TURNS_DAYS` | how long ended turns (the per-turn record) are kept for the AI turns page; `null` keeps them; pruned by `model:prune --model=Packstub\Agents\Models\AgentTurn` |
@@ -147,6 +151,8 @@ AgentsPlugin::make()
     ->agentAccess(enabled: true, ability: 'setup.view', group: 'Setup')
     ->limits(enabled: true, authorize: fn (): bool => auth()->user()->is_admin)
     ->turnLog()
+    ->slideOver()
+    ->shortcut('mod+j')
     ->hideAskButtonOn(['*.pages.dashboard']);
 ```
 
@@ -167,6 +173,8 @@ AgentsPlugin::make()
 | `limits(bool $enabled, ?Closure $authorize)` | the operator's AI limits resource and who may edit it (default: any signed-in user of the panel) |
 | `turnLog(bool $enabled)` | the operator's AI turns page (one row per turn: who, model, tokens, tools, duration, how it ended), gated like the limits; default: shown wherever `limits()` is |
 | `hideAskButtonOn(array $routePatterns)` | route name patterns without the topbar button (the chat itself is always excluded) |
+| `slideOver(bool $enabled)` | whether the "Ask …" button opens the chat as a slide-over on the right of the current page (default) or leads to the chat page |
+| `shortcut(?string $keys)` | the keyboard shortcut that opens the chat from any page: `mod+j` (the default: ⌘J on a Mac, Ctrl+J elsewhere), `mod+shift+a`…; `null` for none |
 
 Two panels may register the plugin: the tenant panel with the chat and the token page, the operator panel with `chat(false)->agentAccess(false)->limits()`. The plugin's id is `packstub-agents` (`$panel->getPlugin('packstub-agents')`).
 

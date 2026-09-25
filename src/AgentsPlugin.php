@@ -20,6 +20,7 @@ use Packstub\Agents\Filament\Pages\Chats;
 use Packstub\Agents\Filament\Pages\TurnLog;
 use Packstub\Agents\Filament\Resources\AgentLimits\AgentLimitResource;
 use Packstub\Agents\Http\Controllers\TurnController;
+use Packstub\Agents\Http\Controllers\TurnStreamController;
 use Packstub\Agents\Mcp\Tools\ShowTable;
 
 /**
@@ -82,6 +83,12 @@ class AgentsPlugin implements Plugin
 
     /** @var list<string> */
     protected array $askButtonHiddenOn = [];
+
+    /** The "Ask …" button opens the chat in a slide-over over the page rather than leaving it. */
+    protected bool $slideOver = true;
+
+    /** The keyboard shortcut that opens the chat ("mod+j": ⌘J on a Mac, Ctrl+J elsewhere); null for none. */
+    protected ?string $shortcut = 'mod+j';
 
     /** The table under an answer: the assistant already filtered it, so its search box and filter button start hidden. */
     protected bool $embeddedTableSearch = false;
@@ -273,6 +280,52 @@ class AgentsPlugin implements Plugin
         return $this;
     }
 
+    /**
+     * Whether the "Ask …" button opens the chat as a slide-over on the right of the page the person is on (the
+     * record in view as context, the page still visible) instead of leaving for the chat page.
+     */
+    public function slideOver(bool $enabled = true): static
+    {
+        $this->slideOver = $enabled;
+
+        return $this;
+    }
+
+    public function hasSlideOver(): bool
+    {
+        return $this->slideOver && $this->chat;
+    }
+
+    /** The keyboard shortcut that opens the chat from any page: "mod+j" (the default), "mod+shift+a"…; null for none. */
+    public function shortcut(?string $keys): static
+    {
+        $this->shortcut = $keys;
+
+        return $this;
+    }
+
+    public function getShortcut(): ?string
+    {
+        return $this->shortcut;
+    }
+
+    /** The shortcut as a person reads it: "⌘J" on a Mac, "Ctrl+J" elsewhere (the browser decides). */
+    public function getShortcutLabel(): ?string
+    {
+        if ($this->shortcut === null) {
+            return null;
+        }
+
+        $parts = array_map(fn (string $part) => match (strtolower($part)) {
+            'mod' => 'Ctrl/⌘',
+            'shift' => 'Shift',
+            'alt' => 'Alt',
+            default => strtoupper($part),
+        }, explode('+', $this->shortcut));
+
+        return implode('+', $parts);
+    }
+
     public function register(Panel $panel): void
     {
         $manager = app(AgentsManager::class);
@@ -352,8 +405,11 @@ class AgentsPlugin implements Plugin
             $pages[] = Chat::class;
             $pages[] = Chats::class;
 
-            // The chat page polls this while an answer is produced; it runs under the panel's auth and tenant middleware.
-            $panel->authenticatedTenantRoutes(fn () => Route::get('packstub-agents/chat/{conversation}/turn', TurnController::class)->name('packstub-agents.turn'));
+            // The chat page listens to this (or polls it) while an answer is produced; both run under the panel's auth and tenant middleware.
+            $panel->authenticatedTenantRoutes(function (): void {
+                Route::get('packstub-agents/chat/{conversation}/turn', TurnController::class)->name('packstub-agents.turn');
+                Route::get('packstub-agents/chat/{conversation}/stream', TurnStreamController::class)->name('packstub-agents.stream');
+            });
         }
 
         if ($this->agentAccess) {
@@ -379,8 +435,13 @@ class AgentsPlugin implements Plugin
             return;
         }
 
-        // The "Ask …" button (with the record being viewed as context) and the recent chats in the sidebar.
+        // The "Ask …" button (with the record being viewed as context), the recent and pinned chats in the sidebar,
+        // and the slide-over the button and the shortcut open over any page.
         FilamentView::registerRenderHook(PanelsRenderHook::GLOBAL_SEARCH_BEFORE, fn (): string => view('packstub-agents::hooks.topbar')->render());
         FilamentView::registerRenderHook(PanelsRenderHook::SIDEBAR_NAV_END, fn (): string => view('packstub-agents::hooks.sidebar')->render());
+
+        if ($this->slideOver || $this->shortcut !== null) {
+            FilamentView::registerRenderHook(PanelsRenderHook::BODY_END, fn (): string => view('packstub-agents::hooks.drawer')->render());
+        }
     }
 }

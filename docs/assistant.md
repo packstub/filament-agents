@@ -24,7 +24,33 @@ Conversations and messages are laravel/ai's `Conversation` and `ConversationMess
 
 The composer is one row: the question, the model, and a square Send; the field grows with the text up to eight lines, and the placeholder is the assistant's name ("Ask Acme…"). The model is a small text button that opens the list — each entry with what it runs under it ("Claude Haiku 4.5 · Fast"), the picked one ticked, provider headings when entries of more than one provider are listed — remembered per session. The composer never locks. A question appears in the transcript the moment it is sent; Enter sends and Shift+Enter breaks the line. Anything typed while an answer is still streaming waits its turn on the conversation and is sent next, one turn at a time (the placeholder says so meanwhile) — a waiting question can be edited or removed until then, and ↑ in an empty composer pulls the last waiting question back for editing (or the last one sent, to send it again). **Stop** next to the model cuts the running answer short: what the assistant had written stays as its answer, marked "(stopped)". An answer the provider ended early — a stream that closed mid-answer, the model's length limit, a content filter — is kept the same way, marked "(cut short)" with the reason on hover, and can be produced again. The page follows the answer as it streams unless you scroll up to read, with a "Jump to latest" button to catch up. Every answer can be rated with a thumbs up or down (`agent_message_feedback`), which your app can read to find the questions that go wrong.
 
-On the last exchange, a pencil next to the question puts it back in the composer — send it and the answer is replaced — and an arrow under the answer produces it again; both drop the previous answer and its rating. The thumbs, the arrow and the time show when the answer is hovered or focused (always on a touch screen); a rating that was given stays visible, and so do the "(stopped)", "(cut short)" and "(answered by …)" notes.
+On the last exchange, a pencil next to the question puts it back in the composer — send it and the answer is replaced — and an arrow under the answer produces it again; the previous answer is kept as a version (below). The copy button, the thumbs, the arrow and the time show when the answer is hovered or focused (always on a touch screen); a rating that was given stays visible, and so do the "(stopped)", "(cut short)" and "(answered by …)" notes. A thumbs-down opens a one-line field for what went wrong; the note is saved with the rating and shown to the operator on the AI turns page.
+
+### Live answers
+
+While the answer is produced the page listens to the turn's event stream (`GET …/packstub-agents/chat/{conversation}/stream` on the panel's routes): every change is pushed as it happens, so the text arrives as the model writes it and the tools the assistant calls appear one by one above it, the running one marked. When the stream cannot be held open — a proxy that buffers, a browser without `EventSource` — the page polls the turn endpoint every `chat.poll_interval` milliseconds instead, as it did before. The tab's title follows the chat's once the provider has titled it or you renamed it.
+
+### What the assistant looked up
+
+The read tools an answer called are a short timeline above it: one line per call with the tool's name, its first arguments ("status: live · limit: 5") and what came back ("3 found", "a chart"); click a line for the full arguments and the result. A write tool stays a proposal card with Approve and Reject.
+
+### Code, files and records
+
+Code blocks in an answer get a copy button in their corner and light colouring; a copy button under every answer copies it whole as Markdown.
+
+The paper clip in the composer attaches files to a question — a screenshot, an invoice, a CSV — and so does dropping them on the composer or pasting an image; they show above the question and the provider reads them with it (config `chat.attachments`: the disk, the size cap, the accepted types; images go as images, everything else as a document — check what your provider reads). Typing `@` offers the panel's records: every resource that implements `AgentResource`, searched on its globally searchable attributes (or its title attribute), and a picked one goes into the question as "@Order RO-00012" with its summary attached for the model. Typing `/` at the start offers the starter questions. What is typed survives a reload, per chat, in this browser.
+
+### Rename, pin, export, versions, continue
+
+The title in the header has a pencil to rename the chat, a bookmark to pin it to the top of the sidebar and the Chats page, and an arrow to export it as Markdown. Regenerate and Edit keep the earlier answer: a small `2/2` under the newest answer opens the earlier ones, and picking one puts it back (the current one becomes a version in turn) so the chat carries on from it. An answer the model's length limit cut short gets a **Continue** link that carries on where it stopped; the continuation reads as one answer.
+
+The **Chats** page lists pinned chats first, its search box looks into the messages as well as the titles (with a line of the first match under the title), and every row can be renamed, pinned, exported or deleted; a bulk delete is on the toolbar.
+
+### The slide-over and the shortcut
+
+The "Ask …" button opens the chat as a slide-over on the right of the page you are on — the record in view as context, the page still visible — with a link to the full page; `AgentsPlugin::make()->slideOver(false)` makes it a link to the chat page again. `Ctrl/⌘ J` opens it from any page (`->shortcut('mod+shift+a')` for another combination, `->shortcut(null)` for none). The chat page itself renders without the panel's chrome inside the slide-over (`?embedded=1`).
+
+The transcript is a live region for screen readers (new answers are announced), the rating buttons say whether they are pressed, and every icon button has a label.
 
 ### How a turn runs
 

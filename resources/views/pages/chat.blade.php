@@ -1,28 +1,76 @@
 <x-filament-panels::page>
-    @php($live = $this->live())
+    @php
+        $live = $this->live();
+        $context = $this->history();
+        $messages = $this->messages();
+        $lastQuestionId = $messages->last(fn ($m) => $m['role'] === 'user' && ! $m['continuation'])['id'] ?? null;
+        $lastQuestionVersions = $lastQuestionId ? $messages->firstWhere('id', $lastQuestionId)['versions'] : 0;
+    @endphp
     <div
-        class="fi-chat mx-auto flex w-full max-w-3xl flex-col gap-6"
+        class="fi-chat mx-auto flex w-full max-w-3xl flex-col gap-6 {{ $embedded ? 'fi-chat-embedded' : '' }}"
         x-load
         x-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('agent-chat', 'packstub/filament-agents') }}"
         x-data="agentChat()"
     >
         {{-- What the component reads per render. Kept out of x-data on purpose: a changed x-data expression makes the
              morph re-initialise the component, which would drop the outbox and the polling state. --}}
-        <div x-ref="state" hidden data-prompt="{{ $prompt }}" data-auto-send="{{ $autoSend ? '1' : '' }}" data-poll="{{ $this->pollUrl() }}" data-active="{{ $live['active']['id'] ?? '' }}" data-interval="{{ \Packstub\Agents\Support\AgentTurns::pollInterval() }}"></div>
-        <div class="flex items-center justify-between gap-3">
-            <div class="min-w-0">
-                <h1 class="truncate text-xl font-semibold text-gray-950 dark:text-white">{{ $this->getTitle() }}</h1>
+        <div
+            x-ref="state"
+            hidden
+            data-prompt="{{ $prompt }}"
+            data-auto-send="{{ $autoSend ? '1' : '' }}"
+            data-poll="{{ $this->pollUrl() }}"
+            data-stream="{{ $this->streamUrl() }}"
+            data-active="{{ $live['active']['id'] ?? '' }}"
+            data-interval="{{ \Packstub\Agents\Support\AgentTurns::pollInterval() }}"
+            data-title="{{ $this->getTitle() }}"
+            data-conversation="{{ $conversation ?? '' }}"
+            data-suggestions="{{ json_encode($this->suggestions()) }}"
+            data-mentions="{{ $this->canMention() ? '1' : '' }}"
+            data-copied="{{ __('Copied') }}"
+            data-copy="{{ __('Copy') }}"
+        ></div>
+
+        <div class="fi-chat-header flex items-center justify-between gap-3">
+            <div class="min-w-0 flex-1" x-data="{ renaming: false, title: @js((string) $this->getTitle()) }">
+                <div class="flex items-center gap-1.5" x-show="! renaming">
+                    <h1 class="truncate text-xl font-semibold text-gray-950 dark:text-white">{{ $this->getTitle() }}</h1>
+                    @if ($conversation)
+                        <button type="button" class="fi-chat-header-tool" title="{{ __('Rename') }}" aria-label="{{ __('Rename') }}" x-on:click="renaming = true; $nextTick(() => $refs.title.select())">
+                            <x-filament::icon icon="heroicon-m-pencil" class="h-4 w-4" />
+                        </button>
+                    @endif
+                </div>
+                @if ($conversation)
+                    <form class="flex items-center gap-2" x-show="renaming" x-cloak x-on:submit.prevent="renaming = false; $wire.rename(title)">
+                        <input x-ref="title" x-model="title" type="text" maxlength="100" class="fi-chat-rename-input" aria-label="{{ __('Chat title') }}" x-on:keydown.escape.prevent="renaming = false; title = @js((string) $this->getTitle())" />
+                        <x-filament::button type="submit" size="xs">{{ __('Save') }}</x-filament::button>
+                        <x-filament::link tag="button" type="button" size="sm" color="gray" :x-on:click="'renaming = false; title = '.\Illuminate\Support\Js::from((string) $this->getTitle())">{{ __('Cancel') }}</x-filament::link>
+                    </form>
+                @endif
                 @if ($label = $this->contextLabel())
                     <p class="mt-0.5 text-xs text-gray-500">{{ __('About :record', ['record' => $label]) }}</p>
                 @endif
             </div>
-            <div class="flex shrink-0 items-center gap-2">
-                <x-filament::link :href="\Packstub\Agents\Filament\Pages\Chats::getUrl()" size="sm" color="gray">{{ __('All chats') }}</x-filament::link>
-                <x-filament::button tag="a" :href="\Packstub\Agents\Filament\Pages\Chat::getUrl()" size="sm" color="gray" outlined icon="heroicon-m-plus">{{ __('New chat') }}</x-filament::button>
+            <div class="flex shrink-0 items-center gap-1">
+                @if ($conversation)
+                    @php($pinned = $this->pinned())
+                    <button type="button" wire:click="togglePin" class="fi-chat-header-tool {{ $pinned ? 'fi-chat-header-tool-on' : '' }}" title="{{ $pinned ? __('Unpin') : __('Pin') }}" aria-label="{{ $pinned ? __('Unpin') : __('Pin') }}" aria-pressed="{{ $pinned ? 'true' : 'false' }}">
+                        <x-filament::icon :icon="$pinned ? 'heroicon-s-bookmark' : 'heroicon-o-bookmark'" class="h-4 w-4" />
+                    </button>
+                    <button type="button" wire:click="export" class="fi-chat-header-tool" title="{{ __('Export as Markdown') }}" aria-label="{{ __('Export as Markdown') }}">
+                        <x-filament::icon icon="heroicon-o-arrow-down-tray" class="h-4 w-4" />
+                    </button>
+                @endif
+                @if ($embedded)
+                    <x-filament::link :href="$this->pageUrl()" target="_top" size="sm" color="gray" icon="heroicon-m-arrow-top-right-on-square">{{ __('Open full page') }}</x-filament::link>
+                    <x-filament::button tag="a" :href="\Packstub\Agents\Filament\Pages\Chat::getUrl(['embedded' => 1])" size="sm" color="gray" outlined icon="heroicon-m-plus">{{ __('New chat') }}</x-filament::button>
+                @else
+                    <x-filament::link :href="\Packstub\Agents\Filament\Pages\Chats::getUrl()" size="sm" color="gray" class="ms-1">{{ __('All chats') }}</x-filament::link>
+                    <x-filament::button tag="a" :href="\Packstub\Agents\Filament\Pages\Chat::getUrl()" size="sm" color="gray" outlined icon="heroicon-m-plus" class="ms-1">{{ __('New chat') }}</x-filament::button>
+                @endif
             </div>
         </div>
-
-        @php($context = $this->history())
 
         @if ($suggestions = $this->suggestions())
             {{-- A new chat: the assistant's name and its starter questions (Agent::suggestions), each sent on click. Gone
@@ -36,10 +84,11 @@
                         <button type="button" class="fi-chat-suggestion" x-on:click="enqueue(@js($suggestion))">{{ $suggestion }}</button>
                     @endforeach
                 </div>
+                <p class="fi-chat-empty-hint">{{ __('Type / for these questions, @ to mention a record.') }}</p>
             </div>
         @endif
 
-        <div class="flex flex-col gap-5" x-ref="transcript">
+        <div class="flex flex-col gap-5" x-ref="transcript" role="log" aria-live="polite" aria-relevant="additions text" aria-label="{{ __('Conversation') }}">
             @if ($context && $context['source'])
                 <p class="text-xs text-gray-500">
                     {{ __('Continued from') }}
@@ -48,20 +97,45 @@
                 </p>
             @endif
 
-            @foreach ($this->messages() as $message)
+            @foreach ($messages as $message)
                 @if ($message['role'] === 'user')
-                    <div class="fi-chat-exchange flex items-end justify-end gap-2">
-                        @if ($message['editable'])
-                            {{-- The last question: edit it and send it again (the answer is replaced). --}}
-                            <button type="button" class="fi-chat-exchange-tools rounded p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" title="{{ __('Edit and send again') }}" x-show="! busy" x-on:click="editLast(@js($message['text']))">
-                                <x-filament::icon icon="heroicon-m-pencil-square" class="h-4 w-4" />
-                            </button>
-                        @endif
-                        <div class="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-primary-600 px-4 py-2.5 text-sm text-white shadow-sm">{!! $message['html'] !!}</div>
-                    </div>
+                    @unless ($message['continuation'])
+                        <div class="fi-chat-exchange flex items-end justify-end gap-2" wire:key="message-{{ $message['id'] }}">
+                            @if ($message['editable'])
+                                {{-- The last question: edit it and send it again (the answer is kept as a version). --}}
+                                <button type="button" class="fi-chat-exchange-tools rounded p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" title="{{ __('Edit and send again') }}" aria-label="{{ __('Edit and send again') }}" x-show="! busy" x-on:click="editLast(@js($message['text']))">
+                                    <x-filament::icon icon="heroicon-m-pencil-square" class="h-4 w-4" />
+                                </button>
+                            @endif
+                            <div class="fi-chat-question max-w-[85%]">
+                                @if ($message['attachments'])
+                                    <div class="fi-chat-attachments">
+                                        @foreach ($message['attachments'] as $attachment)
+                                            @if ($attachment['image'] && $attachment['url'])
+                                                <a href="{{ $attachment['url'] }}" target="_blank" rel="noopener" class="fi-chat-attachment-image" title="{{ $attachment['name'] }}"><img src="{{ $attachment['url'] }}" alt="{{ $attachment['name'] }}" /></a>
+                                            @else
+                                                <a @if ($attachment['url']) href="{{ $attachment['url'] }}" target="_blank" rel="noopener" @endif class="fi-chat-attachment-file">
+                                                    <x-filament::icon icon="heroicon-m-paper-clip" class="h-3.5 w-3.5" />
+                                                    <span>{{ $attachment['name'] }}</span>
+                                                </a>
+                                            @endif
+                                        @endforeach
+                                    </div>
+                                @endif
+                                <div class="whitespace-pre-wrap rounded-2xl rounded-br-sm bg-primary-600 px-4 py-2.5 text-sm text-white shadow-sm">{!! $message['html'] !!}</div>
+                                @if ($message['mentions'])
+                                    <div class="fi-chat-mentions">
+                                        @foreach ($message['mentions'] as $mention)
+                                            <span class="fi-chat-mention" title="{{ $mention['ref'] }}">@ {{ $mention['label'] }}</span>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    @endunless
                     @if ($message['unanswered'])
                         {{-- Recorded but never answered (refused by a middleware, the provider failed, or the person stopped it): offer to send it again. --}}
-                        <div class="flex items-center justify-end gap-2 text-xs text-gray-500" x-show="! busy">
+                        <div class="flex items-center justify-end gap-2 text-xs text-gray-500" x-show="! busy" role="status">
                             <x-filament::icon icon="heroicon-m-exclamation-circle" class="h-4 w-4 {{ ($live['ended']['reason'] ?? null) === 'refused' ? 'text-warning-500' : 'text-danger-500' }}" />
                             <span>
                                 @if (($live['ended']['status'] ?? null) === \Packstub\Agents\Models\AgentTurn::STOPPED)
@@ -78,13 +152,39 @@
                         </div>
                     @endif
                 @else
-                    <div class="fi-chat-exchange flex flex-col gap-2">
-                        @if ($message['tools'])
-                            <div class="flex flex-wrap gap-1.5">
-                                @foreach ($message['tools'] as $tool)
-                                    @if ($tool['readOnly'])
-                                        <x-filament::badge color="gray" size="sm" icon="heroicon-m-magnifying-glass">{{ $tool['name'] }}</x-filament::badge>
-                                    @endif
+                    <div class="fi-chat-exchange flex flex-col gap-2 {{ $message['continued'] ? 'fi-chat-continued' : '' }}" wire:key="message-{{ $message['id'] }}">
+                        @php($reads = collect($message['tools'])->where('readOnly', true)->values())
+                        @if ($reads->isNotEmpty())
+                            {{-- What the assistant looked up before answering: one line per call, the arguments and the result folded under it. --}}
+                            <div class="fi-chat-timeline" x-data="{ open: null }">
+                                @foreach ($reads as $i => $tool)
+                                    <div class="fi-chat-timeline-row" wire:key="tool-{{ $message['id'] }}-{{ $tool['id'] ?? $i }}">
+                                        <button type="button" class="fi-chat-timeline-call" x-on:click="open = open === {{ $i }} ? null : {{ $i }}" x-bind:aria-expanded="open === {{ $i }}">
+                                            <x-filament::icon icon="heroicon-m-magnifying-glass" class="fi-chat-timeline-icon" />
+                                            <span class="fi-chat-timeline-name">{{ $tool['name'] }}</span>
+                                            @if ($summary = \Packstub\Agents\Filament\Pages\Chat::callSummary($tool['arguments']))
+                                                <span class="fi-chat-timeline-args">{{ $summary }}</span>
+                                            @endif
+                                            @if ($outcome = \Packstub\Agents\Filament\Pages\Chat::resultSummary($tool['result']))
+                                                <span class="fi-chat-timeline-result">{{ $outcome }}</span>
+                                            @endif
+                                            <x-filament::icon icon="heroicon-m-chevron-right" class="fi-chat-proposal-chevron" x-bind:class="{ 'fi-chat-proposal-chevron-open': open === {{ $i }} }" />
+                                        </button>
+                                        <div class="fi-chat-proposal-details" x-show="open === {{ $i }}" x-collapse x-cloak>
+                                            @if ($tool['arguments'])
+                                                <dl>
+                                                    @foreach ($tool['arguments'] as $key => $value)
+                                                        <dt>{{ \Illuminate\Support\Str::headline($key) }}</dt>
+                                                        <dd>{{ is_scalar($value) ? $value : json_encode($value, JSON_UNESCAPED_UNICODE) }}</dd>
+                                                    @endforeach
+                                                </dl>
+                                            @endif
+                                            @if (($result = \Packstub\Agents\Support\AgentChat::resultText($tool['result'])) !== null)
+                                                <p class="fi-chat-proposal-label">{{ __('Result') }}</p>
+                                                <pre>{{ \Illuminate\Support\Str::limit($result, 4000) }}</pre>
+                                            @endif
+                                        </div>
+                                    </div>
                                 @endforeach
                             </div>
                         @endif
@@ -94,7 +194,7 @@
                                 {{-- A proposed change: one question with a decision while it waits (the most prominent thing on the page),
                                      the outcome in the same place once decided. The exact call folds under the question. --}}
                                 @php($state = $tool['pending'] ? 'pending' : ($tool['rejected'] ? 'rejected' : 'approved'))
-                                <div class="fi-chat-proposal fi-chat-proposal-{{ $state }}" x-data="{ open: false }" wire:key="proposal-{{ $message['id'] }}-{{ $tool['id'] }}" data-state="{{ $state }}">
+                                <div class="fi-chat-proposal fi-chat-proposal-{{ $state }}" x-data="{ open: false }" wire:key="proposal-{{ $message['id'] }}-{{ $tool['id'] }}" data-state="{{ $state }}" role="group" aria-label="{{ $tool['question'] }}">
                                     <div class="fi-chat-proposal-row">
                                         <x-filament::icon :icon="$tool['pending'] ? 'heroicon-m-question-mark-circle' : ($tool['rejected'] ? 'heroicon-m-x-circle' : 'heroicon-m-check-circle')" class="fi-chat-proposal-icon" />
                                         <div class="fi-chat-proposal-body">
@@ -147,7 +247,7 @@
                         @endforeach
 
                         @if (trim($message['html']) !== '')
-                            <div class="fi-chat-md max-w-none text-sm text-gray-800 dark:text-gray-200">{!! $message['html'] !!}</div>
+                            <div class="fi-chat-md max-w-none text-sm text-gray-800 dark:text-gray-200" data-text="{{ $message['text'] }}">{!! $message['html'] !!}</div>
                         @endif
 
                         @foreach ($message['tables'] as $i => $table)
@@ -185,31 +285,71 @@
                         @if (trim($message['html']) !== '' || $message['stopped'])
                             {{-- The controls under an answer show when it is hovered or focused (always on a touch screen); a rating
                                  that was given stays visible, and so do the notes on how the answer ended. --}}
-                            <div class="fi-chat-answer-footer flex items-center gap-1 text-gray-400">
-                                <button type="button" wire:click="feedback('{{ $message['id'] }}', 'up')" class="rounded p-1 hover:text-success-600 {{ $message['rating'] === 'up' ? 'fi-chat-rated text-success-600' : 'fi-chat-answer-tool' }}" title="{{ __('Helpful') }}">
+                            <div class="fi-chat-answer-footer flex flex-wrap items-center gap-1 text-gray-400" x-data="{ note: false }">
+                                <button type="button" class="fi-chat-answer-tool rounded p-1 hover:text-gray-700 dark:hover:text-gray-200" title="{{ __('Copy') }}" aria-label="{{ __('Copy answer') }}" x-on:click="copy($event.currentTarget, @js($message['text']))">
+                                    <x-filament::icon icon="heroicon-m-clipboard-document" class="h-4 w-4" />
+                                </button>
+                                <button type="button" wire:click="feedback('{{ $message['id'] }}', 'up')" class="rounded p-1 hover:text-success-600 {{ $message['rating'] === 'up' ? 'fi-chat-rated text-success-600' : 'fi-chat-answer-tool' }}" title="{{ __('Helpful') }}" aria-label="{{ __('Helpful') }}" aria-pressed="{{ $message['rating'] === 'up' ? 'true' : 'false' }}">
                                     <x-filament::icon icon="heroicon-m-hand-thumb-up" class="h-4 w-4" />
                                 </button>
-                                <button type="button" wire:click="feedback('{{ $message['id'] }}', 'down')" class="rounded p-1 hover:text-danger-600 {{ $message['rating'] === 'down' ? 'fi-chat-rated text-danger-600' : 'fi-chat-answer-tool' }}" title="{{ __('Not helpful') }}">
+                                <button type="button" x-on:click="note = ! note; if (note) $nextTick(() => $refs.note.focus())" class="rounded p-1 hover:text-danger-600 {{ $message['rating'] === 'down' ? 'fi-chat-rated text-danger-600' : 'fi-chat-answer-tool' }}" title="{{ __('Not helpful') }}" aria-label="{{ __('Not helpful') }}" aria-pressed="{{ $message['rating'] === 'down' ? 'true' : 'false' }}">
                                     <x-filament::icon icon="heroicon-m-hand-thumb-down" class="h-4 w-4" />
                                 </button>
                                 @if ($message['regenerable'])
                                     {{-- The last answer: produce it again. --}}
-                                    <button type="button" class="fi-chat-answer-tool rounded p-1 hover:text-gray-700 dark:hover:text-gray-200" title="{{ __('Regenerate') }}" x-show="! busy" x-on:click="regenerate()">
+                                    <button type="button" class="fi-chat-answer-tool rounded p-1 hover:text-gray-700 dark:hover:text-gray-200" title="{{ __('Regenerate') }}" aria-label="{{ __('Regenerate') }}" x-show="! busy" x-on:click="regenerate()">
                                         <x-filament::icon icon="heroicon-m-arrow-path" class="h-4 w-4" />
                                     </button>
+                                @endif
+                                @if ($message['continuable'])
+                                    <x-filament::link tag="button" size="sm" icon="heroicon-m-forward" class="ms-1" x-show="! busy" x-on:click="continueAnswer()">{{ __('Continue') }}</x-filament::link>
+                                @endif
+                                @if ($message['regenerable'] && $lastQuestionId && $lastQuestionVersions > 0)
+                                    {{-- Earlier answers to this question: page through them, the current one being the newest. --}}
+                                    @php($versions = $this->versions($lastQuestionId))
+                                    <x-filament::dropdown placement="bottom-start" width="sm">
+                                        <x-slot name="trigger">
+                                            <button type="button" class="fi-chat-versions" x-show="! busy" aria-label="{{ __('Earlier answers') }}">
+                                                <x-filament::icon icon="heroicon-m-chevron-left" class="h-3.5 w-3.5" />
+                                                <span>{{ $lastQuestionVersions + 1 }}/{{ $lastQuestionVersions + 1 }}</span>
+                                                <x-filament::icon icon="heroicon-m-chevron-right" class="h-3.5 w-3.5" />
+                                            </button>
+                                        </x-slot>
+                                        <x-filament::dropdown.list>
+                                            @foreach ($versions as $n => $version)
+                                                <x-filament::dropdown.list.item wire:click="showVersion('{{ $lastQuestionId }}', {{ $version['id'] }})" x-on:click="close()" icon="heroicon-m-clock">
+                                                    <span class="fi-chat-version-item">
+                                                        <span class="fi-chat-version-label">{{ __('Answer :n', ['n' => $n + 1]) }} · {{ $version['at']?->format('H:i') }}</span>
+                                                        <span class="fi-chat-version-snippet">{{ \Illuminate\Support\Str::limit($version['text'], 80) }}</span>
+                                                    </span>
+                                                </x-filament::dropdown.list.item>
+                                            @endforeach
+                                            <x-filament::dropdown.list.item icon="heroicon-m-check" :disabled="true">
+                                                <span class="fi-chat-version-item"><span class="fi-chat-version-label">{{ __('Answer :n', ['n' => $lastQuestionVersions + 1]) }} · {{ __('current') }}</span></span>
+                                            </x-filament::dropdown.list.item>
+                                        </x-filament::dropdown.list>
+                                    </x-filament::dropdown>
                                 @endif
                                 <span class="fi-chat-answer-tool ml-1 text-xs">{{ $message['at']?->format('H:i') }}</span>
                                 @if ($message['stopped'])
                                     <span class="ml-1 text-xs">· {{ __('(stopped)') }}</span>
                                 @endif
                                 @if ($message['cutShort'])
-                                    {{-- The provider ended the answer early; Regenerate (above, on the last answer) produces it again. --}}
+                                    {{-- The provider ended the answer early; Regenerate (above, on the last answer) produces it again, Continue carries on. --}}
                                     <span class="ml-1 text-xs" title="{{ \Packstub\Agents\Support\AgentChat::cutShortText($message['cutShort']) }}">· {{ __('(cut short)') }}</span>
                                 @endif
                                 @if ($message['answeredBy'])
                                     {{-- The first choice refused the turn and a failover provider took it. --}}
                                     <span class="ml-1 text-xs" title="{{ __('The usual provider was unavailable; this answer came from :model.', ['model' => $message['answeredBy']['model']]) }}">· {{ __('(answered by :provider)', ['provider' => \Packstub\Agents\Support\AgentModels::providerLabel($message['answeredBy']['provider'])]) }}</span>
                                 @endif
+                                @if ($message['ratingNote'])
+                                    <span class="ml-1 text-xs italic" title="{{ __('Your note') }}">· “{{ \Illuminate\Support\Str::limit($message['ratingNote'], 60) }}”</span>
+                                @endif
+                                {{-- A thumbs-down may say what went wrong; the rating is saved with or without the note. --}}
+                                <form class="fi-chat-note basis-full" x-show="note" x-cloak x-on:submit.prevent="$wire.feedback(@js($message['id']), 'down', $refs.note.value); note = false">
+                                    <input x-ref="note" type="text" maxlength="1000" class="fi-chat-note-input" placeholder="{{ __('What went wrong? (optional)') }}" aria-label="{{ __('What went wrong?') }}" x-on:keydown.escape.prevent="note = false" />
+                                    <x-filament::button type="submit" size="xs" color="gray">{{ __('Send') }}</x-filament::button>
+                                </form>
                             </div>
                         @endif
                     </div>
@@ -217,15 +357,26 @@
             @endforeach
 
             {{-- Live areas. The question being sent is drawn client-side the moment it is sent (agent-chat.js) and
-                 handed over to the persisted transcript on re-render; the answer and the tool status come from the
-                 turn endpoint while the job produces them. --}}
+                 handed over to the persisted transcript on re-render; the answer, the tools and the status come from the
+                 turn's event stream (or the poll endpoint) while the job produces them. --}}
             <div wire:ignore class="flex justify-end empty:hidden">
                 <template x-if="sending">
                     <div class="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-primary-600 px-4 py-2.5 text-sm text-white shadow-sm" x-text="sending.text"></div>
                 </template>
             </div>
+            <div wire:ignore class="fi-chat-timeline fi-chat-timeline-live" x-show="turn !== null && live.tools.length > 0" x-cloak>
+                <template x-for="(tool, i) in live.tools" :key="i">
+                    <div class="fi-chat-timeline-row">
+                        <span class="fi-chat-timeline-call">
+                            <x-filament::icon icon="heroicon-m-magnifying-glass" class="fi-chat-timeline-icon" />
+                            <span class="fi-chat-timeline-name" x-text="tool"></span>
+                            <span class="fi-chat-timeline-result" x-show="i === live.tools.length - 1 && live.status.endsWith('…') && ! live.status.startsWith(@js(__('Writing')))" x-text="@js(__('running…'))"></span>
+                        </span>
+                    </div>
+                </template>
+            </div>
             <div wire:ignore class="fi-chat-md max-w-none text-sm text-gray-800 empty:hidden dark:text-gray-200" :class="{ 'fi-chat-streaming': turn !== null }" x-html="live.html" x-show="live.html !== ''"></div>
-            <div wire:ignore class="flex items-center gap-2 text-xs text-gray-500" x-show="turn !== null" x-cloak>
+            <div wire:ignore class="flex items-center gap-2 text-xs text-gray-500" x-show="turn !== null" x-cloak role="status" aria-live="polite">
                 <x-filament::loading-indicator class="h-4 w-4" />
                 <span x-text="live.status || @js(__('Thinking…'))"></span>
             </div>
@@ -273,7 +424,7 @@
             </button>
         </div>
 
-        <x-packstub-agents::composer method="send" :model="$model" class="sticky bottom-4 shadow-lg">
+        <x-packstub-agents::composer method="send" :model="$model" :attachments="$this->attachmentSettings()" :files="$attachments" :mentions="$this->canMention()" class="sticky bottom-4 shadow-lg">
             @if ($context && $context['meter'])
                 {{-- The context ring: how full the history window is, from history.meter_share on. Click for what fills it, what the chat cost so far, Compress now and Continue in a new chat. --}}
                 <x-slot:tools>
@@ -324,6 +475,10 @@
                                         <dd>{{ number_format($context['turns']['tool_calls']) }}</dd>
                                         <dt>{{ __('Time') }}</dt>
                                         <dd>{{ \Packstub\Agents\Support\AgentChat::duration($context['turns']['duration_ms']) }}</dd>
+                                        @if ($context['turns']['cost'] !== null)
+                                            <dt>{{ __('Cost') }}</dt>
+                                            <dd>{{ \Packstub\Agents\Support\AgentPricing::format($context['turns']['cost']) }}</dd>
+                                        @endif
                                     </dl>
                                 </div>
                             @endif

@@ -124,9 +124,9 @@ it('stops a running turn and keeps what it had written, with a marker', function
 
     app()->instance(AgentTurns::class, new class extends AgentTurns
     {
-        public function snapshot(AgentTurn $turn, ?string $text, ?string $statusText): void
+        public function snapshot(AgentTurn $turn, ?string $text, ?string $statusText, ?array $tools = null): void
         {
-            parent::snapshot($turn, $text, $statusText);
+            parent::snapshot($turn, $text, $statusText, $tools);
 
             if (str_contains((string) $text, 'First line')) {
                 $this->requestStop($turn);

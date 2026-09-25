@@ -164,3 +164,122 @@
 .fi-agent-tools-desc { color: var(--gray-500); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: help; }
 .fi-agent-tools-off { opacity: 0.45; }
 .fi-agent-tools-off label { cursor: not-allowed; }
+
+/* --- 1.11: code blocks, the tool timeline, attachments, mentions, the pickers, versions, notes, the header, the slide-over --- */
+
+/* Code in answers: a block with a copy button in its corner and light colouring; inline code stays as it was. */
+.fi-chat-md pre { position: relative; margin: 0.5rem 0 1rem; padding: 0.75rem 1rem; border-radius: 0.75rem; background: rgb(0 0 0 / 0.05); border: 1px solid rgb(0 0 0 / 0.06); font-size: 0.8125rem; line-height: 1.5; overflow-x: auto; }
+.dark .fi-chat-md pre { background: rgb(255 255 255 / 0.06); border-color: rgb(255 255 255 / 0.08); }
+.fi-chat-md pre code { display: block; padding: 0; background: transparent; border-radius: 0; font-size: inherit; white-space: pre; }
+.fi-chat-code-copy { position: absolute; top: 0.375rem; right: 0.375rem; padding: 0.125rem 0.5rem; border-radius: 0.375rem; font-size: 0.6875rem; font-weight: 600; color: var(--gray-500); background: rgb(255 255 255 / 0.8); border: 1px solid rgb(0 0 0 / 0.08); opacity: 0; transition: opacity 0.15s; cursor: pointer; }
+.dark .fi-chat-code-copy { color: var(--gray-300); background: rgb(0 0 0 / 0.4); border-color: rgb(255 255 255 / 0.1); }
+.fi-chat-md pre:hover .fi-chat-code-copy, .fi-chat-code-copy:focus-visible, .fi-chat-code-copy.fi-chat-copied { opacity: 1; }
+.fi-chat-code-copy.fi-chat-copied, .fi-chat-answer-tool.fi-chat-copied { color: var(--success-600); }
+@media (hover: none) { .fi-chat-code-copy { opacity: 1; } }
+.fi-chat-md .hl-k { color: #7c3aed; font-weight: 500; }
+.fi-chat-md .hl-s { color: #0f766e; }
+.fi-chat-md .hl-n { color: #b45309; }
+.fi-chat-md .hl-c { color: var(--gray-500); font-style: italic; }
+.dark .fi-chat-md .hl-k { color: #c4b5fd; }
+.dark .fi-chat-md .hl-s { color: #5eead4; }
+.dark .fi-chat-md .hl-n { color: #fcd34d; }
+.fi-chat-md blockquote { margin: 0.5rem 0 0.75rem; padding: 0.25rem 0 0.25rem 0.875rem; border-left: 3px solid rgb(0 0 0 / 0.12); color: var(--gray-600); }
+.dark .fi-chat-md blockquote { border-color: rgb(255 255 255 / 0.15); color: var(--gray-400); }
+.fi-chat-md hr { margin: 1rem 0; border: 0; border-top: 1px solid rgb(0 0 0 / 0.08); }
+.dark .fi-chat-md hr { border-color: rgb(255 255 255 / 0.1); }
+
+/* The tool timeline: what the assistant looked up before it answered, one line per call, folded details under each. */
+.fi-chat-timeline { display: flex; flex-direction: column; gap: 0.125rem; }
+.fi-chat-timeline-row { border-left: 2px solid rgb(0 0 0 / 0.08); padding-left: 0.625rem; }
+.dark .fi-chat-timeline-row { border-color: rgb(255 255 255 / 0.12); }
+.fi-chat-timeline-call { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.375rem; max-width: 100%; padding: 0.125rem 0.375rem 0.125rem 0; border-radius: 0.375rem; font-size: 0.75rem; color: var(--gray-500); text-align: start; cursor: pointer; }
+button.fi-chat-timeline-call:hover, button.fi-chat-timeline-call:focus-visible { color: var(--gray-800); outline: none; }
+.dark button.fi-chat-timeline-call:hover, .dark button.fi-chat-timeline-call:focus-visible { color: var(--gray-200); }
+.fi-chat-timeline-icon { width: 0.875rem; height: 0.875rem; flex: none; color: var(--gray-400); }
+.fi-chat-timeline-name { font-weight: 600; color: var(--gray-700); }
+.dark .fi-chat-timeline-name { color: var(--gray-300); }
+.fi-chat-timeline-args { color: var(--gray-500); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 24rem; }
+.fi-chat-timeline-result { color: var(--gray-400); }
+.fi-chat-timeline-result::before { content: '·'; margin-inline-end: 0.375rem; }
+.fi-chat-timeline-live .fi-chat-timeline-row:last-child .fi-chat-timeline-name { color: var(--primary-600); }
+.dark .fi-chat-timeline-live .fi-chat-timeline-row:last-child .fi-chat-timeline-name { color: var(--primary-400); }
+.fi-chat-timeline .fi-chat-proposal-details { margin-top: 0.25rem; margin-bottom: 0.5rem; }
+
+/* A question: its files above the bubble, the records it mentions under it. */
+.fi-chat-question { display: flex; flex-direction: column; align-items: flex-end; gap: 0.375rem; }
+.fi-chat-attachments { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.375rem; }
+.fi-chat-attachment-image { display: block; max-width: 14rem; border-radius: 0.75rem; overflow: hidden; border: 1px solid rgb(0 0 0 / 0.1); }
+.fi-chat-attachment-image img { display: block; width: 100%; height: auto; }
+.fi-chat-attachment-file { display: inline-flex; align-items: center; gap: 0.375rem; max-width: 16rem; padding: 0.25rem 0.625rem; border-radius: 9999px; border: 1px solid rgb(0 0 0 / 0.1); background: #fff; font-size: 0.75rem; color: var(--gray-700); }
+.fi-chat-attachment-file span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dark .fi-chat-attachment-file { border-color: rgb(255 255 255 / 0.12); background: rgb(255 255 255 / 0.05); color: var(--gray-300); }
+.fi-chat-mentions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.25rem; }
+.fi-chat-mention { font-size: 0.6875rem; padding: 0.0625rem 0.5rem; border-radius: 9999px; background: color-mix(in srgb, var(--primary-500) 12%, transparent); color: var(--primary-700); }
+.dark .fi-chat-mention { color: var(--primary-300); }
+
+/* The composer: the files picked for the next question, the attach button, the drop highlight. */
+.fi-agent-composer-files { display: flex; flex-wrap: wrap; gap: 0.375rem; padding: 0.625rem 1rem 0; }
+.fi-agent-composer-file { display: inline-flex; align-items: center; gap: 0.375rem; max-width: 14rem; padding: 0.25rem 0.375rem 0.25rem 0.5rem; border-radius: 0.5rem; border: 1px solid rgb(0 0 0 / 0.1); background: rgb(0 0 0 / 0.03); font-size: 0.75rem; color: var(--gray-700); }
+.dark .fi-agent-composer-file { border-color: rgb(255 255 255 / 0.12); background: rgb(255 255 255 / 0.05); color: var(--gray-300); }
+.fi-agent-composer-file img { width: 1.5rem; height: 1.5rem; object-fit: cover; border-radius: 0.25rem; }
+.fi-agent-composer-file button { display: inline-flex; padding: 0.125rem; border-radius: 9999px; color: var(--gray-400); cursor: pointer; }
+.fi-agent-composer-file button:hover { color: var(--danger-600); }
+.fi-agent-composer-attach { margin-inline-start: -0.5rem; align-self: flex-end; margin-bottom: 0.25rem; }
+.fi-agent-composer-dragging { border-color: var(--primary-500) !important; background: color-mix(in srgb, var(--primary-500) 5%, #fff) !important; }
+.dark .fi-agent-composer-dragging { background: color-mix(in srgb, var(--primary-500) 12%, transparent) !important; }
+
+/* The pickers over the composer: records for "@", starter questions for "/". */
+.fi-agent-composer { position: relative; }
+.fi-agent-picker { position: absolute; left: 0.75rem; right: 0.75rem; bottom: calc(100% + 0.375rem); z-index: 30; max-height: 16rem; overflow-y: auto; padding: 0.25rem; border-radius: 0.75rem; border: 1px solid rgb(0 0 0 / 0.1); background: #fff; box-shadow: 0 10px 30px rgb(0 0 0 / 0.12); }
+.dark .fi-agent-picker { border-color: rgb(255 255 255 / 0.1); background: var(--gray-900); box-shadow: 0 10px 30px rgb(0 0 0 / 0.5); }
+.fi-agent-picker-item { display: flex; width: 100%; align-items: baseline; justify-content: space-between; gap: 0.75rem; padding: 0.5rem 0.75rem; border-radius: 0.5rem; font-size: 0.875rem; color: var(--gray-800); text-align: start; cursor: pointer; }
+.dark .fi-agent-picker-item { color: var(--gray-200); }
+.fi-agent-picker-item-active { background: rgb(0 0 0 / 0.05); }
+.dark .fi-agent-picker-item-active { background: rgb(255 255 255 / 0.08); }
+.fi-agent-picker-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fi-agent-picker-detail { flex: none; font-size: 0.75rem; color: var(--gray-500); }
+.fi-agent-picker-empty { margin: 0; padding: 0.5rem 0.75rem; font-size: 0.8125rem; color: var(--gray-500); }
+.fi-chat-empty-hint { margin: 0.75rem 0 0; font-size: 0.75rem; color: var(--gray-400); }
+
+/* Under an answer: the version switcher, the thumbs-down note. */
+.fi-chat-versions { display: inline-flex; align-items: center; gap: 0.125rem; margin-inline-start: 0.25rem; padding: 0.125rem 0.25rem; border-radius: 0.375rem; font-size: 0.75rem; font-variant-numeric: tabular-nums; color: var(--gray-500); cursor: pointer; }
+.fi-chat-versions:hover, .fi-chat-versions:focus-visible { color: var(--gray-800); background: rgb(0 0 0 / 0.05); outline: none; }
+.dark .fi-chat-versions:hover, .dark .fi-chat-versions:focus-visible { color: var(--gray-200); background: rgb(255 255 255 / 0.08); }
+.fi-chat-version-item { display: flex; flex-direction: column; min-width: 0; }
+.fi-chat-version-label { font-weight: 500; }
+.fi-chat-version-snippet { font-size: 0.75rem; color: var(--gray-500); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fi-chat-note { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.375rem; }
+.fi-chat-note-input, .fi-chat-rename-input { flex: 1; min-width: 0; padding: 0.375rem 0.625rem; border-radius: 0.5rem; border: 1px solid rgb(0 0 0 / 0.12); background: #fff; font-size: 0.8125rem; color: var(--gray-900); }
+.fi-chat-note-input:focus, .fi-chat-rename-input:focus { outline: none; border-color: var(--primary-500); box-shadow: 0 0 0 1px var(--primary-500); }
+.dark .fi-chat-note-input, .dark .fi-chat-rename-input { border-color: rgb(255 255 255 / 0.15); background: rgb(255 255 255 / 0.05); color: #fff; }
+.fi-chat-rename-input { font-size: 1.125rem; font-weight: 600; max-width: 28rem; }
+.fi-chat-continued { margin-top: -0.75rem; }
+.fi-chat-continued > .fi-chat-timeline:first-child { margin-top: 0.75rem; }
+
+/* The header: the title with rename, the pin, the export. */
+.fi-chat-header-tool { display: inline-flex; padding: 0.375rem; border-radius: 0.5rem; color: var(--gray-400); cursor: pointer; }
+.fi-chat-header-tool:hover, .fi-chat-header-tool:focus-visible { color: var(--gray-800); background: rgb(0 0 0 / 0.05); outline: none; }
+.dark .fi-chat-header-tool:hover, .dark .fi-chat-header-tool:focus-visible { color: var(--gray-200); background: rgb(255 255 255 / 0.08); }
+.fi-chat-header-tool-on { color: var(--primary-600); }
+.dark .fi-chat-header-tool-on { color: var(--primary-400); }
+
+/* Embedded in the slide-over: the page fills the frame. */
+.fi-chat-embedded { max-width: none; padding: 1rem 1rem 0; }
+.fi-chat-embedded .fi-chat-header h1 { font-size: 1rem; }
+
+/* The slide-over the "Ask …" button opens over any page: the chat in a frame on the right, the page still visible. */
+.fi-agent-drawer { position: fixed; inset: 0; z-index: 50; display: flex; justify-content: flex-end; }
+.fi-agent-drawer-backdrop { position: absolute; inset: 0; background: rgb(0 0 0 / 0.3); }
+.fi-agent-drawer-panel { position: relative; display: flex; flex-direction: column; width: min(32rem, 100vw); height: 100%; background: #fff; box-shadow: -10px 0 40px rgb(0 0 0 / 0.2); }
+.dark .fi-agent-drawer-panel { background: var(--gray-950); }
+.fi-agent-drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.625rem 0.75rem 0.625rem 1rem; border-bottom: 1px solid rgb(0 0 0 / 0.08); font-size: 0.875rem; font-weight: 600; color: var(--gray-900); }
+.dark .fi-agent-drawer-head { border-color: rgb(255 255 255 / 0.1); color: #fff; }
+.fi-agent-drawer-head span { display: inline-flex; align-items: center; gap: 0.375rem; }
+.fi-agent-drawer-head svg { width: 1.125rem; height: 1.125rem; color: var(--primary-600); }
+.fi-agent-drawer-actions { display: inline-flex; align-items: center; gap: 0.125rem; }
+.fi-agent-drawer-frame { flex: 1; width: 100%; border: 0; background: transparent; }
+.fi-agent-drawer-kbd { margin-inline-start: 0.375rem; padding: 0.0625rem 0.375rem; border-radius: 0.25rem; border: 1px solid rgb(0 0 0 / 0.12); font-size: 0.6875rem; font-family: ui-monospace, monospace; color: var(--gray-500); }
+.dark .fi-agent-drawer-kbd { border-color: rgb(255 255 255 / 0.15); }
+
+/* The sidebar: pinned chats first, with a bookmark. */
+.fi-sidebar-chats-pin { width: 0.875rem; height: 0.875rem; flex: none; color: var(--primary-500); }

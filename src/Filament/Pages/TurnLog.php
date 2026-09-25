@@ -13,14 +13,19 @@ use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Str;
 use Packstub\Agents\Facades\Agents;
+use Packstub\Agents\Filament\Widgets\TurnsChart;
+use Packstub\Agents\Filament\Widgets\TurnStats;
 use Packstub\Agents\Models\AgentLimit;
+use Packstub\Agents\Models\AgentMessageFeedback;
 use Packstub\Agents\Models\AgentTurn;
+use Packstub\Agents\Support\AgentPricing;
 
 /**
- * AI turns (the operator panel): every answer as one row — who asked and
- * where, the provider and model that answered, tokens in and out, the tools
- * called, the wall time and how it ended. The same record the log line
- * carries, without the log. Gated like the AI limits resource.
+ * AI turns (the operator panel): the week's numbers and a chart of turns
+ * per day over every answer as one row — who asked and where, the provider
+ * and model that answered, tokens in and out, the cost, the tools called,
+ * the wall time, how it ended and how the answer was rated. The same record
+ * the log line carries, without the log. Gated like the AI limits resource.
  */
 class TurnLog extends Page implements HasTable
 {
@@ -54,6 +59,16 @@ class TurnLog extends Page implements HasTable
         return __('Every answer of the assistant: who asked, which model answered, what it cost and how it ended.');
     }
 
+    protected function getHeaderWidgets(): array
+    {
+        return [TurnStats::class, TurnsChart::class];
+    }
+
+    public function getHeaderWidgetsColumns(): int|array
+    {
+        return 1;
+    }
+
     public function table(Table $table): Table
     {
         $number = fn ($state) => $state === null ? null : number_format((int) $state);
@@ -85,6 +100,9 @@ class TurnLog extends Page implements HasTable
                     ->state(fn (AgentTurn $turn) => $number($turn->tokensIn())),
                 TextColumn::make('tokens_out')->label(__('Tokens out'))->placeholder('—')->alignEnd()
                     ->state(fn (AgentTurn $turn) => $number($turn->tokensOut())),
+                TextColumn::make('cost')->label(__('Cost'))->placeholder('—')->alignEnd()->sortable()
+                    ->formatStateUsing(fn ($state) => AgentPricing::format($state === null ? null : (float) $state))
+                    ->toggleable(),
                 TextColumn::make('tool_calls')->label(__('Tools'))->alignEnd()
                     ->state(fn (AgentTurn $turn) => count($turn->tool_calls ?? []))
                     ->tooltip(fn (AgentTurn $turn) => implode(', ', $turn->tool_calls ?? []) ?: null),
@@ -92,6 +110,12 @@ class TurnLog extends Page implements HasTable
                     ->formatStateUsing(fn ($state) => number_format(((int) $state) / 1000, 1).' s'),
                 TextColumn::make('finish_reason')->label(__('Ended'))->placeholder('—')
                     ->formatStateUsing(fn (string $state) => Str::headline($state)),
+                TextColumn::make('rating')->label(__('Rating'))->placeholder('—')
+                    ->state(fn (AgentTurn $turn) => self::ratingOf($turn)['rating'] ?? null)
+                    ->formatStateUsing(fn (string $state) => $state === 'up' ? __('Helpful') : __('Not helpful'))
+                    ->badge()
+                    ->color(fn (string $state) => $state === 'up' ? 'success' : 'danger')
+                    ->tooltip(fn (AgentTurn $turn) => self::ratingOf($turn)['note'] ?? null),
                 TextColumn::make('error')->label(__('Error'))->placeholder('—')->limit(50)
                     ->tooltip(fn (AgentTurn $turn) => $turn->error)
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -103,6 +127,9 @@ class TurnLog extends Page implements HasTable
                         ->mapWithKeys(fn (string $status) => [$status => self::statusLabel($status)])->all()),
                 SelectFilter::make('provider')->label(__('Provider'))
                     ->options(fn () => AgentTurn::query()->whereNotNull('provider')->distinct()->orderBy('provider')->pluck('provider', 'provider')->all()),
+                SelectFilter::make('rating')->label(__('Rating'))
+                    ->options(['up' => __('Helpful'), 'down' => __('Not helpful')])
+                    ->query(fn ($query, array $data) => filled($data['value'] ?? null) ? $query->whereIn('id', AgentMessageFeedback::query()->select('turn_id')->where('rating', $data['value'])->whereNotNull('turn_id')) : $query),
             ])
             ->emptyStateHeading(__('No turns yet'))
             ->emptyStateDescription(__('Turns appear here as soon as someone asks the assistant a question.'));
@@ -112,5 +139,17 @@ class TurnLog extends Page implements HasTable
     public static function statusLabel(string $status): string
     {
         return AgentTurn::statusLabel($status);
+    }
+
+    /**
+     * How the answer of a turn was rated (the newest rating that names the turn), with the person's note.
+     *
+     * @return array{rating: string, note: ?string}|null
+     */
+    public static function ratingOf(AgentTurn $turn): ?array
+    {
+        $feedback = AgentMessageFeedback::query()->where('turn_id', $turn->id)->latest('id')->first(['rating', 'note']);
+
+        return $feedback ? ['rating' => (string) $feedback->rating, 'note' => $feedback->note] : null;
     }
 }
