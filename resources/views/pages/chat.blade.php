@@ -386,7 +386,7 @@
                         <span class="fi-chat-timeline-call">
                             <x-filament::icon icon="heroicon-m-magnifying-glass" class="fi-chat-timeline-icon" />
                             <span class="fi-chat-timeline-name" x-text="tool"></span>
-                            <span class="fi-chat-timeline-result" x-show="i === live.tools.length - 1 && live.status.endsWith('…') && ! live.status.startsWith(@js(__('Writing')))" x-text="@js(__('running…'))"></span>
+                            <span class="fi-chat-timeline-result" x-show="i === live.tools.length - 1 && live.status.endsWith('…') && ! live.status.startsWith(@js(__('Writing'))) && ! live.status.startsWith(@js(__('Reasoning')))" x-text="@js(__('running…'))"></span>
                         </span>
                     </div>
                 </template>

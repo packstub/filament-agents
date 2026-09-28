@@ -6,7 +6,7 @@ All notable changes to `packstub/filament-agents` are documented here.
 
 The panel follows the engine to laravel/ai 1.0 and laravel/mcp 1.0: the model's reasoning folds above an answer, an answer the provider gave up on is kept and marked, the status line says when the model reasons, and app middleware wraps each model round-trip.
 
-Upgrading: the plugin requires `packstub/agents` ^1.5, which pulls laravel/ai 1.0 and laravel/mcp 1.0 (Composer updates them); run the migrations (one, rewriting `agent_conversation_messages` into steps — decide or abandon a proposal still waiting first). Your own middleware, if any, moves from `handle(AgentPrompt $prompt, Closure $next)` to `handle(PendingStep $step, Closure $next)`; a turn's usage reads `input_tokens` and `output_tokens`; a proposal decided with the buttons continues in the same answer bubble. The details are in the [engine's changelog](https://github.com/packstub/agents/blob/main/CHANGELOG.md) and under [Middleware](https://packstub.dev/docs/filament-agents/assistant#middleware).
+Upgrading: the plugin requires `packstub/agents` ^1.5, which pulls laravel/ai 1.0 and laravel/mcp 1.0 (Composer updates them); run the migrations (one, rewriting `agent_conversation_messages` into steps — decide or abandon a proposal still waiting first; with `run_migrations => false`, publish the migrations again and put `add_steps_to_agent_conversation_messages_table` next to the tenant ones). Your own middleware, if any, moves from `handle(AgentPrompt $prompt, Closure $next)` to `handle(PendingStep $step, Closure $next)`; a turn's usage reads `input_tokens` and `output_tokens`; a proposal decided with the buttons continues in the same answer bubble. The details are in the [engine's changelog](https://github.com/packstub/agents/blob/main/CHANGELOG.md) and under [Middleware](https://packstub.dev/docs/filament-agents/assistant#middleware).
 
 ### Added
 
@@ -18,6 +18,7 @@ Upgrading: the plugin requires `packstub/agents` ^1.5, which pulls laravel/ai 1.
 
 - Requires `packstub/agents` ^1.5 (laravel/ai ^1.0, laravel/mcp ^1.0).
 - `AgentsPlugin::middleware()` takes middleware of the per-step shape; the docs and the docblock say so.
+- The live tool timeline no longer tags the last tool `running…` while the status line says `Reasoning…`.
 - The turn log, the stats widget and the context popup read a turn's tokens through the engine's `AgentUsage`, so rows written before and after the upgrade add up the same.
 
 ## 1.11.0 — 2026-09-25
