@@ -37,11 +37,16 @@ function longChat(object $user, int $turns, int $resultBytes = 400): string
             'role' => 'assistant',
             'content' => "Answer {$i}: there are {$i} widgets live.",
             'attachments' => '[]',
-            'tool_calls' => json_encode([['id' => "call-{$i}", 'name' => 'list_widgets', 'arguments' => ['status' => 'live']]]),
-            'tool_results' => json_encode([['id' => "call-{$i}", 'name' => 'list_widgets', 'arguments' => ['status' => 'live'], 'result' => str_repeat('x', $resultBytes)]]),
+            // Two model round-trips, as laravel/ai 1.0 stores them: the tool call with its result, then the answer.
+            'steps' => json_encode([
+                ['content' => '', 'reasoning' => '', 'replay_blocks' => [], 'provider_tool_calls' => [], 'tool_calls' => [
+                    ['id' => "call-{$i}", 'name' => 'list_widgets', 'arguments' => ['status' => 'live'], 'result_id' => null, 'result' => str_repeat('x', $resultBytes)],
+                ]],
+                ['content' => "Answer {$i}: there are {$i} widgets live.", 'reasoning' => '', 'replay_blocks' => [], 'provider_tool_calls' => [], 'tool_calls' => []],
+            ]),
             'usage' => '[]',
             'meta' => '[]',
-            'approval_state' => null,
+            'status' => 'completed',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -82,7 +87,7 @@ it('marks the newest answer in front of the still-pruned turns as an Anthropic c
 
     $id = longChat($user, 5);
     $store = app(AgentConversationStore::class);
-    $marked = fn ($messages) => $messages->filter(fn ($m) => $m instanceof AssistantMessage && $m->providerContentBlocks !== [])->values();
+    $marked = fn ($messages) => $messages->filter(fn ($m) => $m instanceof AssistantMessage && $m->replayBlocks !== [])->values();
 
     // No provider set: nothing in the history is tagged.
     expect($marked($store->getLatestConversationMessages($id, 40)))->toHaveCount(0);
@@ -95,8 +100,8 @@ it('marks the newest answer in front of the still-pruned turns as an Anthropic c
 
     expect($marks)->toHaveCount(1)
         ->and($marks[0]->content)->toBe('Answer 3: there are 3 widgets live.')
-        ->and($marks[0]->providerContentBlocks)->toBe([['type' => 'text', 'text' => 'Answer 3: there are 3 widgets live.', 'cache_control' => ['type' => 'ephemeral']]])
-        ->and($marks[0]->providerContentBlocksProvider)->toBe('anthropic')
+        ->and($marks[0]->replayBlocks)->toBe([['type' => 'text', 'text' => 'Answer 3: there are 3 widgets live.', 'cache_control' => ['type' => 'ephemeral']]])
+        ->and($marks[0]->replayBlocksProvider)->toBe('anthropic')
         ->and($marks[0]->toolCalls)->toHaveCount(0);
 
     // Everything after it is what still changes from turn to turn: the last two turns, results verbatim.
@@ -152,7 +157,7 @@ it('folds what falls out of the window into a rolling summary the model reads fi
         usleep(1100);
         $store->storeQuestion($id, $user, WidgetAgent::class, "Question {$i}");
         usleep(1100);
-        DB::table('agent_conversation_messages')->insert(['id' => (string) Str::uuid7(), 'conversation_id' => $id, 'agent' => WidgetAgent::class, 'role' => 'assistant', 'content' => str_repeat("Answer {$i}. ", 40), 'attachments' => '[]', 'tool_calls' => '[]', 'tool_results' => '[]', 'usage' => '[]', 'meta' => '[]', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('agent_conversation_messages')->insert(['id' => (string) Str::uuid7(), 'conversation_id' => $id, 'agent' => WidgetAgent::class, 'role' => 'assistant', 'content' => str_repeat("Answer {$i}. ", 40), 'attachments' => '[]', 'steps' => '[]', 'status' => 'completed', 'usage' => '[]', 'meta' => '[]', 'created_at' => now(), 'updated_at' => now()]);
     }
     $messages = $store->getLatestConversationMessages($id, 40);
 

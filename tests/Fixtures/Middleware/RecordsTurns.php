@@ -3,10 +3,12 @@
 namespace Packstub\Agents\Tests\Fixtures\Middleware;
 
 use Closure;
-use Laravel\Ai\Prompts\AgentPrompt;
-use Laravel\Ai\Responses\AgentResponse;
+use Laravel\Ai\Gateway\StepResponse;
+use Laravel\Ai\Messages\UserMessage;
+use Laravel\Ai\PendingStep;
+use Packstub\Agents\Ai\Middleware\EnforceBudget;
 
-/** An app middleware: sees the prompt on the way in, revises it, and reads the answer on the way out. */
+/** An app middleware: sees the question on the way in (first step), revises it, and reads each step's answer on the way out. */
 class RecordsTurns
 {
     /** @var list<string> */
@@ -24,13 +26,21 @@ class RecordsTurns
         static::$suffix = null;
     }
 
-    public function handle(AgentPrompt $prompt, Closure $next)
+    public function handle(PendingStep $step, Closure $next)
     {
-        static::$prompts[] = $prompt->prompt;
+        $question = EnforceBudget::question($step);
 
-        $prompt = static::$suffix !== null ? $prompt->append(static::$suffix) : $prompt;
+        if ($step->isFirstStep() && $question !== null) {
+            static::$prompts[] = $question;
+        }
 
-        return $next($prompt)->then(function (AgentResponse $response): void {
+        if (static::$suffix !== null && $question !== null) {
+            $messages = $step->messages;
+            $messages[array_key_last($messages)] = new UserMessage($question.PHP_EOL.PHP_EOL.static::$suffix);
+            $step = $step->withMessages($messages);
+        }
+
+        return $next($step)->then(function (StepResponse $response): void {
             static::$answers[] = $response->text;
         });
     }

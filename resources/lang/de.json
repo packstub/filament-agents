@@ -1,6 +1,7 @@
 {
     "(answered by :provider)": "(beantwortet von :provider)",
     "(cut short)": "(abgebrochen)",
+    "(interrupted)": "(unterbrochen)",
     "(stopped)": "(gestoppt)",
     "/ min": "/ Min",
     ":count this week": ":count diese Woche",
@@ -116,6 +117,7 @@
     "Rating": "Bewertung",
     "Read": "Lesen",
     "Read: look things up, reports": "Lesen: Nachschlagen, Berichte",
+    "Reasoning": "Überlegung",
     "Records": "Datensätze",
     "Regenerate": "Neu erzeugen",
     "Reject": "Ablehnen",

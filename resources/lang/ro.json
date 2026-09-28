@@ -1,6 +1,7 @@
 {
     "(answered by :provider)": "(răspuns de :provider)",
     "(cut short)": "(întrerupt)",
+    "(interrupted)": "(întrerupt)",
     "(stopped)": "(oprit)",
     "/ min": "/ min",
     ":count this week": ":count săptămâna aceasta",
@@ -116,6 +117,7 @@
     "Rating": "Evaluare",
     "Read": "Citire",
     "Read: look things up, reports": "Citire: căutări, rapoarte",
+    "Reasoning": "Raționament",
     "Records": "Înregistrări",
     "Regenerate": "Regenerează",
     "Reject": "Respinge",

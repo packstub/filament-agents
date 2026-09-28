@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Queue;
 use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Models\ConversationMessage;
 use Laravel\Ai\Responses\Data\FinishReason;
-use Laravel\Ai\Responses\Data\Usage;
+use Laravel\Ai\Responses\Data\TextUsage;
 use Laravel\Ai\Streaming\Events\StreamEnd;
 use Packstub\Agents\AgentsPlugin;
 use Packstub\Agents\Filament\Pages\Chat;
@@ -324,7 +324,7 @@ it('marks an answer the provider ended early so it can be produced again', funct
     actingAs($user);
     Queue::fake();
 
-    $end = fn (FinishReason $reason) => new StreamEnd('e', $reason->value, new Usage, time());
+    $end = fn (FinishReason $reason) => new StreamEnd('e', $reason->value, new TextUsage, time());
 
     // A stream without its end event was dropped; the model's limit and the provider's filter end an answer early too.
     expect(AgentTurns::cutShortReason(null))->toBe('dropped')

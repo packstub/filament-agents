@@ -84,7 +84,7 @@ it('serves MCP over HTTP with a read or write token', function () {
 
     // A read token cannot write, even for a person whose role could: the write tool is not on its list.
     postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 3, 'method' => 'tools/call', 'params' => ['name' => 'rename-widget', 'arguments' => ['id' => 1, 'name' => 'Renamed']]], $headers($read))
-        ->assertOk()
+        ->assertStatus(400) // a JSON-RPC error, as laravel/mcp 1.0 reports it
         ->assertJsonPath('error.message', 'Tool [rename-widget] not found.');
     expect(app(RenameWidget::class)->tokenRefusal())->toBe('This access token is read-only.');
 
@@ -114,7 +114,7 @@ it('limits a scoped token to the tools it names, in the list and by name', funct
     expect(Widget::query()->find(1)->name)->toBe('Scoped');
 
     // A tool outside the scope is unknown to the server, even though the role allows it.
-    $call(3, 'list-widgets', [], $scoped)->assertOk()->assertJsonPath('error.message', 'Tool [list-widgets] not found.');
+    $call(3, 'list-widgets', [], $scoped)->assertStatus(400)->assertJsonPath('error.message', 'Tool [list-widgets] not found.');
 
     // The gate itself, as an app's own tool would see it.
     $refusal = app(ListWidgets::class)->tokenRefusal();

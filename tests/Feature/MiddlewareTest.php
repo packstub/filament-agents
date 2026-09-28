@@ -4,12 +4,13 @@ use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
-use Laravel\Ai\AiManager;
-use Laravel\Ai\Approvals\Decision;
-use Laravel\Ai\Approvals\Decisions;
+use Laravel\Ai\Messages\Message;
+use Laravel\Ai\Messages\ToolResultMessage;
+use Laravel\Ai\Messages\UserMessage;
 use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Models\ConversationMessage;
-use Laravel\Ai\Prompts\AgentPrompt;
+use Laravel\Ai\PendingStep;
+use Laravel\Ai\Responses\Data\ToolResult;
 use Packstub\Agents\AgentsPlugin;
 use Packstub\Agents\Ai\Middleware\AttachContext;
 use Packstub\Agents\Ai\Middleware\EnforceBudget;
@@ -66,29 +67,36 @@ it('runs the app middleware on every turn: the prompt on the way in, the answer 
     expect(ConversationMessage::query()->where('role', 'user')->value('content'))->toBe('How many widgets are live?');
 });
 
-it('attaches the dynamic block to the question, after the app middleware, and leaves an approval turn alone', function () {
+it('attaches the dynamic block to the question on every step, after the app middleware, and leaves an approval turn alone', function () {
     actingAs($this->user(['name' => 'Grace Hopper']));
     $agent = Agents::agent();
-    $provider = app(AiManager::class)->textProviderFor($agent, 'anthropic');
-    $through = fn (AgentPrompt $prompt) => (new AttachContext)->handle($prompt, fn (AgentPrompt $sent) => $sent);
+    $middleware = new AttachContext($agent);
+    $step = fn (int $number, array $messages) => new PendingStep($number, false, 'anthropic', 'claude-opus-5', $agent->instructions(), $messages, [], null, null, invocationId: 'inv-1');
+    $through = fn (PendingStep $pending) => $middleware->handle($pending, fn (PendingStep $sent) => $sent);
+    $results = new ToolResultMessage(collect([new ToolResult('call-1', 'list-widgets', [], '[]')]));
 
-    $sent = $through(new AgentPrompt($agent, 'How many widgets are live?', [], $provider, 'claude-opus-5'));
+    $sent = $through($step(0, [new UserMessage('How many widgets are live?')]));
 
-    // The block leads, the question closes the prompt; the system prompt stays static.
-    expect($sent->prompt)->toStartWith('## Now')
+    // The block leads, the question closes the message; the system prompt stays static.
+    expect($sent->messages[0]->content)->toStartWith('## Now')
         ->toContain('Person asking: Grace Hopper')
         ->toEndWith("\n\nHow many widgets are live?")
-        ->and($agent->instructions())->not->toContain('## Now');
+        ->and($sent->instructions)->not->toContain('## Now');
 
-    // An approval turn has no question to carry the block: the prompt goes through unchanged.
-    $decisions = new AgentPrompt($agent, '', [], $provider, 'claude-opus-5', approvalDecisions: Decisions::from(['call-1' => Decision::approve()]));
-    expect($through($decisions))->toBe($decisions);
+    // The tool step of the same turn reads the same question, block included; the tool results stay as they are.
+    $next = $through($step(1, [new UserMessage('How many widgets are live?'), new Message('assistant', ''), $results]));
+    expect($next->messages[0]->content)->toBe($sent->messages[0]->content)
+        ->and($next->messages[2])->toBe($results);
+
+    // An approval turn starts on a tool result, with no question to carry the block: the messages go through unchanged.
+    $resume = $step(0, [new UserMessage('Rename Alpha.'), new Message('assistant', ''), $results]);
+    expect((new AttachContext($agent))->handle($resume, fn (PendingStep $sent) => $sent))->toBe($resume);
 });
 
 it('lets a middleware refuse a turn: the question keeps a Retry, nothing is stored or billed', function () {
     actingAs($this->user());
     Queue::fake();
-    config(['packstub-agents.middleware' => [function (AgentPrompt $prompt, Closure $next) {
+    config(['packstub-agents.middleware' => [function (PendingStep $step, Closure $next) {
         throw new TurnRefused('Not during the audit.');
     }]]);
 
@@ -120,8 +128,8 @@ it('enforces the budget when the turn runs, whatever queued it', function () {
     $other = Conversation::query()->create(['id' => (string) Str::uuid(), 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id, 'title' => 'Earlier']);
     ConversationMessage::query()->create([
         'id' => (string) Str::uuid(), 'conversation_id' => $other->id, 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id,
-        'agent' => WidgetAgent::class, 'role' => 'assistant', 'content' => 'Earlier answer.', 'attachments' => [], 'meta' => [], 'tool_calls' => [], 'tool_results' => [],
-        'usage' => ['prompt_tokens' => 10, 'completion_tokens' => 10],
+        'agent' => WidgetAgent::class, 'role' => 'assistant', 'content' => 'Earlier answer.', 'attachments' => [], 'meta' => [], 'steps' => [], 'status' => 'completed',
+        'usage' => ['input_tokens' => 10, 'output_tokens' => 10],
     ]);
 
     WidgetAgent::fake(['Should never be produced.']);
@@ -150,7 +158,7 @@ it('counts a turn against the per-minute limit when it runs, not when it is queu
 });
 
 it('takes the middleware list from the plugin, after the ones in config', function () {
-    $closure = fn (AgentPrompt $prompt, Closure $next) => $next($prompt);
+    $closure = fn (PendingStep $step, Closure $next) => $next($step);
     config(['packstub-agents.middleware' => [RecordsTurns::class]]);
 
     $plugin = AgentsPlugin::make()->middleware([$closure]);

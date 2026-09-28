@@ -177,9 +177,10 @@ class AgentsPlugin implements Plugin
     }
 
     /**
-     * The app's own agent middleware, run on every turn after the package's guard rails: classes with
-     * handle(AgentPrompt $prompt, Closure $next), instances, or closures of that shape (see laravel/ai's
-     * make:agent-middleware). Throw Packstub\Agents\Exceptions\TurnRefused to stop a turn with a message.
+     * The app's own agent middleware, run on every model round-trip of a turn after the package's guard rails:
+     * classes with handle(PendingStep $step, Closure $next), instances, or closures of that shape (see laravel/ai's
+     * make:agent-middleware; $step->isFirstStep() tells the question from the tool steps). Throw
+     * Packstub\Agents\Exceptions\TurnRefused to stop a turn with a message.
      *
      * @param  list<class-string|object|Closure>  $middleware
      */

@@ -8,10 +8,10 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Laravel\Ai\Events\AgentFailedOver;
 use Laravel\Ai\Exceptions\ProviderOverloadedException;
-use Laravel\Ai\Prompts\AgentPrompt;
+use Laravel\Ai\PendingStep;
 use Laravel\Ai\Responses\Data\Meta;
+use Laravel\Ai\Responses\Data\TextUsage;
 use Laravel\Ai\Responses\Data\ToolCall;
-use Laravel\Ai\Responses\Data\Usage;
 use Laravel\Ai\Responses\TextResponse;
 use Monolog\Handler\TestHandler;
 use Packstub\Agents\AgentsPlugin;
@@ -103,7 +103,8 @@ it('records what a turn cost and how it went on its row, and logs one line', fun
     // One tool round-trip, then the answer, with the token usage the provider reported for each step.
     WidgetAgent::fake([
         new ToolCall('call-1', 'list-widgets', ['filters' => []]),
-        new TextResponse('Two are live.', new Usage(promptTokens: 120, completionTokens: 30, cacheReadInputTokens: 400, reasoningTokens: 5), new Meta($resolved['provider'], $resolved['model'])),
+        // laravel/ai 1.0 counts inclusively: the input holds the cached tokens, the output the reasoning.
+        new TextResponse('Two are live.', new TextUsage(inputTokens: 520, outputTokens: 35, cacheReadInputTokens: 400, reasoningTokens: 5), new Meta($resolved['provider'], $resolved['model'])),
     ]);
     $job->handle(app(AgentTurns::class));
 
@@ -112,7 +113,7 @@ it('records what a turn cost and how it went on its row, and logs one line', fun
     expect($turn->status)->toBe(AgentTurn::DONE)
         ->and($turn->provider)->toBe($resolved['provider'])
         ->and($turn->model_name)->toBe($resolved['model'])
-        ->and($turn->usage)->toMatchArray(['prompt_tokens' => 120, 'completion_tokens' => 30, 'cache_read_input_tokens' => 400, 'reasoning_tokens' => 5])
+        ->and($turn->usage)->toMatchArray(['input_tokens' => 520, 'output_tokens' => 35, 'cache_read_input_tokens' => 400, 'reasoning_tokens' => 5])
         ->and($turn->tokensIn())->toBe(520)
         ->and($turn->tokensOut())->toBe(35)
         ->and($turn->tool_calls)->toBe(['list-widgets'])
@@ -124,7 +125,7 @@ it('records what a turn cost and how it went on its row, and logs one line', fun
     expect($record->message)->toContain("Agent turn done: {$resolved['provider']}/{$resolved['model']}, 520 tokens in, 35 out, 1 tool call")
         ->and($record->context)->toMatchArray([
             'turn' => $turn->id, 'conversation' => $turn->conversation_id, 'user' => $user->id, 'status' => 'done',
-            'provider' => $resolved['provider'], 'model' => $resolved['model'], 'prompt_tokens' => 120, 'completion_tokens' => 30,
+            'provider' => $resolved['provider'], 'model' => $resolved['model'], 'input_tokens' => 520, 'output_tokens' => 35, 'cache_read_input_tokens' => 400,
             'tool_calls' => ['list-widgets'], 'finish_reason' => 'stop', 'error' => null,
         ]);
 
@@ -145,7 +146,7 @@ it('records how a refused, a failed and a lost turn ended', function () {
     $resolved = AgentModels::resolve('auto');
 
     // Refused by a middleware: no provider was involved.
-    config(['packstub-agents.middleware' => [fn (AgentPrompt $prompt, Closure $next) => throw new TurnRefused('Not now.')]]);
+    config(['packstub-agents.middleware' => [fn (PendingStep $step, Closure $next) => throw new TurnRefused('Not now.')]]);
     [$refused, $job] = queuedTurnFor('First');
     $job->handle(app(AgentTurns::class));
     config(['packstub-agents.middleware' => []]);
