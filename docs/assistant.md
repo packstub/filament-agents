@@ -54,7 +54,7 @@ The transcript is a live region for screen readers (new answers are announced), 
 
 ### How a turn runs
 
-A question (or an approval decision) becomes a row in `agent_turns`, and the `RunAgentTurn` job produces the answer: it restores the panel, the workspace, the person and the locale of the request, streams the answer from the provider and writes what it has so far to the row, then stores the answer as laravel/ai does. The page polls a small JSON route on the panel (`chat.poll_interval`) for the answer so far and re-renders the transcript from the database when the turn ends — so reloading, navigating away and back, or opening the same chat in a second tab shows the running answer where it is, and a closed tab does not stop it. Follow-ups wait as `queued` rows and start, in order, as soon as the previous turn is done; the question is recorded in the transcript at that moment. When a turn ends its row keeps the record — provider and model, tokens, tools called, duration, how it ended — for the operator's AI turns page and, optionally, one log line (see [What each turn cost](budgets-and-limits.md#what-each-turn-cost)).
+A question (or an approval decision) becomes a row in `agent_turns`, and the `RunAgentTurn` job produces the answer: it restores the panel, the workspace, the person and the locale of the request, streams the answer from the provider and writes what it has so far to the row (the status line says when the model is reasoning, writing or calling a tool), then stores the answer as laravel/ai 1.0 does: one message per turn with its steps — text, reasoning, tool calls and their results. What the model thought before answering, when the provider reports it, folds under **Reasoning** above the answer; an answer the provider gave up on midway is kept with what arrived, marked *(interrupted)* with the error, and can be produced again. The page polls a small JSON route on the panel (`chat.poll_interval`) for the answer so far and re-renders the transcript from the database when the turn ends — so reloading, navigating away and back, or opening the same chat in a second tab shows the running answer where it is, and a closed tab does not stop it. Follow-ups wait as `queued` rows and start, in order, as soon as the previous turn is done; the question is recorded in the transcript at that moment. When a turn ends its row keeps the record — provider and model, tokens, tools called, duration, how it ended — for the operator's AI turns page and, optionally, one log line (see [What each turn cost](budgets-and-limits.md#what-each-turn-cost)).
 
 Run a queue worker for the jobs (see [Installation](installation.md#a-queue-worker)). A question no worker takes within `chat.worker_wait` seconds (`AGENT_WORKER_WAIT`, 10) gets a status line that names the missing worker and the command to run. A job the queue never finishes — a worker that died mid-answer — is shown as failed after `chat.job_timeout`, with the question kept and a Retry under it. With `chat.driver` set to `sync` (`AGENT_TURN_DRIVER=sync`, or `AgentsPlugin::make()->chat(driver: 'sync')`) the job runs inside the request, whatever queue the app uses: the page still polls and Stop still works when the web server handles requests in parallel, but the answer ends with the tab that asked for it.
 
@@ -66,7 +66,7 @@ From `history.meter_share` of the window a small ring shows in the composer, nex
 
 ### Approvals
 
-When the agent calls a write tool, laravel/ai pauses the turn. The chat shows the proposal as one question with a decision: an icon, the call as the person reads it ("Confirm order RO-00020 for Halvorsen & Co.?"), **Approve** and **Reject** on the right, and the exact call folded under the question — the tool name and how many arguments; click it for the argument list. The turn resumes with the decision and the tool either runs or reports that it was rejected. The generic rules ask the model not to claim something was done until the tool result confirms it and never to chain destructive changes with anything else in one turn.
+When the agent calls a write tool, laravel/ai pauses the turn. The chat shows the proposal as one question with a decision: an icon, the call as the person reads it ("Confirm order RO-00020 for Halvorsen & Co.?"), **Approve** and **Reject** on the right, and the exact call folded under the question — the tool name and how many arguments; click it for the argument list. The turn resumes with the decision and the tool either runs or reports that it was rejected; what the assistant says next continues in the same answer bubble, as laravel/ai 1.0 folds a resumed turn into the answer it paused on. The generic rules ask the model not to claim something was done until the tool result confirms it and never to chain destructive changes with anything else in one turn.
 
 While it waits the proposal is the most prominent element on the page; once decided the same row shows **Approved** or **Rejected** where the buttons were, with the tool's result in the fold, so nothing moves. Should the turn that carries the decision fail (a worker that died, a history the provider could not match), the buttons come back with the reason under the question, so a decision is never lost silently. The question comes from the tool: give a write tool a `describe(array $arguments): ?string` and it phrases its own calls; without one the question is the tool's title and the first argument ("Confirm Order RO-00020?"). See [The proposal as a question](https://packstub.dev/docs/agents/tools#the-proposal-as-a-question) in the engine's docs.
 
@@ -196,7 +196,7 @@ A turn that resumes an approval stays on the provider that proposed the change; 
 
 ### Middleware
 
-Every turn runs through a middleware pipeline before the provider is called, the same one laravel/ai gives its agents. The package puts its own guard rails there — `Packstub\Agents\Ai\Middleware\EnforceBudget` refuses a turn over a limit and counts one that may run — and your app adds its own after them: an audit log, redaction of what leaves the workspace, a tenant check, a note appended to the prompt. `Packstub\Agents\Ai\Middleware\AttachContext` runs last and prepends the dynamic block (date, person, page context) to the question, so your middleware reads the question as typed.
+Every turn runs through a middleware pipeline before the provider is called, the same one laravel/ai gives its agents: since laravel/ai 1.0 it wraps each model round-trip of the turn (a *step*: the question, then one more for every batch of tool results), not the turn as a whole. The package puts its own guard rails there — `Packstub\Agents\Ai\Middleware\EnforceBudget` refuses a turn over a limit and counts one that may run, on the first step — and your app adds its own after them: an audit log, redaction of what leaves the workspace, a tenant check, a note appended to the question. `Packstub\Agents\Ai\Middleware\AttachContext` runs last and prepends the dynamic block (date, person, page context) to the question on every step, so your middleware reads the question as typed and the model reads the same messages while it calls tools.
 
 A middleware is a class with one method. `php artisan make:agent-middleware AuditTurns` (laravel/ai's command) scaffolds it:
 
@@ -204,21 +204,22 @@ A middleware is a class with one method. `php artisan make:agent-middleware Audi
 namespace App\Ai\Middleware;
 
 use Closure;
-use Laravel\Ai\Prompts\AgentPrompt;
-use Laravel\Ai\Responses\AgentResponse;
+use Laravel\Ai\Gateway\StepResponse;
+use Laravel\Ai\PendingStep;
+use Packstub\Agents\Ai\Middleware\EnforceBudget;
 use Packstub\Agents\Exceptions\TurnRefused;
 
 class AuditTurns
 {
-    public function handle(AgentPrompt $prompt, Closure $next)
+    public function handle(PendingStep $step, Closure $next)
     {
-        if (Audit::frozen()) {
+        if ($step->isFirstStep() && Audit::frozen()) {
             throw new TurnRefused('The assistant is paused while the audit runs.');
         }
 
-        return $next($prompt->append('Mention the ticket number when there is one.'))
-            ->then(function (AgentResponse $response): void {
-                Audit::log(auth()->user(), $response->text, $response->usage);
+        return $next($step->withInstructions($step->instructions."\n\nMention the ticket number when there is one."))
+            ->then(function (StepResponse $response) use ($step): void {
+                Audit::log(auth()->user(), $step->number, $response->text, $response->usage);
             });
     }
 }
@@ -232,8 +233,9 @@ AgentsPlugin::make()->middleware([AuditTurns::class, RedactSecrets::class])
 
 What you can do in there:
 
-- **Read and revise the prompt.** `$prompt->prompt` is what the person typed (empty on an approval turn — check `$prompt->hasApprovalDecisions()`); `$prompt->agent`, `$prompt->model` and `$prompt->provider` say what is about to run. `append()`, `prepend()` and `revise()` hand a new prompt to the next step; the transcript keeps the original.
-- **Read the answer.** `$next($prompt)->then(fn (AgentResponse $response) => …)` runs once the answer is complete, with its text, tool calls and token usage. It works the same for a streamed chat turn and a plain `prompt()` call.
-- **Stop the turn.** Throw `TurnRefused` with a message: nothing is sent to the provider, nothing is stored, and the person reads the message under their question with a Retry.
+- **Know where you are.** `$step->isFirstStep()` (or `$step->number`) tells the first round-trip from the tool steps that follow; `$step->isFinalStep` the last one allowed by `max_steps`. `EnforceBudget::question($step)` is what the person typed, as typed — `null` on the tool steps and on a turn that resumes an approval. `$step->provider`, `$step->model`, `$step->instructions`, `$step->messages` and `$step->tools` say what is about to run; `$step->steps` and `$step->usage` what the turn did so far.
+- **Revise the step.** `withInstructions()`, `withMessages()`, `withTools()`, `onlyTools()`, `withoutTools()`, `withToolChoice()`, `withMaxTokens()` and `withProviderOptions()` hand a copy to the next middleware; the transcript keeps the question as typed. To append to the question itself, replace the last message of `$step->messages` on the first step (it is the `UserMessage`).
+- **Read the step's answer.** `$next($step)->then(fn (StepResponse $response) => …)` runs once the step's text, tool calls and token usage are in — once per step, so an audit line per turn sums them or reads the `AgentTurn` on `TurnEnded` (see the engine's [Events](https://packstub.dev/docs/agents/assistant#events)). It works the same for a streamed chat turn and a plain `prompt()` call. Returning a `StepResponse` of your own answers the step without calling the model.
+- **Stop the turn.** Throw `TurnRefused` with a message: nothing is sent to the provider, nothing is stored, and the person reads the message under their question with a Retry. Thrown on a later step it ends the turn there, with the steps so far kept on the answer.
 
 Middleware runs inside the turn job, under the panel, tenant, user and locale of the request that asked, so `auth()->user()`, `Filament::getTenant()` and your abilities all read as they do on a page. The order is the package's guard rails, the classes in config, the plugin's list, then the context block; override `middleware()` on your `Agent` subclass to change it (keep `AttachContext` last, or the model loses the date, the person and the page context).

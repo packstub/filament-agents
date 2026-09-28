@@ -97,8 +97,8 @@ it('stops a turn before the provider when the budget is spent', function () {
     $conversation = Conversation::query()->create(['id' => (string) Str::uuid(), 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id, 'title' => 'Earlier']);
     ConversationMessage::query()->create([
         'id' => (string) Str::uuid(), 'conversation_id' => $conversation->id, 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id,
-        'agent' => WidgetAgent::class, 'role' => 'assistant', 'content' => 'Earlier answer.', 'attachments' => [], 'meta' => [], 'tool_calls' => [], 'tool_results' => [],
-        'usage' => ['prompt_tokens' => 600, 'completion_tokens' => 500],
+        'agent' => WidgetAgent::class, 'role' => 'assistant', 'content' => 'Earlier answer.', 'attachments' => [], 'meta' => [], 'steps' => [], 'status' => 'completed',
+        'usage' => ['input_tokens' => 600, 'output_tokens' => 500],
     ]);
 
     expect(AgentBudget::turnsToday())->toBe(1)
@@ -190,10 +190,10 @@ it('keeps a decided proposal as a card and lets the model carry on after a rejec
     $message = function (array $attributes) use (&$at, $conversation, $user) {
         usleep(1100);
 
-        return ConversationMessage::query()->create($attributes + [
+        return ConversationMessage::query()->create(legacyRow($attributes + [
             'id' => (string) Str::uuid7(), 'created_at' => $at = $at->addMinute(), 'conversation_id' => $conversation->id, 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id,
             'agent' => WidgetAgent::class, 'role' => 'assistant', 'content' => '', 'attachments' => [], 'meta' => [], 'usage' => [],
-        ]);
+        ]));
     };
     $call = fn (string $id, string $name) => ['id' => $id, 'name' => 'rename-widget', 'arguments' => ['id' => $alpha->id, 'name' => $name]];
 
@@ -245,12 +245,12 @@ it('decides two proposals of one answer one at a time, the first waiting on its 
 
     $conversation = Conversation::query()->create(['id' => (string) Str::uuid(), 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id, 'title' => 'Renames']);
     $row = ['conversation_id' => $conversation->id, 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id, 'agent' => WidgetAgent::class, 'attachments' => [], 'meta' => [], 'usage' => []];
-    ConversationMessage::query()->create($row + ['id' => (string) Str::uuid7(), 'role' => 'user', 'content' => 'Rename Alpha and Beta, please.', 'tool_calls' => [], 'tool_results' => [], 'created_at' => now()->subMinutes(5)]);
+    ConversationMessage::query()->create(legacyRow($row + ['id' => (string) Str::uuid7(), 'role' => 'user', 'content' => 'Rename Alpha and Beta, please.', 'tool_calls' => [], 'tool_results' => [], 'created_at' => now()->subMinutes(5)]));
     usleep(1100);
-    ConversationMessage::query()->create($row + ['id' => (string) Str::uuid7(), 'role' => 'assistant', 'content' => '', 'tool_calls' => [
+    ConversationMessage::query()->create(legacyRow($row + ['id' => (string) Str::uuid7(), 'role' => 'assistant', 'content' => '', 'tool_calls' => [
         ['id' => 'c1', 'name' => 'rename-widget', 'arguments' => ['id' => $alpha->id, 'name' => 'Alpha II']],
         ['id' => 'c2', 'name' => 'rename-widget', 'arguments' => ['id' => $beta->id, 'name' => 'Beta II']],
-    ], 'tool_results' => [], 'approval_state' => ['pending' => ['c1' => 'Rename Alpha?', 'c2' => 'Rename Beta?']], 'created_at' => now()->subMinutes(5)->addSeconds(6)]);
+    ], 'tool_results' => [], 'approval_state' => ['pending' => ['c1' => 'Rename Alpha?', 'c2' => 'Rename Beta?']], 'created_at' => now()->subMinutes(5)->addSeconds(6)]));
 
     // Approve on Alpha: held (laravel/ai applies the decisions of one pause together), said on its row; Beta keeps its buttons.
     livewire(Chat::class, ['conversation' => $conversation->id])->call('decide', 'c1', true);
@@ -272,6 +272,35 @@ it('decides two proposals of one answer one at a time, the first waiting on its 
     Queue::assertPushed(RunAgentTurn::class, fn (RunAgentTurn $job) => $job->turnId === $turn->id);
 });
 
+it('folds the model\'s reasoning above an answer and marks one the provider gave up on', function () {
+    $user = $this->user();
+    actingAs($user);
+
+    $conversation = Conversation::query()->create(['id' => (string) Str::uuid(), 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id, 'title' => 'Widgets']);
+    $row = ['conversation_id' => $conversation->id, 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id, 'agent' => WidgetAgent::class, 'attachments' => [], 'meta' => [], 'usage' => []];
+    ConversationMessage::query()->create($row + ['id' => (string) Str::uuid7(), 'role' => 'user', 'content' => 'How many widgets are live?', 'steps' => [], 'status' => 'completed', 'created_at' => now()->subMinutes(5)]);
+    usleep(1100);
+    // Two steps, as laravel/ai 1.0 stores them: the thought and the tool call, then the answer.
+    ConversationMessage::query()->create($row + ['id' => (string) Str::uuid7(), 'role' => 'assistant', 'content' => 'Two.', 'status' => 'completed', 'steps' => [
+        ['content' => '', 'reasoning' => 'I should count the live ones first.', 'replay_blocks' => [], 'provider_tool_calls' => [], 'tool_calls' => [['id' => 'r1', 'name' => 'list-widgets', 'arguments' => ['status' => 'live'], 'result_id' => null, 'result' => '[]']]],
+        ['content' => 'Two.', 'reasoning' => '', 'replay_blocks' => [], 'provider_tool_calls' => [], 'tool_calls' => []],
+    ], 'created_at' => now()->subMinutes(4)]);
+    usleep(1100);
+    ConversationMessage::query()->create($row + ['id' => (string) Str::uuid7(), 'role' => 'user', 'content' => 'And drafts?', 'steps' => [], 'status' => 'completed', 'created_at' => now()->subMinutes(3)]);
+    usleep(1100);
+    // The provider gave up after the tool step: the row keeps it, with the error, and the answer can be produced again.
+    ConversationMessage::query()->create(['meta' => ['error' => 'The provider is overloaded.']] + $row + ['id' => (string) Str::uuid7(), 'role' => 'assistant', 'content' => '', 'status' => 'failed', 'steps' => [
+        ['content' => '', 'reasoning' => '', 'replay_blocks' => [], 'provider_tool_calls' => [], 'tool_calls' => [['id' => 'r2', 'name' => 'list-widgets', 'arguments' => ['status' => 'draft'], 'result_id' => null, 'result' => '[]']]],
+    ], 'created_at' => now()->subMinutes(2)]);
+
+    livewire(Chat::class, ['conversation' => $conversation->id])
+        ->assertSeeInOrder([__('Reasoning'), 'I should count the live ones first.', 'Two.', 'And drafts?', __('(interrupted)')])
+        ->assertSeeHtml('title="The provider is overloaded."')
+        ->assertSeeHtml('aria-label="'.__('Regenerate').'"')
+        ->assertDontSee(__('Retry'))
+        ->assertDontSee(__('The assistant could not answer.'));
+});
+
 it('reports a decision turn that failed on the proposal row, with the buttons back', function () {
     $user = $this->user();
     actingAs($user);
@@ -280,10 +309,10 @@ it('reports a decision turn that failed on the proposal row, with the buttons ba
 
     $conversation = Conversation::query()->create(['id' => (string) Str::uuid(), 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id, 'title' => 'Renames']);
     $row = ['conversation_id' => $conversation->id, 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id, 'agent' => WidgetAgent::class, 'attachments' => [], 'meta' => [], 'usage' => []];
-    ConversationMessage::query()->create($row + ['id' => (string) Str::uuid7(), 'role' => 'user', 'content' => 'Rename Alpha, please.', 'tool_calls' => [], 'tool_results' => [], 'created_at' => now()->subMinutes(5)]);
+    ConversationMessage::query()->create(legacyRow($row + ['id' => (string) Str::uuid7(), 'role' => 'user', 'content' => 'Rename Alpha, please.', 'tool_calls' => [], 'tool_results' => [], 'created_at' => now()->subMinutes(5)]));
     usleep(1100);
     $call = ['id' => 'c1', 'name' => 'rename-widget', 'arguments' => ['id' => $alpha->id, 'name' => 'Alpha II']];
-    ConversationMessage::query()->create($row + ['id' => (string) Str::uuid7(), 'role' => 'assistant', 'content' => '', 'tool_calls' => [$call], 'tool_results' => [], 'approval_state' => ['pending' => ['c1' => ['name' => 'rename-widget']]], 'created_at' => now()->subMinutes(5)->addSeconds(6)]);
+    ConversationMessage::query()->create(legacyRow($row + ['id' => (string) Str::uuid7(), 'role' => 'assistant', 'content' => '', 'tool_calls' => [$call], 'tool_results' => [], 'approval_state' => ['pending' => ['c1' => ['name' => 'rename-widget']]], 'created_at' => now()->subMinutes(5)->addSeconds(6)]));
 
     // The decision is queued as a turn; the worker fails it (a history the loop could not match, a dead worker…),
     // so the call is still pending and the buttons return — with the reason, where the person is looking.
@@ -299,7 +328,7 @@ it('reports a decision turn that failed on the proposal row, with the buttons ba
 
     // A question that failed is reported on the question, not on an earlier proposal.
     usleep(1100);
-    ConversationMessage::query()->create($row + ['id' => (string) Str::uuid7(), 'role' => 'user', 'content' => 'And Beta?', 'tool_calls' => [], 'tool_results' => [], 'created_at' => now()->addSeconds(2)]);
+    ConversationMessage::query()->create(legacyRow($row + ['id' => (string) Str::uuid7(), 'role' => 'user', 'content' => 'And Beta?', 'tool_calls' => [], 'tool_results' => [], 'created_at' => now()->addSeconds(2)]));
     AgentTurn::query()->whereKey($turn->id)->update(['input' => json_encode(['prompt' => 'And Beta?'])]);
 
     livewire(Chat::class, ['conversation' => $conversation->id])

@@ -153,6 +153,18 @@
                     @endif
                 @else
                     <div class="fi-chat-exchange flex flex-col gap-2 {{ $message['continued'] ? 'fi-chat-continued' : '' }}" wire:key="message-{{ $message['id'] }}">
+                        @if ($message['reasoning'] !== '')
+                            {{-- What the model thought before it answered, when the provider reports it: folded, one line to open it. --}}
+                            <div class="fi-chat-reasoning" x-data="{ open: false }">
+                                <button type="button" class="fi-chat-timeline-call" x-on:click="open = ! open" x-bind:aria-expanded="open">
+                                    <x-filament::icon icon="heroicon-m-light-bulb" class="fi-chat-timeline-icon" />
+                                    <span class="fi-chat-timeline-name">{{ __('Reasoning') }}</span>
+                                    <x-filament::icon icon="heroicon-m-chevron-right" class="fi-chat-proposal-chevron" x-bind:class="{ 'fi-chat-proposal-chevron-open': open }" />
+                                </button>
+                                <div class="fi-chat-reasoning-text" x-show="open" x-collapse x-cloak>{{ $message['reasoning'] }}</div>
+                            </div>
+                        @endif
+
                         @php($reads = collect($message['tools'])->where('readOnly', true)->values())
                         @if ($reads->isNotEmpty())
                             {{-- What the assistant looked up before answering: one line per call, the arguments and the result folded under it. --}}
@@ -282,7 +294,7 @@
                             </div>
                         @endforeach
 
-                        @if (trim($message['html']) !== '' || $message['stopped'])
+                        @if (trim($message['html']) !== '' || $message['stopped'] || $message['failed'])
                             {{-- The controls under an answer show when it is hovered or focused (always on a touch screen); a rating
                                  that was given stays visible, and so do the notes on how the answer ended. --}}
                             <div class="fi-chat-answer-footer flex flex-wrap items-center gap-1 text-gray-400" x-data="{ note: false }">
@@ -334,6 +346,10 @@
                                 @if ($message['stopped'])
                                     <span class="ml-1 text-xs">· {{ __('(stopped)') }}</span>
                                 @endif
+                                @if ($message['failed'])
+                                    {{-- The provider gave up midway: what arrived is kept, the error says why; Regenerate produces the answer again. --}}
+                                    <span class="ml-1 text-xs text-danger-600 dark:text-danger-400" title="{{ $message['error'] }}">· {{ __('(interrupted)') }}</span>
+                                @endif
                                 @if ($message['cutShort'])
                                     {{-- The provider ended the answer early; Regenerate (above, on the last answer) produces it again, Continue carries on. --}}
                                     <span class="ml-1 text-xs" title="{{ \Packstub\Agents\Support\AgentChat::cutShortText($message['cutShort']) }}">· {{ __('(cut short)') }}</span>
@@ -370,7 +386,7 @@
                         <span class="fi-chat-timeline-call">
                             <x-filament::icon icon="heroicon-m-magnifying-glass" class="fi-chat-timeline-icon" />
                             <span class="fi-chat-timeline-name" x-text="tool"></span>
-                            <span class="fi-chat-timeline-result" x-show="i === live.tools.length - 1 && live.status.endsWith('…') && ! live.status.startsWith(@js(__('Writing')))" x-text="@js(__('running…'))"></span>
+                            <span class="fi-chat-timeline-result" x-show="i === live.tools.length - 1 && live.status.endsWith('…') && ! live.status.startsWith(@js(__('Writing'))) && ! live.status.startsWith(@js(__('Reasoning')))" x-text="@js(__('running…'))"></span>
                         </span>
                     </div>
                 </template>

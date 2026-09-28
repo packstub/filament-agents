@@ -163,7 +163,7 @@ AgentsPlugin::make()
 | `server(class)` | the `AgentServer` subclass with the tool list, name and instructions |
 | `tools(array)` | the tool list when there is no server class |
 | `resources(array)` | explicit `AgentResource` classes for `show-table` and page context (default: every panel resource implementing the contract) |
-| `middleware(array)` | your own agent middleware — classes with `handle(AgentPrompt $prompt, Closure $next)`, instances or closures — run on every turn after the package's guard rails, after the ones in config; see [Middleware](assistant.md#middleware) |
+| `middleware(array)` | your own agent middleware — classes with `handle(PendingStep $step, Closure $next)`, instances or closures — run on every model round-trip of a turn after the package's guard rails, after the ones in config; see [Middleware](assistant.md#middleware) |
 | `authorizeUsing(fn (string $ability): bool)` | how a tool's ability is checked for the current person (default: the `Gate` when it has that ability, otherwise allowed) |
 | `roleLabelUsing(fn (): ?string)` | the person's role label for the prompt and refusals |
 | `credentialsUsing(fn (): ?WorkspaceCredentials)` | where a workspace's own provider, key and model come from |

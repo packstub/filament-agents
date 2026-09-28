@@ -79,12 +79,12 @@ it('embeds a live resource table in the chat with the resource\'s own actions', 
     $payload = json_decode((string) app(ShowTable::class)->handle(new Request(['table' => 'widgets', 'title' => 'Live ones', 'filters' => ['live_only' => true]]))->content(), true);
 
     $conversation = Conversation::query()->create(['id' => (string) Str::uuid(), 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id, 'title' => 'Live ones']);
-    ConversationMessage::query()->create([
+    ConversationMessage::query()->create(legacyRow([
         'id' => (string) Str::uuid(), 'conversation_id' => $conversation->id, 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id,
         'agent' => WidgetAgent::class, 'role' => 'assistant', 'content' => 'Two widgets are live.', 'attachments' => [], 'usage' => [], 'meta' => [],
         'tool_calls' => [['id' => 'call_t', 'name' => 'show-table', 'arguments' => ['table' => 'widgets']]],
         'tool_results' => [['id' => 'call_t', 'name' => 'show-table', 'result' => json_encode($payload)]],
-    ]);
+    ]));
 
     livewire(Chat::class, ['conversation' => $conversation->id])
         ->assertSee('Two widgets are live.')
@@ -123,12 +123,12 @@ it('validates drawn charts and renders a chart from a stored tool result', funct
     expect($chart['type'])->toBe('line')->and($chart['data']['labels'])->toBe(['Alpha', 'Beta'])->and($chart['data']['datasets'][0]['fill'])->toBeTrue();
 
     $conversation = Conversation::query()->create(['id' => (string) Str::uuid(), 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id, 'title' => 'Prices']);
-    ConversationMessage::query()->create([
+    ConversationMessage::query()->create(legacyRow([
         'id' => (string) Str::uuid(), 'conversation_id' => $conversation->id, 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id,
         'agent' => WidgetAgent::class, 'role' => 'assistant', 'content' => 'Here are the prices.', 'attachments' => [], 'usage' => [], 'meta' => [],
         'tool_calls' => [['id' => 'call_1', 'name' => 'draw-chart', 'arguments' => ['title' => 'Prices']]],
         'tool_results' => [['id' => 'call_1', 'name' => 'draw-chart', 'result' => json_encode($payload)]],
-    ]);
+    ]));
 
     livewire(Chat::class, ['conversation' => $conversation->id])
         ->assertSee('Here are the prices.')

@@ -92,9 +92,9 @@ it('offers entries of more than one provider on one picker', function () {
         ->and(AgentModels::resolve('local')['providers'])->toBe(['ollama' => 'llama-test']);
 
     // The effort is the entry's on the provider it runs on, and nothing on a fallback that has no such key.
-    expect((new WidgetAgent(modelKey: 'flash'))->providerOptions('gemini'))->toBe(['thinkingConfig' => ['thinkingLevel' => 'LOW']])
+    expect((new WidgetAgent(modelKey: 'flash'))->providerOptions('gemini'))->toBe(['thinking_level' => 'low'])
         ->and((new WidgetAgent(modelKey: 'flash'))->providerOptions('anthropic'))->not->toHaveKey('output_config')
-        ->and((new WidgetAgent(modelKey: 'deep'))->providerOptions('gemini'))->toBe(['thinkingConfig' => ['thinkingLevel' => 'HIGH']]);
+        ->and((new WidgetAgent(modelKey: 'deep'))->providerOptions('gemini'))->toBe(['thinking_level' => 'high']);
 
     // Remembered and offered in the picker like any entry.
     AgentModels::remember('flash');
@@ -207,9 +207,9 @@ it('turns the effort into a Gemini thinking level and an xAI reasoning effort', 
         'packstub-agents.models.xai.deep' => ['label' => 'Deep', 'model' => 'grok-effort-deep', 'effort' => 'xhigh'],
     ]);
 
-    expect((new WidgetAgent(modelKey: 'auto'))->providerOptions('gemini'))->toBe(['thinkingConfig' => ['thinkingLevel' => 'MEDIUM']])
-        ->and((new WidgetAgent(modelKey: 'fast'))->providerOptions('gemini'))->toBe(['thinkingConfig' => ['thinkingLevel' => 'LOW']])
-        ->and((new WidgetAgent(modelKey: 'deep'))->providerOptions('gemini'))->toBe(['thinkingConfig' => ['thinkingLevel' => 'HIGH']])
+    expect((new WidgetAgent(modelKey: 'auto'))->providerOptions('gemini'))->toBe(['thinking_level' => 'medium'])
+        ->and((new WidgetAgent(modelKey: 'fast'))->providerOptions('gemini'))->toBe(['thinking_level' => 'low'])
+        ->and((new WidgetAgent(modelKey: 'deep'))->providerOptions('gemini'))->toBe(['thinking_level' => 'high'])
         ->and((new WidgetAgent(modelKey: 'deep'))->providerOptions('xai'))->toBe(['reasoning' => ['effort' => 'xhigh']])
         ->and((new WidgetAgent(modelKey: 'fast'))->providerOptions('xai'))->toBe(['reasoning' => ['effort' => 'low']])
         ->and((new WidgetAgent(modelKey: 'fast', model: 'grok-4.20-non-reasoning'))->providerOptions('xai'))->toBe([])
@@ -218,7 +218,7 @@ it('turns the effort into a Gemini thinking level and an xAI reasoning effort', 
         ->and(WidgetAgent::supportsReasoning('gpt-5.2'))->toBeTrue();
 
     config(['packstub-agents.models.gemini.deep.effort' => 'xhigh']);
-    expect((new WidgetAgent(modelKey: 'deep'))->providerOptions('gemini'))->toBe(['thinkingConfig' => ['thinkingLevel' => 'HIGH']]);
+    expect((new WidgetAgent(modelKey: 'deep'))->providerOptions('gemini'))->toBe(['thinking_level' => 'high']);
 
     config(['packstub-agents.models.gemini.fast.effort' => null]);
     expect((new WidgetAgent(modelKey: 'fast'))->providerOptions('gemini'))->toBe([]);
@@ -227,10 +227,12 @@ it('turns the effort into a Gemini thinking level and an xAI reasoning effort', 
 it('sends the model and the thinking level to Gemini', function () {
     actingAs($this->user());
     config(['packstub-agents.provider' => 'gemini', 'ai.providers.gemini.key' => 'g-key']);
+    // The Interactions API laravel/ai 1.0 speaks: an interaction with its output steps and its status.
     Http::fake([
         'generativelanguage.googleapis.com/*' => Http::response([
-            'candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => 'Two widgets are live.']]], 'finishReason' => 'STOP']],
-            'usageMetadata' => ['promptTokenCount' => 10, 'candidatesTokenCount' => 5, 'totalTokenCount' => 15],
+            'status' => 'completed',
+            'steps' => [['type' => 'model_output', 'content' => [['type' => 'text', 'text' => 'Two widgets are live.']]]],
+            'usage' => ['total_input_tokens' => 10, 'total_output_tokens' => 5, 'total_tokens' => 15],
         ]),
     ]);
 
@@ -239,8 +241,9 @@ it('sends the model and the thinking level to Gemini', function () {
         ->prompt('How many widgets are live?', provider: $resolved['provider'], model: $resolved['model']);
 
     expect((string) $response)->toBe('Two widgets are live.');
-    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), "models/{$resolved['model']}:generateContent")
-        && $request['generationConfig']['thinkingConfig']['thinkingLevel'] === strtoupper($resolved['effort'])
+    Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/interactions')
+        && $request['model'] === $resolved['model']
+        && $request['generation_config']['thinking_level'] === $resolved['effort']
         && str_contains($request->body(), 'You are Ask Widgets'));
 });
 

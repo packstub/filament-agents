@@ -125,6 +125,10 @@
 .fi-chat-proposal-error svg { width: 1rem; height: 1rem; flex: none; }
 .fi-chat-proposal-details { margin-top: 0.625rem; padding-top: 0.625rem; border-top: 1px solid rgb(0 0 0 / 0.08); font-size: 0.8125rem; }
 .dark .fi-chat-proposal-details { border-color: rgb(255 255 255 / 0.1); }
+.fi-chat-reasoning { border-left: 2px solid rgb(0 0 0 / 0.08); padding-left: 0.625rem; }
+.dark .fi-chat-reasoning { border-color: rgb(255 255 255 / 0.12); }
+.fi-chat-reasoning-text { margin-top: 0.25rem; padding-bottom: 0.25rem; font-size: 0.8125rem; line-height: 1.5; color: var(--gray-500); white-space: pre-wrap; }
+.dark .fi-chat-reasoning-text { color: var(--gray-400); }
 .fi-chat-proposal-details dl { display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 1rem; margin: 0; }
 .fi-chat-proposal-details dt { color: var(--gray-500); }
 .fi-chat-proposal-details dd { margin: 0; color: var(--gray-800); overflow-wrap: anywhere; }

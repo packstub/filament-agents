@@ -1,6 +1,7 @@
 {
     "(answered by :provider)": "(ответил :provider)",
     "(cut short)": "(оборвано)",
+    "(interrupted)": "(прервано)",
     "(stopped)": "(остановлено)",
     "/ min": "/ мин",
     ":count this week": ":count за неделю",
@@ -116,6 +117,7 @@
     "Rating": "Оценка",
     "Read": "Чтение",
     "Read: look things up, reports": "Чтение: поиск, отчёты",
+    "Reasoning": "Рассуждение",
     "Records": "Записи",
     "Regenerate": "Сгенерировать заново",
     "Reject": "Отклонить",
