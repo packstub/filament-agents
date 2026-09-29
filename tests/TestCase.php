@@ -28,6 +28,7 @@ use Packstub\Agents\Tests\Fixtures\Abilities;
 use Packstub\Agents\Tests\Fixtures\AdminPanelProvider;
 use Packstub\Agents\Tests\Fixtures\Models\User;
 use Packstub\Agents\Tests\Fixtures\Models\Widget;
+use Packstub\Agents\Tests\Fixtures\OpsPanelProvider;
 
 abstract class TestCase extends Orchestra
 {
@@ -65,6 +66,7 @@ abstract class TestCase extends Orchestra
             AgentsServiceProvider::class,
             FilamentAgentsServiceProvider::class,
             AdminPanelProvider::class,
+            OpsPanelProvider::class,
         ];
     }
 

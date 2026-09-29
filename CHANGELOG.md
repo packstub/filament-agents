@@ -2,6 +2,14 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## 1.12.1 — 2026-09-29
+
+Upgrading: nothing to run.
+
+### Fixed
+
+- **The "Ask …" button in a panel with the chat off.** The plugin registered the topbar button, the sidebar chats and the slide-over for the whole process, so a process that served a panel with the chat on and then one with `AgentsPlugin::make()->chat(false)` (an operator console next to the app panel, under Octane or in a test) rendered them there too and failed with `Route [filament.<panel>.pages.chat…] not defined`. Each now renders only in the panel whose plugin registered it.
+
 ## 1.12.0 — 2026-09-28
 
 The panel follows the engine to laravel/ai 1.0 and laravel/mcp 1.0: the model's reasoning folds above an answer, an answer the provider gave up on is kept and marked, the status line says when the model reasons, and app middleware wraps each model round-trip.
