@@ -437,12 +437,16 @@ class AgentsPlugin implements Plugin
         }
 
         // The "Ask …" button (with the record being viewed as context), the recent and pinned chats in the sidebar,
-        // and the slide-over the button and the shortcut open over any page.
-        FilamentView::registerRenderHook(PanelsRenderHook::GLOBAL_SEARCH_BEFORE, fn (): string => view('packstub-agents::hooks.topbar')->render());
-        FilamentView::registerRenderHook(PanelsRenderHook::SIDEBAR_NAV_END, fn (): string => view('packstub-agents::hooks.sidebar')->render());
+        // and the slide-over the button and the shortcut open over any page. Filament keeps render hooks for the
+        // process, not the panel, so each renders only in this panel: a process that serves another panel next (a
+        // test, Octane) would otherwise show them where the chat is off and its routes don't exist.
+        $inPanel = fn (string $view): Closure => fn (): string => Filament::getCurrentPanel()?->getId() === $panel->getId() ? view($view)->render() : '';
+
+        FilamentView::registerRenderHook(PanelsRenderHook::GLOBAL_SEARCH_BEFORE, $inPanel('packstub-agents::hooks.topbar'));
+        FilamentView::registerRenderHook(PanelsRenderHook::SIDEBAR_NAV_END, $inPanel('packstub-agents::hooks.sidebar'));
 
         if ($this->slideOver || $this->shortcut !== null) {
-            FilamentView::registerRenderHook(PanelsRenderHook::BODY_END, fn (): string => view('packstub-agents::hooks.drawer')->render());
+            FilamentView::registerRenderHook(PanelsRenderHook::BODY_END, $inPanel('packstub-agents::hooks.drawer'));
         }
     }
 }

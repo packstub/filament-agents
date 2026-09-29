@@ -523,3 +523,15 @@ it('registers an "Ask …" navigation item on a panel with top navigation only',
     config(['packstub-agents.enabled' => false]);
     expect(Chats::shouldRegisterNavigation())->toBeFalse();
 });
+
+it('renders the "Ask …" button and the sidebar chats only in a panel whose plugin has the chat', function () {
+    actingAs($this->user());
+    [$alpha] = $this->widgets();
+    $edit = WidgetResource::getUrl('edit', ['record' => $alpha]);
+
+    // One process serves the admin panel, then the ops panel (chat off): Filament keeps render hooks for the process,
+    // not the panel, so the ones the admin panel registered must not render in ops (whose chat routes don't exist).
+    get($edit)->assertOk()->assertSee('Ask Widgets');
+    get('/ops')->assertOk()->assertDontSee('Ask Widgets')->assertDontSee('fi-sidebar-chats')->assertDontSee('fi-agent-drawer');
+    get($edit)->assertOk()->assertSee('Ask Widgets');
+});
