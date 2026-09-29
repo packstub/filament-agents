@@ -2,6 +2,12 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## Unreleased
+
+### Docs
+
+- **The demo video.** The README and the docs index link the new [90-second demo](https://youtu.be/d_lLxKsFfVU): the install in one line, a question answered with the live orders table, a chart, a change approved in one click, and the same tools in Claude Code over MCP.
+
 ## 1.12.1 — 2026-09-29
 
 Upgrading: nothing to run.
