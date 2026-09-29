@@ -15,9 +15,9 @@
 
 An in-panel AI assistant and an MCP server for your Filament v5 panel, built on [laravel/ai](https://github.com/laravel/ai) and [laravel/mcp](https://github.com/laravel/mcp). Write a tool once and it serves both the chat inside the panel and Claude Code, Claude Desktop, Cursor or any other MCP client, with the panel's own authorization deciding who may run it.
 
-[![Watch the 60-second demo: a question answered with the live orders table, a chart, and a write approved as a proposal](https://img.youtube.com/vi/-O5P8rHw4S4/maxresdefault.jpg)](https://youtu.be/-O5P8rHw4S4)
+[![Watch the 90-second demo: install in one line, a question answered with the live orders table, a chart, a change approved in one click, and the same tools in Claude Code over MCP](https://img.youtube.com/vi/d_lLxKsFfVU/maxresdefault.jpg)](https://youtu.be/d_lLxKsFfVU)
 
-**[Watch the 60-second demo](https://youtu.be/-O5P8rHw4S4)** — a question answered with the live orders table, a chart, and a write that arrives as a proposal.
+**[Watch the 90-second demo](https://youtu.be/d_lLxKsFfVU)** — install in one line, then a question answered with the live orders table, a chart, a change approved in one click, and the same tools answering in Claude Code over MCP.
 
 ## Features
 
