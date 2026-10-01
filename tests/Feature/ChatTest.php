@@ -163,7 +163,8 @@ it('carries the record being viewed into the chat as page context', function () 
 
     livewire(Chat::class)->assertSee('New chat');
 
-    $this->get(Chat::getUrl(['context' => 'widgets/'.$alpha->id]))->assertOk()->assertSee('About Widget Alpha');
+    $this->get(Chat::getUrl(['context' => 'widgets/'.$alpha->id]))->assertOk()
+        ->assertSee('About <a href="'.e(WidgetResource::getUrl('edit', ['record' => $alpha])).'" target="_top">Widget Alpha</a>', escape: false);
 
     expect((new WidgetAgent(pageContext: 'widgets/'.$alpha->id))->dynamicInstructions())->toContain('opened this chat from Widget Alpha', '"name":"Alpha"');
 });
@@ -516,7 +517,7 @@ it('registers an "Ask …" navigation item on a panel with top navigation only',
 
     expect(Chats::shouldRegisterNavigation())->toBeTrue()
         ->and(Chats::getNavigationLabel())->toBe('Ask Widgets')
-        ->and(Chats::getNavigationItemActiveRoutePattern())->toBe(['filament.admin.pages.chats', 'filament.admin.pages.chat.{conversation?}']);
+        ->and(Chats::getNavigationItemActiveRoutePattern())->toBe(['filament.admin.pages.chats', 'filament.admin.pages.chat.{conversation?}', 'filament.admin.pages.agent-table.{resource}']);
     $this->get(Chats::getUrl())->assertOk()->assertSeeInOrder(['fi-topbar-item fi-active', 'fi-topbar-item-icon', 'Ask Widgets']);
     $this->get(Chat::getUrl())->assertOk()->assertSeeInOrder(['fi-topbar-item fi-active', 'Ask Widgets']);
 

@@ -123,6 +123,12 @@ class Chat extends Page
         return $this->chat()->contextLabel();
     }
 
+    /** The page of the record the chat is about, for the header to link it. */
+    public function contextUrl(): ?string
+    {
+        return $this->chat()->contextUrl();
+    }
+
     /** @return list<string> */
     public function suggestions(): array
     {
@@ -335,10 +341,13 @@ class Chat extends Page
         return $this->started(fn (AgentChat $chat) => $chat->decide($callId, $approve));
     }
 
-    /** Send the last question again when it never got an answer. */
-    public function retry(): ?array
+    /**
+     * Send a question again when it never got an answer: the last one, or an earlier one by its message id (it moves
+     * to the end of the chat, where its answer lands).
+     */
+    public function retry(?string $messageId = null): ?array
     {
-        return $this->started(fn (AgentChat $chat) => $chat->retry(), question: true);
+        return $this->started(fn (AgentChat $chat) => $chat->retry($messageId), question: true);
     }
 
     /** Answer the last question again: its answer is kept as a version and the same recorded question is sent once more. */

@@ -76,14 +76,16 @@ $schema = AgentResources::filterSchema($schema, 'orders');   // for the tool's s
 
 Add `Packstub\Agents\Mcp\Tools\ShowTable` to the tool list. Its description and schema are generated from the resources: the `table` argument is an enum of the agent keys, `filters` is the union of every table's vocabulary (each key described per table), and `title` is an optional caption.
 
-When the model calls it, the tool checks `canViewAny()` on the resource, normalizes the filters, counts the rows and returns the total plus a note telling the model that an interactive table is rendered under the answer. The chat then embeds the resource's own `table()`, with the resource's query narrowed by the filters as the base query, so the person gets the same columns, sorting, pagination and row actions their role allows on the list page.
+When the model calls it, the tool checks `canViewAny()` on the resource, normalizes the filters, counts the rows and returns the total plus a note telling the model that a table is rendered under the answer. The chat then embeds the resource's own `table()`, with the resource's query narrowed by the filters as the base query, so the person gets the same columns, formatting, sorting and row actions their role allows on the list page.
 
-The search box and the filter button start hidden: the assistant chose the filters and the answer says what the table shows. Bring the resource's own back on the plugin:
+In an answer the table is compact: three pending orders are three rows, not a list page in a chat bubble. One header carries the caption the tool gave and the row count, the column titles are small, and there is no search box, filter button, bulk action or pager. Every row is there up to a cap of 25. A longer result shows its first 25 rows and a link, "Open all 37 in a full table", to a page of the panel (`/agent-table/{resource}`) where the same rows come with the list page's search, filters, pagination (ten a page) and bulk actions, under the caption as its title and a breadcrumb to the resource. The filters travel in the URL in the assistant's vocabulary and are normalized again on the way in, and the table runs the resource's own query, so the page shows nothing the person could not reach from the list page.
 
 ```php
 AgentsPlugin::make()
-    ->embeddedTable(search: true, filters: true)
+    ->embeddedTable(search: true, filters: true, limit: 50)
 ```
+
+`search` and `filters` bring the resource's own search box and filter button back into the answer's table (they start hidden: the assistant chose the filters and the answer says what the table shows); `limit` is the cap. The tool tells the model which case it is in, so its sentence under the table can say "the first 25 of 37".
 
 The generic answering rules tell the model to use `show-table` whenever someone wants to see or work through records ("show me", "list", more than a handful of rows) and to use the search tools when it needs the data itself.
 
@@ -112,4 +114,6 @@ A chart from the model's own `draw-chart` call, with the numbers it took from `s
 
 The topbar "Ask …" button knows which page it is on. On a record page of a resource that implements `AgentResource`, it opens the chat with a `context` of `orders/12`, the chat shows "About Order RO-00012", and the dynamic prompt block carries the record's compact summary: "The person opened this chat from Order RO-00012. 'This one' / 'this record' means that record: {…}". The model calls a tool for anything beyond the summary.
 
-`PageContext::fromRequest()` resolves the reference from the current route (a bound model, or a resource route with a record parameter); `PageContext::resolve('orders/12')` turns it back into the label and summary. Hide the button on pages that have their own composer with `AgentsPlugin::make()->hideAskButtonOn(['*.pages.dashboard'])`.
+The context stays with the conversation: it is recorded with every question asked under it, so the chat is still about the record after the redirect to the conversation's URL, after a reload, when it is reopened from the Chats page or in the slide-over on another page, and a follow-up there still reads the record's summary. The "About …" line links the record to its page (`agentRecordUrl()`: the view page, else edit, else the list).
+
+`PageContext::fromRequest()` resolves the reference from the current route (a bound model, or a resource route with a record parameter); `PageContext::resolve('orders/12')` turns it back into the label and summary, `PageContext::url('orders/12')` into the record's page. Hide the button on pages that have their own composer with `AgentsPlugin::make()->hideAskButtonOn(['*.pages.dashboard'])`; `->askButtonColor('gray')` blends it in with the topbar's other actions (it is in the panel's primary colour by default, so it reads as the assistant).

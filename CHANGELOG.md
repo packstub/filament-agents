@@ -2,7 +2,28 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
-## Unreleased
+## 1.13.0 — 2026-10-01
+
+The chat gets its polish and its guard rails: a compact table in every answer with the full table one click away, a Retry under every unanswered question, the record a chat is about kept and linked, the Ask button in the panel's colour — and, from the engine's 1.6, a prompt guard, redaction, a classification of every chat on the Chats page, web search with its sources under the answer and a knowledge base, each a switch on `AgentsPlugin`.
+
+Upgrading: the plugin requires `packstub/agents` ^1.6; run the migrations (one new table, `agent_conversation_classifications`; with `run_migrations => false`, publish the migrations again and put it next to the chat tables) and `php artisan filament:assets`. The topbar "Ask …" button is in the panel's primary colour now: `AgentsPlugin::make()->askButtonColor('gray')` keeps the old look. A test that read a new chat's title from the assistant's fake gives `TitleAgent` its own fake, see the engine's [changelog](https://github.com/packstub/agents/blob/main/CHANGELOG.md).
+
+### Added
+
+- **Embedded tables: short results shown whole, long ones with the list page's controls** (closes #42). The table under an answer is compact: one header with the caption and the row count, small column titles, every row up to a cap of 25, no search box, filter button, bulk actions or pager — three pending orders are three rows. A longer result shows its first rows and a link, "Open all 37 in a full table", to a new page of the panel (`/agent-table/{resource}`) where the same rows come with the resource's search, filters, pagination (ten a page) and bulk actions, under the caption as its title and a breadcrumb to the resource. `AgentsPlugin::make()->embeddedTable(limit: 50)` moves the cap; the tool tells the model which case it is in. Checked at phone width: the table scrolls inside its card, the page does not.
+- **The chat page header** (closes #40). "About Order RO-00012" links the record to its page, the context stays with the conversation after the redirect to its URL, a reload, the Chats page or the slide-over (the engine records it with every question), and the topbar "Ask …" button is in the panel's primary colour, so it reads as the assistant rather than one more action (`->askButtonColor()`).
+- **Retry on every unanswered question** (closes #19). A question that failed, was refused or was stopped before an answer keeps its line ("The assistant could not answer. …") and a Retry wherever it sits, not only when it is the last one; Retry on an earlier question moves it to the end of the chat, where its answer lands, and sends it whole, with its files and mentioned records.
+- **Structured-output side agents and a classification of every chat** (closes #31). The title, the rolling summary and the new classification are asked of side agents with a schema (the engine's `TitleAgent`, `SummaryAgent`, `ClassifierAgent`). `->classify(topics: [...])` (or `AGENT_CLASSIFY=true`) classifies each chat after an answer — topic, sentiment, resolved — and the Chats page gains three columns (a topic badge, sentiment coloured, resolved as a tick), a filter for each and a sort on each.
+- **A prompt guard** (closes #28). `->promptGuard(provider: 'ollama', model: 'llama-guard3', refuse: [...])` (or `AGENT_PROMPT_GUARD=true`) has a small model classify every question before the assistant reads it; an injection, a jailbreak or a data exfiltration attempt is refused with a friendly line under the question and a Retry, the AI turns page records the turn as refused, and the category and reason go to the log and to the `PromptFlagged` event.
+- **Redaction** (closes #29). `->redact(patterns: ['iban' => '/…/'], using: fn (string $text) => …)` (or `AGENT_REDACT=true`) replaces card numbers, social security numbers, API keys and your own patterns in the answer as it streams — the value under way is held back, so it is never shown and then taken back — in the stored answer and in the tool results stored with it; a turn that had something replaced logs a `critical` line and fires `OutputRedacted`.
+- **A knowledge base** (closes #32). `->knowledgeBase(Article::class, 'embedding', content: 'body', url: fn ($a) => …)` gives the assistant the engine's `search-knowledge-base` tool for "how do I…" questions over the app's own documents (pgvector, or a search of your own, or a provider's vector stores), shown on the timeline like any read tool; `php artisan packstub-agents:embed` fills the embeddings.
+- **Web search, held to an allow-list** (closes #33). `->webSearch(allow: ['docs.acme.com'], max: 3, location: ['country' => 'RO'])` switches on the provider's web search; the searches appear on the timeline as **Web Search** lines with their query (a globe icon), the pages the answer cites are listed under it as **Sources** chips, and the status line says "Searching the web…". A provider without web search answers without it.
+- The new strings ship in the German, Spanish, Romanian and Russian files.
+
+### Changed
+
+- Requires `packstub/agents` ^1.6.
+- `show-table`'s description and note no longer promise a paginated table; the `docs/images/chat-table.png` and `orders-ask-button.png` screenshots are retaken.
 
 ### Docs
 

@@ -16,6 +16,11 @@
 | `max_tokens` | `4096` | | answer length |
 | `max_conversation_messages` | `40` | | a second ceiling on the history window: at most this many earlier messages are replayed, whatever `history.max_tokens` allows — raise both to widen a long chat's window |
 | `middleware` | `[]` | | your own agent middleware, run on every turn after the package's guard rails; see [Middleware](assistant.md#middleware) |
+| `prompt_guard.*` | off | `AGENT_PROMPT_GUARD`, `AGENT_PROMPT_GUARD_PROVIDER`, `AGENT_PROMPT_GUARD_MODEL` | a small model classifies every question before the assistant reads it and refuses injections, jailbreaks and data exfiltration; also `AgentsPlugin::make()->promptGuard()`. See [The prompt guard](https://packstub.dev/docs/agents/security#the-prompt-guard) |
+| `redact.*` | off | `AGENT_REDACT` | card numbers, social security numbers, API keys and your own patterns replaced in answers, streaming included, and in stored tool results; also `->redact()`. See [Redaction](https://packstub.dev/docs/agents/security#redaction) |
+| `classify.*` | off | `AGENT_CLASSIFY` | each chat classified after an answer (topic, sentiment, resolved) for the Chats page to filter and sort by; also `->classify()`. See [Classification](assistant.md#classification) |
+| `web_search.*` | off | `AGENT_WEB_SEARCH`, `AGENT_WEB_SEARCH_ALLOW`, `AGENT_WEB_SEARCH_MAX` | the provider's web search in the chat, held to an allow-list of domains; also `->webSearch()`. See [Web search](https://packstub.dev/docs/agents/tools#web-search) |
+| `knowledge_base.*` | none | | the app's own documents for "how do I…" questions; also `->knowledgeBase()`. See [Knowledge base](https://packstub.dev/docs/agents/tools#knowledge-base) |
 | `history.max_tokens` | `24000` | `AGENT_HISTORY_MAX_TOKENS` | the history window, in estimated tokens; what no longer fits is folded into a rolling summary the model reads first |
 | `history.keep_tool_results_turns` | `3` | | tool results older than this many turns are replaced by a one-line placeholder when replayed |
 | `history.notice_share` | `0.7` | | from this share of the window the chat suggests continuing in a new chat |
@@ -153,7 +158,13 @@ AgentsPlugin::make()
     ->turnLog()
     ->slideOver()
     ->shortcut('mod+j')
-    ->hideAskButtonOn(['*.pages.dashboard']);
+    ->hideAskButtonOn(['*.pages.dashboard'])
+    ->embeddedTable(limit: 25)
+    ->promptGuard()
+    ->redact(patterns: ['iban' => '/\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]{4}){3,7}\b/'])
+    ->classify(topics: ['orders', 'stock', 'billing', 'how-to'])
+    ->webSearch(allow: ['docs.acme.com', 'laravel.com'], max: 3)
+    ->knowledgeBase(Article::class, 'embedding', content: 'body', url: fn (Article $a) => route('help.show', $a));
 ```
 
 | Method | |
@@ -175,12 +186,19 @@ AgentsPlugin::make()
 | `hideAskButtonOn(array $routePatterns)` | route name patterns without the topbar button (the chat itself is always excluded) |
 | `slideOver(bool $enabled)` | whether the "Ask …" button opens the chat as a slide-over on the right of the current page (default) or leads to the chat page |
 | `shortcut(?string $keys)` | the keyboard shortcut that opens the chat from any page: `mod+j` (the default: ⌘J on a Mac, Ctrl+J elsewhere), `mod+shift+a`…; `null` for none |
+| `askButtonColor(string $color)` | the colour of the topbar "Ask …" button: `primary` (the default) sets it apart from the other actions, `gray` blends it in |
+| `embeddedTable(bool $search, bool $filters, int $limit)` | the table under an answer: whether it keeps the resource's search box and filter button (both off by default), and how many rows it shows before it links to the full table (25); see [show-table](tables-and-charts.md#show-table) |
+| `promptGuard(bool $enabled, ?string $provider, ?string $model, ?array $refuse, ?bool $failOpen)` | the prompt guard, mirrored into `prompt_guard.*`: where the classifier runs (default: the turn's provider, its cheapest model), which categories stop a turn (`injection`, `jailbreak`, `data_exfiltration`; add `off_topic`), whether a failing classifier lets the turn run |
+| `redact(bool $enabled, ?array $detect, ?array $patterns, ?string $replacement, ?Closure $using)` | redaction, mirrored into `redact.*`: the built-in detectors to keep (`card`, `ssn`, `api_key`), your own patterns (label => regex), the replacement, and a callback `fn (string $text): string` run after the patterns (`Agents::redactUsing()`) |
+| `classify(bool $enabled, ?array $topics)` | classification after each answer, mirrored into `classify.*`; `topics` is a fixed list to pick from ("other" is added), without it the model names the topic |
+| `webSearch(array $allow, ?int $max, ?array $location, bool $enabled)` | the provider's web search, mirrored into `web_search.*`: the domains it may read (empty = the whole web), searches per turn, `['country' => 'RO']` |
+| `knowledgeBase(?string $model, string $column, string\|Closure $title, string\|Closure $content, string\|Closure\|null $url, float $minSimilarity, int $limit, ?Closure $query, ?Closure $using, array $stores, ?string $ability)` | the app's documents for "how do I…" questions (`Agents::knowledgeBase()`): the model and its embedding column, how a document's title, content and page are read, which documents count, a search of your own, provider-hosted vector stores, who may search |
 
 Two panels may register the plugin: the tenant panel with the chat and the token page, the operator panel with `chat(false)->agentAccess(false)->limits()`. The plugin's id is `packstub-agents` (`$panel->getPlugin('packstub-agents')`).
 
 ## The Agents facade
 
-`Packstub\Agents\Facades\Agents` reads back what the app told the package: `name()`, `tenant()`, `inPanel()`, `toolClasses()`, `resourceClasses()`, `middleware()`, `allows($ability)`, `roleLabel()`, `credentials()`, `canManageLimits()`, `registeredResources()`, `agentAccess()`, `agentAccessAbility()`, `agentAccessGroup()`, `askButtonHiddenOn($routeName)`, the tenancy hooks (`tenantModelClass()`, `tenantSlugAttribute()`, `tenantResolver()`, `tenantEnterHook()`), and `context()` — the `AgentContext` that knows who is acting and where (the panel's `FilamentContext`, whose `panel()` is the panel the assistant lives in, or the `LaravelContext` of a plain app). Tools and views use it; your own code may too. Without a panel the same facade is how the app registers itself — `useAgent()`, `useServer()`, `useTools()`, `addTools()`, `useResources()`, `useMiddleware()`, `authorizeUsing()`, `roleLabelUsing()`, `credentialsUsing()`, `limitsAuthorizeUsing()`, `tenantUsing()`, `tenantModel()`, `enteringTenant()` — see [Agents for Laravel](https://packstub.dev/docs/agents/installation).
+`Packstub\Agents\Facades\Agents` reads back what the app told the package: `name()`, `tenant()`, `inPanel()`, `toolClasses()`, `resourceClasses()`, `middleware()`, `allows($ability)`, `roleLabel()`, `credentials()`, `canManageLimits()`, `registeredResources()`, `optInTools()`, `knowledge()`, `redactor()`, `agentAccess()`, `agentAccessAbility()`, `agentAccessGroup()`, `askButtonHiddenOn($routeName)`, the tenancy hooks (`tenantModelClass()`, `tenantSlugAttribute()`, `tenantResolver()`, `tenantEnterHook()`), and `context()` — the `AgentContext` that knows who is acting and where (the panel's `FilamentContext`, whose `panel()` is the panel the assistant lives in, or the `LaravelContext` of a plain app). Tools and views use it; your own code may too. Without a panel the same facade is how the app registers itself — `useAgent()`, `useServer()`, `useTools()`, `addTools()`, `useResources()`, `useMiddleware()`, `authorizeUsing()`, `roleLabelUsing()`, `credentialsUsing()`, `limitsAuthorizeUsing()`, `tenantUsing()`, `tenantModel()`, `enteringTenant()`, `knowledgeBase()`, `redactUsing()` — see [Agents for Laravel](https://packstub.dev/docs/agents/installation).
 
 ## Translations and views
 

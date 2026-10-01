@@ -15,6 +15,8 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
@@ -24,6 +26,7 @@ use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Models\ConversationMessage;
 use Packstub\Agents\Facades\Agents;
 use Packstub\Agents\Models\AgentPinnedConversation;
+use Packstub\Agents\Models\ConversationClassification;
 use Packstub\Agents\Support\AgentChat;
 use Packstub\Agents\Support\AgentConversationStore;
 use Packstub\Agents\Support\AgentModels;
@@ -67,7 +70,7 @@ class Chats extends Page implements HasTable
     /** @return string|array<string> */
     public static function getNavigationItemActiveRoutePattern(): string|array
     {
-        return [static::getRouteName(), Chat::getRouteName()];
+        return [static::getRouteName(), Chat::getRouteName(), ResourceTable::getRouteName()];
     }
 
     public function getTitle(): string|Htmlable
@@ -89,9 +92,32 @@ class Chats extends Page implements HasTable
             ->where('participant_id', auth()->id());
         $pinned = AgentPinnedConversation::query()->select('conversation_id');
 
+        // With classification on (config `classify`), each chat carries what it is about, how the person sounded and
+        // whether it was resolved: three columns to sort by and three filters, read from the classifier's table.
+        $classified = self::classified();
+        $conversations = (new Conversation)->getTable();
+        $classification = fn (string $column) => ConversationClassification::query()->select($column)->whereColumn('conversation_id', $conversations.'.id')->limit(1);
+        $matching = fn (string $column, mixed $value) => ConversationClassification::query()->select('conversation_id')->where($column, $value);
+
         return $table
-            ->query(fn () => $own()->orderByRaw('case when id in ('.$pinned->toRawSql().') then 0 else 1 end'))
+            ->query(fn () => $own()
+                ->when($classified, fn (Builder $query) => $query->addSelect(['topic' => $classification('topic'), 'sentiment' => $classification('sentiment'), 'resolved' => $classification('resolved')]))
+                ->orderByRaw('case when id in ('.$pinned->toRawSql().') then 0 else 1 end'))
             ->defaultSort('updated_at', 'desc')
+            ->filters($classified ? [
+                SelectFilter::make('topic')->label(__('Topic'))
+                    ->options(fn () => ConversationClassification::query()->whereIn('conversation_id', $own()->select('id'))->distinct()->orderBy('topic')->pluck('topic', 'topic')->map(fn (string $topic) => Str::headline($topic))->all())
+                    ->query(fn (Builder $query, array $data) => filled($data['value'] ?? null) ? $query->whereIn('id', $matching('topic', $data['value'])) : $query),
+                SelectFilter::make('sentiment')->label(__('Sentiment'))
+                    ->options(self::sentiments())
+                    ->query(fn (Builder $query, array $data) => filled($data['value'] ?? null) ? $query->whereIn('id', $matching('sentiment', $data['value'])) : $query),
+                TernaryFilter::make('resolved')->label(__('Resolved'))
+                    ->queries(
+                        true: fn (Builder $query) => $query->whereIn('id', $matching('resolved', true)),
+                        false: fn (Builder $query) => $query->whereIn('id', $matching('resolved', false)),
+                        blank: fn (Builder $query) => $query,
+                    ),
+            ] : [])
             ->columns([
                 IconColumn::make('pinned')->label('')
                     ->state(fn (Conversation $c) => AgentPinnedConversation::query()->where('conversation_id', $c->id)->exists())
@@ -105,6 +131,25 @@ class Chats extends Page implements HasTable
                         ->orWhereIn('id', ConversationMessage::query()->select('conversation_id')->where('content', 'like', '%'.self::escapeLike($search).'%'))))
                     ->description(fn (Conversation $c) => $this->snippetFor($c))
                     ->url(fn (Conversation $c) => Chat::getUrl(['conversation' => $c->id])),
+                ...($classified ? [
+                    TextColumn::make('topic')->label(__('Topic'))
+                        ->badge()->color('gray')
+                        ->formatStateUsing(fn (?string $state) => $state === null ? null : Str::headline($state))
+                        ->sortable(query: fn (Builder $query, string $direction) => $query->orderBy('topic', $direction)),
+                    TextColumn::make('sentiment')->label(__('Sentiment'))
+                        ->badge()
+                        ->formatStateUsing(fn (?string $state) => self::sentiments()[$state] ?? $state)
+                        ->color(fn (?string $state) => match ($state) {
+                            'positive' => 'success',
+                            'negative' => 'danger',
+                            default => 'gray',
+                        })
+                        ->sortable(query: fn (Builder $query, string $direction) => $query->orderBy('sentiment', $direction)),
+                    IconColumn::make('resolved')->label(__('Resolved'))
+                        ->state(fn (Conversation $c) => $c->getAttribute('resolved') === null ? null : (bool) $c->getAttribute('resolved'))
+                        ->boolean()
+                        ->sortable(query: fn (Builder $query, string $direction) => $query->orderBy('resolved', $direction)),
+                ] : []),
                 TextColumn::make('updated_at')->label(__('Last message'))->since()->sortable(),
             ])
             ->recordUrl(fn (Conversation $c) => Chat::getUrl(['conversation' => $c->id]))
@@ -143,6 +188,18 @@ class Chats extends Page implements HasTable
             ])
             ->emptyStateHeading(__('No chats yet'))
             ->emptyStateDescription(__('Ask anything about your workspace.'));
+    }
+
+    /** Whether chats are classified (config `classify.enabled`), so the list shows and filters by topic, sentiment and resolved. */
+    public static function classified(): bool
+    {
+        return (bool) config('packstub-agents.classify.enabled', false);
+    }
+
+    /** @return array<string, string> */
+    protected static function sentiments(): array
+    {
+        return ['positive' => __('Positive'), 'neutral' => __('Neutral'), 'negative' => __('Negative')];
     }
 
     /** A line of the first message that matches the search, under the title; nothing without a search. */

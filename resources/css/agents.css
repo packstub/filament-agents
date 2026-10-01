@@ -287,3 +287,34 @@ button.fi-chat-timeline-call:hover, button.fi-chat-timeline-call:focus-visible {
 
 /* The sidebar: pinned chats first, with a bookmark. */
 .fi-sidebar-chats-pin { width: 0.875rem; height: 0.875rem; flex: none; color: var(--primary-500); }
+
+/* --- 1.13: the compact table of an answer, the record link in the header, the sources of a web search --- */
+
+/* A table in an answer is compact: one quiet header (the caption and the row count), small column titles, no pager. */
+.fi-chat-table-compact .fi-ta-header { padding: 0.625rem 0.75rem; gap: 0.5rem; }
+.fi-chat-table-compact .fi-ta-header-heading { font-size: 0.875rem; line-height: 1.25rem; }
+.fi-chat-table-compact .fi-ta-header-description { font-size: 0.75rem; margin-top: 0; }
+.fi-chat-table-compact .fi-ta-header-toolbar { padding: 0.25rem 0.5rem; }
+.fi-chat-table-compact .fi-ta-header-cell { padding-block: 0.375rem; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; color: var(--gray-500); }
+.fi-chat-table-compact .fi-ta-header-cell .fi-ta-header-cell-sort-btn { font-size: inherit; font-weight: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; }
+.fi-chat-table-compact .fi-ta-text { padding-block: 0.5rem; }
+.fi-chat-table-compact .fi-ta-actions { gap: 0.625rem; }
+/* The link to the whole of a long result, under its first rows. */
+.fi-chat-table-more { display: inline-flex; align-items: center; gap: 0.375rem; margin-top: 0.5rem; padding: 0.25rem 0.125rem; font-size: 0.8125rem; font-weight: 600; color: var(--primary-600); }
+.fi-chat-table-more:hover, .fi-chat-table-more:focus-visible { text-decoration: underline; text-underline-offset: 2px; outline: none; }
+.dark .fi-chat-table-more { color: var(--primary-400); }
+
+/* "About <record>" under the chat's title: the record links to its page. */
+.fi-chat-about a { font-weight: 500; color: var(--gray-700); text-decoration: underline; text-decoration-color: rgb(0 0 0 / 0.2); text-underline-offset: 2px; }
+.fi-chat-about a:hover, .fi-chat-about a:focus-visible { color: var(--primary-600); text-decoration-color: currentColor; outline: none; }
+.dark .fi-chat-about a { color: var(--gray-300); text-decoration-color: rgb(255 255 255 / 0.25); }
+.dark .fi-chat-about a:hover, .dark .fi-chat-about a:focus-visible { color: var(--primary-400); }
+
+/* The pages an answer cites from a web search: one chip per page, under the answer. */
+.fi-chat-sources { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem; }
+.fi-chat-sources-label { font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--gray-500); margin-inline-end: 0.125rem; }
+.fi-chat-source { display: inline-flex; align-items: center; gap: 0.25rem; max-width: 100%; padding: 0.125rem 0.5rem; border-radius: 9999px; border: 1px solid rgb(0 0 0 / 0.1); font-size: 0.75rem; color: var(--gray-700); }
+.fi-chat-source span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fi-chat-source:hover, .fi-chat-source:focus-visible { border-color: var(--primary-500); color: var(--primary-700); outline: none; }
+.dark .fi-chat-source { border-color: rgb(255 255 255 / 0.12); color: var(--gray-300); }
+.dark .fi-chat-source:hover, .dark .fi-chat-source:focus-visible { border-color: var(--primary-400); color: var(--primary-300); }

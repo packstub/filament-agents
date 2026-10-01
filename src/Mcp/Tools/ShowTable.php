@@ -5,13 +5,16 @@ namespace Packstub\Agents\Mcp\Tools;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
+use Packstub\Agents\AgentsPlugin;
+use Packstub\Agents\Livewire\AgentTable;
 use Packstub\Agents\Mcp\AgentTool;
 use Packstub\Agents\Support\AgentResources;
 use RuntimeException;
 
 /**
- * Show the person a live, paginated Filament table under the answer: the
- * resource's own table() with the agent's filters as the base query. The
+ * Show the person a live Filament table under the answer: the resource's own
+ * table() with the agent's filters as the base query — every row of a short
+ * result, the first rows of a long one with a link to the full table. The
  * tables and their filter vocabulary come from the panel's resources that
  * implement AgentResource, so the schema the model sees is generated.
  */
@@ -22,7 +25,7 @@ class ShowTable extends AgentTool
     {
         $tables = collect(AgentResources::all())->map(fn (string $resource, string $key) => $key.' ('.$resource::getPluralModelLabel().')')->join(', ');
 
-        return 'Show the person a live, paginated table of '.($tables ?: 'records').' — the same table as the panel page, with its search, filters, sorting and row actions. Use it whenever someone wants to see or work through a list (more than a handful of rows, "show me", "list", "table"), instead of typing rows yourself. Filters use the same vocabulary as the search tools.';
+        return 'Show the person a live table of '.($tables ?: 'records').' — the same table as the panel page, with its columns, sorting and row actions; a long result shows its first rows and a link to all of them. Use it whenever someone wants to see or work through a list (more than a handful of rows, "show me", "list", "table"), instead of typing rows yourself. Filters use the same vocabulary as the search tools.';
     }
 
     protected function run(Request $request): array
@@ -36,6 +39,7 @@ class ShowTable extends AgentTool
 
         $filters = AgentResources::normalizeFilters($key, (array) ($request->get('filters') ?? []));
         $total = AgentResources::apply($key, $resource::getEloquentQuery(), $filters)->count();
+        $shown = AgentsPlugin::current()?->getEmbeddedTableLimit() ?? AgentTable::DEFAULT_LIMIT;
 
         return [
             'table' => [
@@ -44,7 +48,9 @@ class ShowTable extends AgentTool
                 'title' => (string) ($request->get('title') ?: ''),
             ],
             'total' => $total,
-            'note' => 'An interactive table with these '.$total.' rows is rendered for the user under your answer (paginated, sortable, with row actions). Do not list the rows; one sentence on what the table shows is enough.',
+            'note' => ($total > $shown
+                ? 'A table with the first '.$shown.' of these '.$total.' rows is rendered for the user under your answer (sortable, with row actions), with a link that opens all of them with search, filters and pagination.'
+                : 'A table with these '.$total.' rows is rendered for the user under your answer (sortable, with row actions).').' Do not list the rows; one sentence on what the table shows is enough.',
         ];
     }
 
