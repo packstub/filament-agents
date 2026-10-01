@@ -2,7 +2,7 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
-## 1.13.0 — 2026-09-30
+## 1.13.0 — 2026-10-01
 
 The chat gets its polish and its guard rails: a compact table in every answer with the full table one click away, a Retry under every unanswered question, the record a chat is about kept and linked, the Ask button in the panel's colour — and, from the engine's 1.6, a prompt guard, redaction, a classification of every chat on the Chats page, web search with its sources under the answer and a knowledge base, each a switch on `AgentsPlugin`.
 
