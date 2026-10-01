@@ -81,8 +81,13 @@ class ResourceTable extends Page
         ] : [];
     }
 
+    /** A page that was never mounted (Shield reading every page's title for its permissions) has no resource. */
     protected function resourceLabel(): string
     {
+        if (! AgentResources::has($this->resource)) {
+            return __('Table');
+        }
+
         return Str::ucfirst((string) AgentResources::find($this->resource)::getPluralModelLabel());
     }
 

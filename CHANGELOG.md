@@ -2,6 +2,16 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## 1.13.1 — 2026-10-01
+
+### Fixed
+
+- **Filament Shield no longer fails on the full-table page.** Shield reads the title of every page, unmounted, to label its permissions, and the new `ResourceTable` page looked up a resource it did not have yet, so `shield:generate` (and a seeder that syncs permissions) threw `Unknown table ""`. Without a resource the page is titled "Table".
+
+### Docs
+
+- Every screenshot retaken from the demo's rig in one setup, light mode forced: the compact table, the linked page context and the primary Ask button now sit beside the chart, approval, new-chat, token and limits shots.
+
 ## 1.13.0 — 2026-10-01
 
 The chat gets its polish and its guard rails: a compact table in every answer with the full table one click away, a Retry under every unanswered question, the record a chat is about kept and linked, the Ask button in the panel's colour — and, from the engine's 1.6, a prompt guard, redaction, a classification of every chat on the Chats page, web search with its sources under the answer and a knowledge base, each a switch on `AgentsPlugin`.
