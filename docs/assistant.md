@@ -5,14 +5,14 @@
 `AgentsPlugin` adds three things to the panel when `chat()` is on (the default):
 
 - a **Chat** page (`/chat/{conversation?}`) where the answer streams in while the agent calls tools, with a model picker in the composer (Claude Opus 5, Claude Haiku 4.5, Claude Opus 5 · Deep out of the box);
-- an **Ask …** button in the topbar, which opens a new chat and, on a record page of a resource that implements `AgentResource`, carries that record along as page context ("About Order RO-00012");
+- an **Ask …** button in the topbar, in the panel's primary colour so it reads as the assistant, which opens a new chat and, on a record page of a resource that implements `AgentResource`, carries that record along as page context ("About Order RO-00012", linked to the record);
 - the recent conversations at the end of the sidebar, plus a **Chats** page listing all of the person's conversations. A panel with `topNavigation()` has no sidebar, so the Chats page registers an "Ask …" navigation item there instead — the assistant's name and icon, active on the list and on a chat.
 
 A new chat opens on the assistant's name and a row of starter questions; click one and it is sent. They come from your agent's `suggestions()` (see [The Agent class](#the-agent-class)): by default what needs attention today, "Show me the latest orders." for the first two agent resources and what the assistant can do, or, when the chat was opened from a record, "What should I know about Order RO-00012?" and "What is the next step for Order RO-00012?".
 
 ![A new chat: the "Ask Acme" item active in the top navigation, the assistant's name over four starter questions as pills, and the one-row composer with the model button and Send](https://raw.githubusercontent.com/packstub/art/main/filament-agents/docs/chat-new.png)
 
-An answer about records renders the resource's own table under itself, narrowed to what the answer says, with the same search, sorting and row actions as the list page:
+An answer about records renders the resource's own table under itself, narrowed to what the answer says — compact, every row up to a cap, with the same columns, sorting and row actions as the list page, and a link to the full table with the list page's controls when the result is long (see [Tables and charts](tables-and-charts.md#show-table)):
 
 ![A question about pending orders answered with a short summary and the live Orders table under it, filtered to the three pending rows, with Confirm and Edit actions](https://raw.githubusercontent.com/packstub/art/main/filament-agents/docs/chat-table.png)
 
@@ -20,7 +20,7 @@ An answer about numbers renders a chart, from `draw-chart` or from a reporting t
 
 ![A question about order value over four weeks answered with a sentence and a bar chart, Order value by week](https://raw.githubusercontent.com/packstub/art/main/filament-agents/docs/chat-chart.png)
 
-Conversations and messages are laravel/ai's `Conversation` and `ConversationMessage` models, stored in the `agent_conversations` and `agent_conversation_messages` tables, so a reload never loses anything and one person never sees another person's chats. A question is recorded before the provider is called: if the provider fails or times out, the question stays in the conversation with a Retry link under it.
+Conversations and messages are laravel/ai's `Conversation` and `ConversationMessage` models, stored in the `agent_conversations` and `agent_conversation_messages` tables, so a reload never loses anything and one person never sees another person's chats. A question is recorded before the provider is called: if the provider fails, times out or a guard refuses it, the question stays in the conversation with a line that says why and a Retry link under it — under the last question and under any earlier one the chat moved on from. Retry on an earlier question moves it to the end of the chat, where its answer lands, and sends it whole, with its files and mentioned records.
 
 The composer is one row: the question, the model, and a square Send; the field grows with the text up to eight lines, and the placeholder is the assistant's name ("Ask Acme…"). The model is a small text button that opens the list — each entry with what it runs under it ("Claude Haiku 4.5 · Fast"), the picked one ticked, provider headings when entries of more than one provider are listed — remembered per session. The composer never locks. A question appears in the transcript the moment it is sent; Enter sends and Shift+Enter breaks the line. Anything typed while an answer is still streaming waits its turn on the conversation and is sent next, one turn at a time (the placeholder says so meanwhile) — a waiting question can be edited or removed until then, and ↑ in an empty composer pulls the last waiting question back for editing (or the last one sent, to send it again). **Stop** next to the model cuts the running answer short: what the assistant had written stays as its answer, marked "(stopped)". An answer the provider ended early — a stream that closed mid-answer, the model's length limit, a content filter — is kept the same way, marked "(cut short)" with the reason on hover, and can be produced again. The page follows the answer as it streams unless you scroll up to read, with a "Jump to latest" button to catch up. Every answer can be rated with a thumbs up or down (`agent_message_feedback`), which your app can read to find the questions that go wrong.
 
@@ -42,9 +42,21 @@ The paper clip in the composer attaches files to a question — a screenshot, an
 
 ### Rename, pin, export, versions, continue
 
-The title in the header has a pencil to rename the chat, a bookmark to pin it to the top of the sidebar and the Chats page, and an arrow to export it as Markdown. Regenerate and Edit keep the earlier answer: a small `2/2` under the newest answer opens the earlier ones, and picking one puts it back (the current one becomes a version in turn) so the chat carries on from it. An answer the model's length limit cut short gets a **Continue** link that carries on where it stopped; the continuation reads as one answer.
+The title in the header has a pencil to rename the chat, a bookmark to pin it to the top of the sidebar and the Chats page, and an arrow to export it as Markdown; under it, "About Order RO-00012" says which record the chat is about and links to its page, on every visit (see [Page context](tables-and-charts.md#page-context)). Regenerate and Edit keep the earlier answer: a small `2/2` under the newest answer opens the earlier ones, and picking one puts it back (the current one becomes a version in turn) so the chat carries on from it. An answer the model's length limit cut short gets a **Continue** link that carries on where it stopped; the continuation reads as one answer.
 
-The **Chats** page lists pinned chats first, its search box looks into the messages as well as the titles (with a line of the first match under the title), and every row can be renamed, pinned, exported or deleted; a bulk delete is on the toolbar.
+The **Chats** page lists pinned chats first, its search box looks into the messages as well as the titles (with a line of the first match under the title), and every row can be renamed, pinned, exported or deleted; a bulk delete is on the toolbar. With [classification](#classification) on, each row also says what the chat is about, how the person sounded and whether it was resolved, with a filter and a sort for each.
+
+### Web search and the knowledge base
+
+With the engine's [web search](https://packstub.dev/docs/agents/tools#web-search) on, the searches the provider ran appear on the timeline above the answer as **Web Search** lines with their query, and the pages the answer cites are listed under it as **Sources** chips, each a link; the status line says "Searching the web…" meanwhile. `AgentsPlugin::make()->webSearch(allow: ['docs.acme.com'], max: 3)` switches it on with an allow-list of domains. A [knowledge base](https://packstub.dev/docs/agents/tools#knowledge-base) — `->knowledgeBase(Article::class, 'embedding', content: 'body', url: 'link')` — gives the assistant a `search-knowledge-base` tool for "how do I…" questions, shown on the timeline like any read tool, with the articles it cites linked in the answer.
+
+### Classification
+
+`AgentsPlugin::make()->classify(topics: ['orders', 'stock', 'how-to'])` (or `AGENT_CLASSIFY=true`) has a side agent classify each chat after an answer: its topic, the person's sentiment and whether it was resolved. The Chats page gains three columns — Topic as a badge, Sentiment coloured (positive green, negative red), Resolved as a tick — with a filter for each and a sort on each, so an operator finds the unresolved billing chats of the week. See [Classification](https://packstub.dev/docs/agents/assistant#classification) for what is stored and how the topic list works.
+
+### The prompt guard and redaction
+
+Two guard rails of the engine show in the chat when they are on. The [prompt guard](https://packstub.dev/docs/agents/security#the-prompt-guard) (`->promptGuard()`) refuses a question it reads as an injection, a jailbreak or an attempt to pull data out before the assistant sees it: the question stays with a friendly line under it ("Ask Acme cannot help with that request…") and a Retry, and the AI turns page records the turn as refused. [Redaction](https://packstub.dev/docs/agents/security#redaction) (`->redact()`) replaces card numbers, social security numbers, API keys and your own patterns in the answer as it streams — the value under way is held back, so it is never shown and then taken back — and in what the chat stores.
 
 ### The slide-over and the shortcut
 

@@ -231,7 +231,7 @@ it('opens the chat as a slide-over from the Ask button and the shortcut, and emb
     $full = get(Chat::getUrl())->assertOk()->content();
     expect($full)->not->toContain('fi-agent-drawer')->toContain('fi-sidebar');
     $embedded = get(Chat::getUrl(['embedded' => 1, 'context' => 'widgets/'.$alpha->id]))->assertOk()->content();
-    expect($embedded)->not->toContain('fi-sidebar')->toContain('fi-chat-embedded')->toContain(__('Open full page'))->toContain('About Widget Alpha');
+    expect($embedded)->not->toContain('fi-sidebar')->toContain('fi-chat-embedded')->toContain(__('Open full page'))->toContain('fi-chat-about')->toContain('target="_top">Widget Alpha</a>'); // the record links over the frame, not inside it
 
     // Switched off: the button is a plain link and no drawer is rendered.
     $plugin->slideOver(false)->shortcut(null);

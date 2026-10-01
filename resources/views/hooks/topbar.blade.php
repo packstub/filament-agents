@@ -16,7 +16,7 @@
     <x-filament::button
         tag="a"
         :href="$url"
-        color="gray"
+        :color="$plugin?->getAskButtonColor() ?? 'primary'"
         outlined
         size="sm"
         icon="heroicon-m-sparkles"

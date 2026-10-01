@@ -8,6 +8,7 @@ use Filament\Facades\Filament;
 use Filament\Panel;
 use Filament\Support\Facades\FilamentView;
 use Filament\View\PanelsRenderHook;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Route;
 use Laravel\Mcp\Server\Tool;
 use Packstub\Agents\Ai\Agent;
@@ -17,10 +18,12 @@ use Packstub\Agents\Filament\FilamentContext;
 use Packstub\Agents\Filament\Pages\AgentAccess;
 use Packstub\Agents\Filament\Pages\Chat;
 use Packstub\Agents\Filament\Pages\Chats;
+use Packstub\Agents\Filament\Pages\ResourceTable;
 use Packstub\Agents\Filament\Pages\TurnLog;
 use Packstub\Agents\Filament\Resources\AgentLimits\AgentLimitResource;
 use Packstub\Agents\Http\Controllers\TurnController;
 use Packstub\Agents\Http\Controllers\TurnStreamController;
+use Packstub\Agents\Livewire\AgentTable;
 use Packstub\Agents\Mcp\Tools\ShowTable;
 
 /**
@@ -95,6 +98,29 @@ class AgentsPlugin implements Plugin
 
     protected bool $embeddedTableFilters = false;
 
+    /** How many rows a table shows in an answer; a longer result links to the full table. */
+    protected int $embeddedTableLimit = AgentTable::DEFAULT_LIMIT;
+
+    /** The colour of the topbar "Ask …" button: the panel's primary, so it reads as the assistant rather than one more action. */
+    protected string $askButtonColor = 'primary';
+
+    /** @var array<string, mixed>|null prompt_guard.* overrides (null: leave config as it is) */
+    protected ?array $promptGuard = null;
+
+    /** @var array<string, mixed>|null redact.* overrides */
+    protected ?array $redact = null;
+
+    protected ?Closure $redactUsing = null;
+
+    /** @var array<string, mixed>|null classify.* overrides */
+    protected ?array $classify = null;
+
+    /** @var array<string, mixed>|null web_search.* overrides */
+    protected ?array $webSearch = null;
+
+    /** @var array<string, mixed>|null the arguments of Agents::knowledgeBase() */
+    protected ?array $knowledgeBase = null;
+
     public static function make(): static
     {
         return new static;
@@ -109,16 +135,23 @@ class AgentsPlugin implements Plugin
     }
 
     /**
-     * The table show-table embeds under an answer: whether it keeps the resource's search box and its filter button.
-     * Both start hidden, since the assistant chose the filters and the answer says what the table shows; the
-     * columns, sorting, pagination and row actions stay.
+     * The table show-table embeds under an answer: whether it keeps the resource's search box and its filter button,
+     * and how many rows it shows. Search and filters start hidden, since the assistant chose the filters and the
+     * answer says what the table shows; the columns, sorting and row actions stay. A result longer than $limit
+     * shows its first rows and a link to the full table, with the list page's search, filters and pagination.
      */
-    public function embeddedTable(bool $search = false, bool $filters = false): static
+    public function embeddedTable(bool $search = false, bool $filters = false, int $limit = AgentTable::DEFAULT_LIMIT): static
     {
         $this->embeddedTableSearch = $search;
         $this->embeddedTableFilters = $filters;
+        $this->embeddedTableLimit = max(1, $limit);
 
         return $this;
+    }
+
+    public function getEmbeddedTableLimit(): int
+    {
+        return $this->embeddedTableLimit;
     }
 
     public function hasEmbeddedTableSearch(): bool
@@ -297,6 +330,106 @@ class AgentsPlugin implements Plugin
         return $this->slideOver && $this->chat;
     }
 
+    /**
+     * The colour of the topbar "Ask …" button, a Filament colour name: "primary" (the default) sets it apart from
+     * the topbar's other actions, "gray" blends it in with them.
+     */
+    public function askButtonColor(string $color): static
+    {
+        $this->askButtonColor = $color;
+
+        return $this;
+    }
+
+    public function getAskButtonColor(): string
+    {
+        return $this->askButtonColor;
+    }
+
+    /**
+     * The prompt guard: a small model classifies every question before the assistant reads it and a category on
+     * the refuse list (injection, jailbreak, data_exfiltration; add off_topic) stops the turn with a friendly line.
+     * $provider and $model say where the classifier runs (null: the turn's provider, its cheapest model).
+     *
+     * @param  list<string>|null  $refuse
+     */
+    public function promptGuard(bool $enabled = true, ?string $provider = null, ?string $model = null, ?array $refuse = null, ?bool $failOpen = null): static
+    {
+        $this->promptGuard = array_filter(['enabled' => $enabled, 'provider' => $provider, 'model' => $model, 'refuse' => $refuse, 'fail_open' => $failOpen], fn ($value) => $value !== null);
+
+        return $this;
+    }
+
+    /**
+     * Redaction: card numbers, social security numbers, API keys, your own patterns (label => regex) and what
+     * $using finds (fn (string $text): string) are replaced in answers, while they stream and as stored, and in
+     * the tool results stored with them.
+     *
+     * @param  list<string>|null  $detect  the built-in detectors to keep: card, ssn, api_key
+     * @param  array<string, string>|null  $patterns
+     */
+    public function redact(bool $enabled = true, ?array $detect = null, ?array $patterns = null, ?string $replacement = null, ?Closure $using = null): static
+    {
+        $this->redact = array_filter(['enabled' => $enabled, 'detect' => $detect, 'patterns' => $patterns, 'replacement' => $replacement], fn ($value) => $value !== null);
+        $this->redactUsing = $using;
+
+        return $this;
+    }
+
+    /**
+     * Classify each chat after an answer — topic, sentiment, resolved — so the Chats page can filter and sort by
+     * them. $topics is a fixed list to pick from ("other" is added); without it the model names the topic.
+     *
+     * @param  list<string>|null  $topics
+     */
+    public function classify(bool $enabled = true, ?array $topics = null): static
+    {
+        $this->classify = array_filter(['enabled' => $enabled, 'topics' => $topics], fn ($value) => $value !== null);
+
+        return $this;
+    }
+
+    /**
+     * Web search in the chat, run by the provider and held to the domains in $allow (an empty list is the whole
+     * web): at most $max searches a turn, refined by an approximate location (['country' => 'RO']).
+     *
+     * @param  list<string>  $allow
+     * @param  array{city?: ?string, region?: ?string, country?: ?string}|null  $location
+     */
+    public function webSearch(array $allow = [], ?int $max = null, ?array $location = null, bool $enabled = true): static
+    {
+        $this->webSearch = array_filter(['enabled' => $enabled, 'allow' => array_values($allow), 'max' => $max, 'location' => $location], fn ($value) => $value !== null);
+
+        return $this;
+    }
+
+    /**
+     * The app's own documents for "how do I…" questions (Agents::knowledgeBase()): a model with an embedding
+     * column, searched by the search-knowledge-base tool for the chat and for MCP clients and filled by
+     * `php artisan packstub-agents:embed`; provider-hosted vector stores ($stores); or a search of your own ($using).
+     * $title, $content and $url are attributes or closures that read a document; $query narrows the documents.
+     *
+     * @param  class-string<Model>|null  $model
+     * @param  list<string>  $stores
+     */
+    public function knowledgeBase(
+        ?string $model = null,
+        string $column = 'embedding',
+        string|Closure $title = 'title',
+        string|Closure $content = 'content',
+        string|Closure|null $url = null,
+        float $minSimilarity = 0.5,
+        int $limit = 5,
+        ?Closure $query = null,
+        ?Closure $using = null,
+        array $stores = [],
+        ?string $ability = null,
+    ): static {
+        $this->knowledgeBase = compact('model', 'column', 'title', 'content', 'url', 'minSimilarity', 'limit', 'query', 'using', 'stores', 'ability');
+
+        return $this;
+    }
+
     /** The keyboard shortcut that opens the chat from any page: "mod+j" (the default), "mod+shift+a"…; null for none. */
     public function shortcut(?string $keys): static
     {
@@ -400,11 +533,27 @@ class AgentsPlugin implements Plugin
             $manager->hideAskButtonOn($this->askButtonHiddenOn);
         }
 
+        // The opt-in guard rails and sources are config, so a queue worker and an MCP request read the same.
+        foreach (['prompt_guard' => $this->promptGuard, 'redact' => $this->redact, 'classify' => $this->classify, 'web_search' => $this->webSearch] as $section => $values) {
+            foreach ($values ?? [] as $key => $value) {
+                config()->set("packstub-agents.{$section}.{$key}", $value);
+            }
+        }
+
+        if ($this->redactUsing) {
+            $manager->redactUsing($this->redactUsing);
+        }
+
+        if ($this->knowledgeBase !== null) {
+            $manager->knowledgeBase(...$this->knowledgeBase);
+        }
+
         $pages = [];
 
         if ($this->chat) {
             $pages[] = Chat::class;
             $pages[] = Chats::class;
+            $pages[] = ResourceTable::class;
 
             // The chat page listens to this (or polls it) while an answer is produced; both run under the panel's auth and tenant middleware.
             $panel->authenticatedTenantRoutes(function (): void {

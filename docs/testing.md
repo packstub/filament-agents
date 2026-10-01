@@ -27,6 +27,8 @@ it('answers in the chat', function () {
 
 `Assistant::fake([...])` comes from laravel/ai's `Promptable` trait: each entry is one answer, in order.
 
+The side agents next to the assistant — the chat's title, the rolling summary, the classification, the prompt guard — are faked the same way, each with the fields it answers with (`TitleAgent::fake([['title' => 'Orders waiting for a call']])`, `GuardAgent::fake([['category' => 'injection', 'reason' => '…']])`); with the assistant faked and a side agent not, the title, the classification and the guard are skipped, so a new chat keeps its first question as the title. See [Faking the model](https://packstub.dev/docs/agents/testing#faking-the-model) in the engine's docs.
+
 A turn runs in a queued job. On the `sync` queue driver (the default in a test environment), or with `chat.driver` set to `sync`, it runs inside `call('send')`, so the answer is stored when the call returns, as above. To test what happens while the job waits — the page attaching to a running turn, Stop, the follow-ups waiting per conversation — fake the queue and run the pushed job yourself:
 
 ```php

@@ -4,8 +4,10 @@ use Illuminate\Support\Str;
 use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Models\ConversationMessage;
 use Laravel\Mcp\Request;
+use Livewire\Livewire;
 use Packstub\Agents\AgentsPlugin;
 use Packstub\Agents\Filament\Pages\Chat;
+use Packstub\Agents\Filament\Pages\ResourceTable;
 use Packstub\Agents\Filters\Filter;
 use Packstub\Agents\Livewire\AgentTable;
 use Packstub\Agents\Mcp\Tools\DrawChart;
@@ -18,6 +20,7 @@ use Packstub\Agents\Tests\Fixtures\Models\Widget;
 use Packstub\Agents\Tests\Fixtures\WidgetAgent;
 
 use function Pest\Laravel\actingAs;
+use function Pest\Laravel\get;
 use function Pest\Livewire\livewire;
 
 it('discovers the panel resources that implement AgentResource and normalizes their filters', function () {
@@ -109,6 +112,93 @@ it('embeds a live resource table in the chat with the resource\'s own actions', 
     AgentsPlugin::current()->embeddedTable();
 
     expect(AgentChat::tableFromResult(json_encode(['table' => ['resource' => 'nope']])))->toBeNull();
+});
+
+it('shows a short result whole and compact: the caption and the row count as its header, no pager, search or bulk actions', function () {
+    actingAs($this->user());
+    [$alpha, , $gamma] = $this->widgets();
+
+    $table = livewire(AgentTable::class, ['resource' => 'widgets', 'filters' => ['live_only' => true], 'title' => 'Live ones'])
+        ->loadTable()
+        ->assertCanSeeTableRecords([$alpha, $gamma])
+        ->assertCountTableRecords(2)
+        ->assertSee('Live ones')
+        ->assertSee('2 rows')
+        ->assertSeeHtml('fi-chat-table-compact')
+        ->assertDontSeeHtml('fi-pagination')
+        ->assertDontSeeHtml('fi-ta-search-field')
+        ->assertDontSee('Open all');
+
+    expect($table->instance()->fullUrl())->toBeNull()
+        ->and($table->instance()->total())->toBe(2)
+        ->and($table->instance()->limit())->toBe(AgentTable::DEFAULT_LIMIT);
+
+    // Without a caption the header names the resource; one row and none read as such.
+    livewire(AgentTable::class, ['resource' => 'widgets', 'filters' => ['status' => ['draft']]])->loadTable()->assertSee('Widgets')->assertSee('1 row');
+    livewire(AgentTable::class, ['resource' => 'widgets', 'filters' => ['min_price' => 500]])->loadTable()->assertSee('No rows');
+
+    // The tool tells the model the same: every row is there.
+    $note = json_decode((string) app(ShowTable::class)->handle(new Request(['table' => 'widgets', 'filters' => ['live_only' => true]]))->content(), true)['note'];
+    expect($note)->toContain('A table with these 2 rows is rendered')->not->toContain('first');
+});
+
+it('shows the first rows of a long result with a link to the full table, where the list page\'s search, filters and pagination are', function () {
+    actingAs($this->user());
+    $widgets = collect(range(1, 30))->map(fn (int $n) => Widget::query()->create(['name' => 'Widget '.str_pad((string) $n, 2, '0', STR_PAD_LEFT), 'status' => 'live', 'price' => $n]));
+    Widget::query()->create(['name' => 'A draft', 'status' => 'draft', 'price' => 1]);
+
+    // In the answer: the first 25, the count, and a link that carries the assistant's filters and the caption.
+    $table = livewire(AgentTable::class, ['resource' => 'widgets', 'filters' => ['live_only' => true], 'title' => 'Live ones'])
+        ->loadTable()
+        ->assertCanSeeTableRecords($widgets->take(25))
+        ->assertCanNotSeeTableRecords($widgets->skip(25))
+        ->assertSee('The first 25 of 30')
+        ->assertSee('Open all 30 in a full table')
+        ->assertDontSeeHtml('fi-pagination');
+
+    $url = $table->instance()->fullUrl();
+    expect($table->instance()->getTableRecords())->toHaveCount(25);
+    expect($url)->toBe(ResourceTable::getUrl(['resource' => 'widgets', 'filters' => ['live_only' => true], 'title' => 'Live ones']))
+        ->and($url)->toContain('/agent-table/widgets', 'filters%5Blive_only%5D=1', 'title=Live%20ones')
+        ->and(json_decode((string) app(ShowTable::class)->handle(new Request(['table' => 'widgets', 'filters' => ['live_only' => true]]))->content(), true)['note'])
+        ->toContain('the first 25 of these 30 rows', 'a link that opens all of them');
+
+    // The cap is the plugin's.
+    AgentsPlugin::current()->embeddedTable(limit: 5);
+    livewire(AgentTable::class, ['resource' => 'widgets', 'filters' => ['live_only' => true]])
+        ->loadTable()
+        ->assertCanSeeTableRecords($widgets->take(5))
+        ->assertCanNotSeeTableRecords($widgets->skip(5))
+        ->assertSee('The first 5 of 30')
+        ->assertSee('Open all 30 in a full table');
+    AgentsPlugin::current()->embeddedTable();
+
+    // The page behind the link: the same rows, the caption as its title, the filters normalized again on the way in.
+    get($url)->assertOk()->assertSee('Live ones')->assertSee('All widgets');
+
+    Livewire::withQueryParams(['filters' => ['live_only' => '1', 'bogus' => 'x'], 'title' => 'Live ones'])
+        ->test(ResourceTable::class, ['resource' => 'widgets'])
+        ->assertSet('filters', ['live_only' => true])
+        ->assertSet('caption', 'Live ones');
+
+    // There the table is the resource's own, with its search box, its filters and a pager, ten rows a page.
+    livewire(AgentTable::class, ['resource' => 'widgets', 'filters' => ['live_only' => true], 'full' => true])
+        ->loadTable()
+        ->assertCountTableRecords(30)
+        ->assertCanSeeTableRecords($widgets->take(10))
+        ->assertCanNotSeeTableRecords($widgets->skip(10))
+        ->assertSeeHtml('fi-pagination')
+        ->assertSeeHtml('fi-ta-search-field')
+        ->assertSeeHtml('fi-ta-filters-dropdown')
+        ->assertDontSeeHtml('fi-chat-table-compact')
+        ->assertDontSee('Open all')
+        ->searchTable('Widget 07')
+        ->assertCountTableRecords(1);
+
+    // A table that does not exist is not found; one the person may not see is refused.
+    get(ResourceTable::getUrl(['resource' => 'nope']))->assertNotFound();
+    Abilities::$allowed = ['nothing'];
+    get(ResourceTable::getUrl(['resource' => 'widgets']))->assertForbidden();
 });
 
 it('validates drawn charts and renders a chart from a stored tool result', function () {

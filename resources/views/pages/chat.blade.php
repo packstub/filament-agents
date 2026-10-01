@@ -49,7 +49,14 @@
                     </form>
                 @endif
                 @if ($label = $this->contextLabel())
-                    <p class="mt-0.5 text-xs text-gray-500">{{ __('About :record', ['record' => $label]) }}</p>
+                    {{-- What the chat is about, linked to the record's own page (opened over the slide-over's frame, not inside it). --}}
+                    <p class="fi-chat-about mt-0.5 text-xs text-gray-500">
+                        @if ($recordUrl = $this->contextUrl())
+                            {!! __('About :record', ['record' => '<a href="'.e($recordUrl).'" target="_top">'.e($label).'</a>']) !!}
+                        @else
+                            {{ __('About :record', ['record' => $label]) }}
+                        @endif
+                    </p>
                 @endif
             </div>
             <div class="flex shrink-0 items-center gap-1">
@@ -134,21 +141,25 @@
                         </div>
                     @endunless
                     @if ($message['unanswered'])
-                        {{-- Recorded but never answered (refused by a middleware, the provider failed, or the person stopped it): offer to send it again. --}}
-                        <div class="flex items-center justify-end gap-2 text-xs text-gray-500" x-show="! busy" role="status">
-                            <x-filament::icon icon="heroicon-m-exclamation-circle" class="h-4 w-4 {{ ($live['ended']['reason'] ?? null) === 'refused' ? 'text-warning-500' : 'text-danger-500' }}" />
+                        {{-- Recorded but never answered (refused by a middleware, the provider failed, or the person stopped it): say how
+                             its turn ended and offer to send it again, under the last question and under any earlier one the chat moved
+                             on from. Retry on an earlier one moves it to the end of the chat, where its answer lands. --}}
+                        @php($ended = $message['ended'] ?? ($loop->last ? $live['ended'] : null))
+                        <div class="fi-chat-unanswered flex items-center justify-end gap-2 text-xs text-gray-500" x-show="! busy" role="status" wire:key="unanswered-{{ $message['id'] }}">
+                            <x-filament::icon icon="heroicon-m-exclamation-circle" class="h-4 w-4 {{ ($ended['reason'] ?? null) === 'refused' ? 'text-warning-500' : 'text-danger-500' }}" />
                             <span>
-                                @if (($live['ended']['status'] ?? null) === \Packstub\Agents\Models\AgentTurn::STOPPED)
+                                @if (($ended['status'] ?? null) === \Packstub\Agents\Models\AgentTurn::STOPPED)
                                     {{ __('Stopped before an answer.') }}
-                                @elseif (($live['ended']['reason'] ?? null) === 'refused')
-                                    {{ $live['ended']['error'] }}
-                                @elseif (($live['ended']['status'] ?? null) === \Packstub\Agents\Models\AgentTurn::FAILED)
-                                    {{ __('The assistant could not answer.') }} {{ $live['ended']['error'] }}
+                                @elseif (($ended['reason'] ?? null) === 'refused')
+                                    {{ $ended['error'] }}
+                                @elseif (($ended['status'] ?? null) === \Packstub\Agents\Models\AgentTurn::FAILED)
+                                    {{ __('The assistant could not answer.') }} {{ $ended['error'] }}
                                 @else
                                     {{ __('The assistant did not answer.') }}
                                 @endif
                             </span>
-                            <x-filament::link tag="button" size="sm" icon="heroicon-m-arrow-path" x-on:click="retry()">{{ __('Retry') }}</x-filament::link>
+                            {{-- A bound attribute: a Blade expression inside a component tag's plain attribute is not compiled. --}}
+                            <x-filament::link tag="button" size="sm" icon="heroicon-m-arrow-path" :x-on:click="'retry('.\Illuminate\Support\Js::from($message['id']).')'">{{ __('Retry') }}</x-filament::link>
                         </div>
                     @endif
                 @else
@@ -172,7 +183,7 @@
                                 @foreach ($reads as $i => $tool)
                                     <div class="fi-chat-timeline-row" wire:key="tool-{{ $message['id'] }}-{{ $tool['id'] ?? $i }}">
                                         <button type="button" class="fi-chat-timeline-call" x-on:click="open = open === {{ $i }} ? null : {{ $i }}" x-bind:aria-expanded="open === {{ $i }}">
-                                            <x-filament::icon icon="heroicon-m-magnifying-glass" class="fi-chat-timeline-icon" />
+                                            <x-filament::icon :icon="$tool['tool'] === 'web_search' ? 'heroicon-m-globe-alt' : 'heroicon-m-magnifying-glass'" class="fi-chat-timeline-icon" />
                                             <span class="fi-chat-timeline-name">{{ $tool['name'] }}</span>
                                             @if ($summary = \Packstub\Agents\Filament\Pages\Chat::callSummary($tool['arguments']))
                                                 <span class="fi-chat-timeline-args">{{ $summary }}</span>
@@ -293,6 +304,19 @@
                                 </div>
                             </div>
                         @endforeach
+
+                        @if ($message['sources'])
+                            {{-- The web pages the answer cites (the provider's web search): what came from outside the workspace, and where from. --}}
+                            <div class="fi-chat-sources">
+                                <span class="fi-chat-sources-label">{{ __('Sources') }}</span>
+                                @foreach ($message['sources'] as $source)
+                                    <a href="{{ $source['url'] }}" target="_blank" rel="noopener noreferrer nofollow" class="fi-chat-source" title="{{ $source['url'] }}">
+                                        <x-filament::icon icon="heroicon-m-globe-alt" class="h-3.5 w-3.5" />
+                                        <span>{{ \Illuminate\Support\Str::limit($source['title'], 60) }}</span>
+                                    </a>
+                                @endforeach
+                            </div>
+                        @endif
 
                         @if (trim($message['html']) !== '' || $message['stopped'] || $message['failed'])
                             {{-- The controls under an answer show when it is hovered or focused (always on a touch screen); a rating

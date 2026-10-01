@@ -8,6 +8,7 @@ use Laravel\Ai\Responses\Data\FinishReason;
 use Laravel\Ai\Responses\Data\TextUsage;
 use Laravel\Ai\Streaming\Events\StreamEnd;
 use Packstub\Agents\AgentsPlugin;
+use Packstub\Agents\Ai\Side\TitleAgent;
 use Packstub\Agents\Filament\Pages\Chat;
 use Packstub\Agents\Jobs\RunAgentTurn;
 use Packstub\Agents\Models\AgentMessageFeedback;
@@ -69,7 +70,8 @@ it('runs the turn in a queued job and streams it to the page from the turn row',
         ->json();
 
     // A worker picks the job up: the answer streams into the row, is stored, the chat is titled.
-    WidgetAgent::fake(['Two widgets are live.', 'Live widgets']);
+    WidgetAgent::fake(['Two widgets are live.']);
+    TitleAgent::fake([['title' => 'Live widgets']]);
     pushedJob($turn->id)->handle(app(AgentTurns::class));
 
     $turn->refresh();
@@ -369,7 +371,8 @@ it('runs the turn inside the request on the sync driver, whatever the queue is',
     config()->set('queue.connections.dropped', ['driver' => 'null']);
     config()->set('queue.default', 'dropped');
     config()->set('packstub-agents.chat.driver', 'sync');
-    WidgetAgent::fake(['Two widgets are live.', 'Live widgets']);
+    WidgetAgent::fake(['Two widgets are live.']);
+    TitleAgent::fake([['title' => 'Live widgets']]);
 
     livewire(Chat::class)->call('send', 'How many widgets are live?');
 

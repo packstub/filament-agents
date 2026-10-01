@@ -146,8 +146,9 @@ export default function agentChat() {
             this.started(await this.$wire.continueAnswer())
         },
 
-        async retry() {
-            this.started(await this.$wire.retry())
+        // Retry under an unanswered question: the last one, or an earlier one by its id (the server moves it to the end).
+        async retry(id = null) {
+            this.started(await this.$wire.retry(id))
         },
 
         async decide(id, approve) {
