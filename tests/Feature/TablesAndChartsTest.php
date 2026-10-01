@@ -201,6 +201,13 @@ it('shows the first rows of a long result with a link to the full table, where t
     get(ResourceTable::getUrl(['resource' => 'widgets']))->assertForbidden();
 });
 
+it('titles the full-table page without a resource, as Shield reads every page\'s title for its permissions', function () {
+    $page = app(ResourceTable::class);
+
+    expect($page->getTitle())->toBe('Table')
+        ->and($page->getBreadcrumbs())->toBe(['Table', 'Table']);
+});
+
 it('validates drawn charts and renders a chart from a stored tool result', function () {
     $user = $this->user();
     actingAs($user);
