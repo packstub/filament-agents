@@ -21,16 +21,16 @@ An in-panel AI assistant and an MCP server for your Filament v5 panel, built on 
 
 ## Features
 
-- **[One tool list, two front doors](#writing-tools)** — every capability is a `laravel/mcp` tool. The in-panel chat calls it through laravel/ai's bridge; external agents call it over HTTP with a token minted in the panel. Add a tool to the list and it is everywhere.
-- **[Authorization is the panel's](#writing-tools)** — a tool declares the ability string that gates the resource or action it mirrors. The assistant can never do more than the signed-in person could by hand, and a token narrows that further for external agents: read-only, or just the tools they need.
-- **[Writes are approved where the human is](#the-chat)** — in the chat, a write tool is a question with Approve and Reject ("Confirm order RO-00020 for Halvorsen & Co.?"; laravel/ai approvals). Over MCP, a write token runs it directly with the person's role.
-- **[A chat that feels current](#the-chat)** — answers stream in over an event stream with the tools the assistant calls shown one by one, code blocks with copy and colours, files attached by paper clip, drop or paste, records mentioned with `@`, the starter questions with `/`, a slide-over over any page and a keyboard shortcut, chats renamed, pinned, searched and exported, earlier answers kept and put back, a cut-short answer continued, a thumbs-down with a note.
-- **[Answers that show the real thing](#live-tables-and-charts)** — `show-table` renders the resource's own Filament table under the answer, compact, with its columns, sorting and row actions, and a link to the full table with the list page's controls when the result is long. A tool result with a `chart` key becomes a chart. Page context tells the assistant which record the person opened the chat from, and stays with the chat.
-- **[Beyond the records, with guard rails](#the-assistant)** — a knowledge base the assistant searches and cites for "how do I…" questions, the provider's web search within an allow-list with the sources under the answer, a prompt guard that refuses injections before the assistant reads them, redaction of secrets in answers and stored tool results, and a classification of every chat (topic, sentiment, resolved) on the Chats page — each one switch on `AgentsPlugin`.
-- **[A bounded bill](#budgets-and-the-operator-page)** — a per-user burst limit, answers per day and tokens per month per workspace, tokens per day and per month per user, and a prompt length cap, all checked before a turn reaches the provider and editable per workspace and per user on an operator page.
-- **[Your assistant, your prompt](#the-assistant)** — a scaffolded agent class with two slots to fill (who it is, what the workspace is) on top of generic working and answering rules, provider-cached instructions and a model picker (Claude Opus 5, Claude Haiku 4.5, Claude Opus 5 · Deep) for Anthropic, OpenAI, Gemini or xAI — any other laravel/ai provider, Ollama included, runs on its smartest and cheapest models. A failover list (`AGENT_FAILOVER=gemini,openai`) keeps answering when a provider is overloaded, with a note on the answer that says who did.
-- **[Tenancy-aware](#tenancy)** — the MCP path can carry the workspace, tokens are bound to it, conversations can live in the tenant database and a workspace can bring its own provider key. Works without tenancy too.
-- **Translatable** — every string goes through `__()`, with German, Spanish, Romanian and Russian included.
+- **[One tool list, two front doors](#writing-tools)**: the panel's chat and any MCP client (Claude Code, Cursor) call the same tools.
+- **[The panel's authorization](#writing-tools)**: the assistant never does more than the signed-in person could, and a token narrows it further.
+- **[Approve-in-chat writes](#the-chat)**: a change waits as a question with Approve and Reject, showing what it would change.
+- **[A chat that feels current](#the-chat)**: streamed answers, attachments, `@` mentions, a slide-over on any page, chats you can pin and search.
+- **[Live tables and charts](#live-tables-and-charts)**: the resource's own Filament table under the answer, and charts from the numbers.
+- **[Beyond the records, with guard rails](https://packstub.dev/docs/filament-agents/assistant#web-search-and-the-knowledge-base)**: a cited knowledge base, web search within an allow-list, a prompt guard and redaction.
+- **[A bounded bill](#budgets-and-the-operator-page)**: answer and token limits per user and per workspace, edited on an operator page.
+- **[Your assistant, your prompt](#the-assistant)**: a scaffolded agent class on Anthropic, OpenAI, Gemini or xAI, with failover.
+- **[Tenancy-aware](#tenancy)**: workspace-bound tokens, tenant databases and per-workspace keys, or no tenancy at all.
+- **Translatable**: German, Spanish, Romanian and Russian included.
 
 ## Compatibility
 
@@ -135,6 +135,8 @@ class AcmeServer extends \Packstub\Agents\Mcp\AgentServer
 
 The assistant lives on a chat page with an "Ask …" button in the topbar and the recent conversations in the sidebar (an "Ask …" navigation item on a panel with top navigation). A new chat opens on a row of starter questions from your agent's `suggestions()`, each sent on click. Answers are produced by a queued job and stream into the page while the agent calls tools — a reload, a closed tab or a second tab picks the answer up where it is, and Stop cuts it short (run `php artisan queue:work`, or set `AGENT_TURN_DRIVER=sync` to run the job inside the request). Long chats replay a token-budgeted window with a rolling summary; a context ring in the composer shows the breakdown and what the chat cost, with Compress now and Continue in a new chat. A proposed change shows up as a question with Approve and Reject ("Confirm order RO-00020 for Halvorsen & Co.?", the exact call folded under it), and the turn resumes with the decision. Conversations are stored with laravel/ai's models, follow-ups wait their turn per conversation, the last exchange can be regenerated or edited and sent again, and every answer can be rated with a thumbs up or down. The composer is one row — the question, the model and Send — and the model is a small text button that opens the list by name (Claude Opus 5, Claude Haiku 4.5, Claude Opus 5 · Deep out of the box; entries of more than one provider under provider headings), remembered per session.
 
+Files attach by paper clip, drop or paste, `@` mentions a record, `/` brings back the starter questions, and the "Ask …" button opens the chat as a slide-over on any page (`Ctrl/⌘ J`). Chats can be renamed, pinned, searched and exported, and a cut-short answer continued.
+
 ![A new chat: the "Ask Acme" item active in the top navigation, the assistant's name over four starter questions as pills, and the one-row composer with the model button and Send](https://raw.githubusercontent.com/packstub/art/main/filament-agents/docs/chat-new.png)
 
 Ask for records and the answer comes with the resource's own table under it, filtered the way the answer says, with the row actions the person's role allows:
@@ -154,6 +156,8 @@ Read more: [The assistant](https://packstub.dev/docs/filament-agents/assistant).
 ## The assistant
 
 `packstub-agents:agent` scaffolds `App\Ai\Agents\Assistant`, a subclass of `Packstub\Agents\Ai\Agent` with two slots to fill: `persona()` (who it is) and `domain()` (what the workspace is). The base class supplies the generic working and answering rules, the dynamic context (date, workspace, person, role, language, page context — sent with the question, so the system prompt and the history stay cacheable) and the provider options (Anthropic cache breakpoints on the instructions and the settled history, reasoning effort or thinking level per model). Append to any of them by overriding `workRules()`, `answerRules()` or `context()` and merging the parent's list.
+
+It runs on Anthropic, OpenAI, Gemini or xAI; any other laravel/ai provider, Ollama included, runs on its smartest and cheapest models. A failover list (`AGENT_FAILOVER=gemini,openai`) keeps answering when a provider is overloaded, with a note on the answer that says who did.
 
 Your own agent middleware — an audit log, redaction, a tenant check — goes in `middleware()` on the agent, in `AgentsPlugin::make()->middleware([...])` or in the `middleware` config key, and runs on every turn after the package's guard rails.
 

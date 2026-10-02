@@ -10,21 +10,17 @@ An in-panel AI assistant and an MCP server for Filament v5 panels, built on lara
 - Support: [GitHub issues](https://github.com/packstub/filament-agents/issues)
 - Demo: [the 90-second video](https://youtu.be/d_lLxKsFfVU) — install in one line, a question answered with the live orders table, a chart, a change approved in one click, and the same tools in Claude Code over MCP
 
-## What you get
+## Features
 
-| Feature | What it means for you |
-| --- | --- |
-| **One tool list, two front doors** | Every capability is a `laravel/mcp` tool class with an ability. The in-panel chat calls it through laravel/ai; external agents call it over HTTP with a token minted in the panel. Add a tool to the list once and it is everywhere. |
-| **The panel's authorization** | A tool declares the same ability string that gates the resource or action it mirrors. The assistant can never do more than the signed-in person could by hand. A token narrows that further for external agents: read-only, or just the tools they need. |
-| **Approve-in-chat writes** | Read-only tools run directly. Any other tool is a proposal: the person sees what would run and approves or rejects it in the chat. Over MCP, a write token runs it directly with the person's role. |
-| **Answers that survive the page** | Every answer is produced by a queued job the page polls: reload, navigate away or open the chat in a second tab and the running answer is where you left it. Stop cuts it short, follow-ups wait their turn per conversation, the last exchange can be regenerated or edited and sent again, and a question the provider could not answer keeps a Retry. Long chats replay a token-budgeted window with a rolling summary, with a context ring in the composer, Compress now and Continue in a new chat. No worker? A sync driver runs the job inside the request. |
-| **Live tables and charts** | `show-table` renders the resource's own Filament table under the answer, compact — every row up to a cap, the caption and the count as its header, no chrome — with a link to the full table with the list page's search, filters and pagination when the result is long. `draw-chart` and any tool result with a `chart` key render a chart. The "Ask …" button carries the record being viewed into the chat as page context, which stays with the chat and links to the record. |
-| **Beyond the records** | A knowledge base answers "how do I…" from your own documents, searched by meaning and cited; the provider's web search reaches public information within an allow-list of domains, with the sources listed under the answer. |
-| **Guard rails you switch on** | A prompt guard refuses injections, jailbreaks and data exfiltration before the assistant reads them; redaction keeps card numbers, API keys and your own patterns out of answers and stored tool results, streaming included; classification tags every chat with its topic, sentiment and whether it was resolved, for the Chats page to filter and sort by. |
-| **A bounded bill** | A per-user burst limit, answers per day and tokens per month per workspace, tokens per day and per month per user, and a prompt length cap, checked before a turn reaches the provider. An operator page overrides them per workspace and per user. |
-| **Your assistant, your prompt** | A scaffolded agent class with two slots (who it is, what the workspace is) on top of generic working and answering rules; the static block and the settled history are cached by the provider, the dynamic block (date, person, role, language, page context) rides with the question. Anthropic, OpenAI, Gemini or xAI with a model picker (the models by name: Claude Opus 5, Claude Haiku 4.5, Claude Opus 5 · Deep); any other laravel/ai provider, Ollama included, on its smartest and cheapest models; a failover list keeps answering when a provider is overloaded. |
-| **Tenancy-aware** | The MCP path can carry the workspace, tokens are bound to it, conversations can live in the tenant database and a workspace can bring its own provider key. Works without tenancy too. |
-| **Translatable** | Every string goes through `__()`; German, Spanish, Romanian and Russian are included. |
+- **[One tool list, two front doors](tools.md)**: the panel's chat and any MCP client (Claude Code, Cursor) call the same tools.
+- **[The panel's authorization](security.md#what-the-package-enforces)**: the assistant never does more than the signed-in person could, and a token narrows it further.
+- **[Approve-in-chat writes](assistant.md#approvals)**: a change waits as a question with Approve and Reject, showing what it would change.
+- **[A chat that feels current](assistant.md#the-chat)**: streamed answers, attachments, `@` mentions, a slide-over on any page, chats you can pin and search.
+- **[Live tables and charts](tables-and-charts.md)**: the resource's own Filament table under the answer, and charts from the numbers.
+- **[Beyond the records, with guard rails](assistant.md#web-search-and-the-knowledge-base)**: a cited knowledge base, web search within an allow-list, a prompt guard, redaction and a topic for every chat.
+- **[A bounded bill](budgets-and-limits.md)**: answer and token limits per user and per workspace, edited on an operator page.
+- **[Your assistant, your prompt](assistant.md#the-agent-class)**: a scaffolded agent class on Anthropic, OpenAI, Gemini or xAI, with failover.
+- **[Tenancy-aware](tenancy.md)**: workspace-bound tokens, tenant databases and per-workspace keys, or no tenancy at all.
 
 ## Guides
 

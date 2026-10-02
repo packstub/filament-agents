@@ -2,6 +2,12 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## Unreleased
+
+### Changed
+
+- **Docs**: a shorter Features list in the README and on the docs index, one line per area; the README's chat and assistant sections name the composer shortcuts, the providers and the failover list.
+
 ## 1.14.0 — 2026-10-02
 
 What a write would change, shown before you approve it, and room for your own filters and columns on the Chats page, on packstub/agents 1.7.
