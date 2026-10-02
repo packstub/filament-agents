@@ -147,7 +147,7 @@ Ask for a trend and the numbers come back drawn as a chart, from `draw-chart` or
 
 Ask for a change and the turn pauses on a question until the person approves or rejects it; the composer with the model picker waits underneath:
 
-![A request to confirm an order paused as the question "Confirm order RO-00020 for Halvorsen & Co.?" with Approve and Reject buttons and the folded confirm-order call under it, the one-row composer underneath](https://raw.githubusercontent.com/packstub/art/main/filament-agents/docs/chat-approval.png)
+![A request to confirm an order paused as the question "Confirm order RO-00020 for Halvorsen & Co.?" with Approve and Reject buttons, the status change it would make (Pending struck through, then Confirmed) and the folded confirm-order call under it, the one-row composer underneath](https://raw.githubusercontent.com/packstub/art/main/filament-agents/docs/chat-approval.png)
 
 Read more: [The assistant](https://packstub.dev/docs/filament-agents/assistant).
 

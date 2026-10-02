@@ -93,7 +93,7 @@ A short reply typed over a waiting proposal is the decision too: "Yes, go ahead.
 
 The proposal sits in the conversation like any other answer, with the composer underneath for the follow-up:
 
-![A request to confirm an order paused as the question "Confirm order RO-00020 for Halvorsen & Co.?" with Approve and Reject buttons and the folded confirm-order call under it, the one-row composer underneath](https://raw.githubusercontent.com/packstub/art/main/filament-agents/docs/chat-approval.png)
+![A request to confirm an order paused as the question "Confirm order RO-00020 for Halvorsen & Co.?" with Approve and Reject buttons, the status change it would make (Pending struck through, then Confirmed) and the folded confirm-order call under it, the one-row composer underneath](https://raw.githubusercontent.com/packstub/art/main/filament-agents/docs/chat-approval.png)
 
 ### When the chat is hidden
 
