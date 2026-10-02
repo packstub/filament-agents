@@ -1,6 +1,7 @@
 {
     "(answered by :provider)": "(ответил :provider)",
     "(cut short)": "(оборвано)",
+    "(empty)": "(пусто)",
     "(interrupted)": "(прервано)",
     "(stopped)": "(остановлено)",
     "/ min": "/ мин",
@@ -96,6 +97,7 @@
     "Negative": "Негативный",
     "Neutral": "Нейтральный",
     "New chat": "Новый чат",
+    "No": "Нет",
     "No chats yet": "Чатов пока нет",
     "No limits yet": "Лимитов пока нет",
     "No prices set": "Цены не заданы",
@@ -205,6 +207,7 @@
     "Write": "Запись",
     "Write: change data through the tools (still limited by your role)": "Запись: изменение данных через инструменты (в пределах вашей роли)",
     "Writing": "Пишет",
+    "Yes": "Да",
     "You cannot see :table.": "Вы не можете видеть :table.",
     "Your new token": "Ваш новый токен",
     "Your note": "Ваша заметка",

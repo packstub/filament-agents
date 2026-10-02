@@ -1,6 +1,10 @@
 <?php
 
 use Filament\Facades\Filament;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Laravel\Ai\Models\Conversation;
@@ -225,6 +229,9 @@ it('keeps a decided proposal as a card and lets the model carry on after a rejec
     expect(substr_count($html, 'fi-chat-proposal-pending'))->toBe(1)
         ->and(substr_count($html, 'fi-chat-proposal-approved'))->toBe(1)
         ->and(substr_count($html, 'fi-chat-proposal-rejected'))->toBe(1);
+    // The waiting one shows what it would change (RenameWidget::preview()): the name now, struck through, and the new one.
+    expect(substr_count($html, 'fi-chat-proposal-preview'))->toBe(1)
+        ->and($html)->toContain('<del>'.e($alpha->name).'</del>', '<ins>Alpha IV</ins>');
 
     // Rejecting hands the model a reason instead of a bare "no", so the turn continues and the model can answer.
     WidgetAgent::fake(['Understood, I left the name as it is.']);
@@ -535,4 +542,23 @@ it('renders the "Ask …" button and the sidebar chats only in a panel whose plu
     get($edit)->assertOk()->assertSee('Ask Widgets');
     get('/ops')->assertOk()->assertDontSee('Ask Widgets')->assertDontSee('fi-sidebar-chats')->assertDontSee('fi-agent-drawer');
     get($edit)->assertOk()->assertSee('Ask Widgets');
+});
+
+it('lets the app add its own filters and columns to the Chats list', function () {
+    $user = $this->user();
+    actingAs($user);
+    $long = Conversation::query()->create(['id' => (string) Str::uuid7(), 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id, 'title' => 'A long chat about widgets']);
+    $short = Conversation::query()->create(['id' => (string) Str::uuid7(), 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id, 'title' => 'Hi']);
+
+    Filament::getPanel('admin')->getPlugin('packstub-agents')
+        ->chatsTable(fn (Table $table) => $table->pushColumns([TextColumn::make('title_length')->state(fn (Conversation $c) => strlen($c->title))]))
+        ->chatsTable(fn (Table $table) => $table->pushFilters([Filter::make('long')->query(fn (Builder $query) => $query->whereRaw('length(title) > 10'))]));
+
+    livewire(Chats::class)
+        ->assertTableColumnExists('title') // the page's own columns stay
+        ->assertTableColumnExists('title_length')
+        ->assertTableColumnStateSet('title_length', 2, $short)
+        ->filterTable('long')
+        ->assertCanSeeTableRecords([$long])
+        ->assertCanNotSeeTableRecords([$short]);
 });

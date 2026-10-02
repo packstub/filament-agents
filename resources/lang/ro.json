@@ -1,6 +1,7 @@
 {
     "(answered by :provider)": "(răspuns de :provider)",
     "(cut short)": "(întrerupt)",
+    "(empty)": "(gol)",
     "(interrupted)": "(întrerupt)",
     "(stopped)": "(oprit)",
     "/ min": "/ min",
@@ -96,6 +97,7 @@
     "Negative": "Negativ",
     "Neutral": "Neutru",
     "New chat": "Conversație nouă",
+    "No": "Nu",
     "No chats yet": "Nicio conversație încă",
     "No limits yet": "Nicio limită încă",
     "No prices set": "Niciun preț setat",
@@ -205,6 +207,7 @@
     "Write": "Scriere",
     "Write: change data through the tools (still limited by your role)": "Scriere: modifică date prin instrumente (în limitele rolului tău)",
     "Writing": "Scrie",
+    "Yes": "Da",
     "You cannot see :table.": "Nu poți vedea :table.",
     "Your new token": "Noul tău token",
     "Your note": "Nota ta",

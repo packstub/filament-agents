@@ -2,6 +2,19 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## 1.14.0 — 2026-10-02
+
+What a write would change, shown before you approve it, and room for your own filters and columns on the Chats page, on packstub/agents 1.7.
+
+Upgrading: `composer update packstub/agents` (1.7 is required). Nothing changes until you use the new hooks.
+
+### Added
+
+- **A preview on the approval card** (packstub/agents#17). A write tool with a `preview(array $arguments): array` shows what the call would change under its question while it waits: each field with the value now struck through and the value after. A preview that throws is left out. See [Read-only versus write](https://packstub.dev/docs/filament-agents/tools#read-only-versus-write).
+- **Your own filters and columns on the Chats page** (#69). `AgentsPlugin::make()->chatsTable(fn (Table $table) => $table->pushFilters([...]))` runs once the page has built its table, so a callback can push filters, columns or actions onto it; given more than once, the callbacks run in order. See [Rename, pin, export, versions, continue](https://packstub.dev/docs/filament-agents/assistant#rename-pin-export-versions-continue).
+- From packstub/agents 1.7, for every panel: `Agents::mapToolResultsUsing()` changes what a tool returns before the model reads it (packstub/agents#16), and `ToolAuthorized` fires for every call, allowed or refused (packstub/agents#18). See the engine's [changelog](https://github.com/packstub/agents/blob/main/CHANGELOG.md).
+- The new strings ship in the German, Spanish, Romanian and Russian files.
+
 ## 1.13.1 — 2026-10-01
 
 ### Fixed

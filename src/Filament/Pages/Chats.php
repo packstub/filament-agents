@@ -24,6 +24,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Str;
 use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Models\ConversationMessage;
+use Packstub\Agents\AgentsPlugin;
 use Packstub\Agents\Facades\Agents;
 use Packstub\Agents\Models\AgentPinnedConversation;
 use Packstub\Agents\Models\ConversationClassification;
@@ -99,7 +100,7 @@ class Chats extends Page implements HasTable
         $classification = fn (string $column) => ConversationClassification::query()->select($column)->whereColumn('conversation_id', $conversations.'.id')->limit(1);
         $matching = fn (string $column, mixed $value) => ConversationClassification::query()->select('conversation_id')->where($column, $value);
 
-        return $table
+        $table = $table
             ->query(fn () => $own()
                 ->when($classified, fn (Builder $query) => $query->addSelect(['topic' => $classification('topic'), 'sentiment' => $classification('sentiment'), 'resolved' => $classification('resolved')]))
                 ->orderByRaw('case when id in ('.$pinned->toRawSql().') then 0 else 1 end'))
@@ -188,6 +189,13 @@ class Chats extends Page implements HasTable
             ])
             ->emptyStateHeading(__('No chats yet'))
             ->emptyStateDescription(__('Ask anything about your workspace.'));
+
+        // The app's own filters, columns and actions (AgentsPlugin::chatsTable()), on top of the page's.
+        foreach (AgentsPlugin::current()?->getChatsTableModifiers() ?? [] as $modify) {
+            $table = $modify($table) ?? $table;
+        }
+
+        return $table;
     }
 
     /** Whether chats are classified (config `classify.enabled`), so the list shows and filters by topic, sentiment and resolved. */

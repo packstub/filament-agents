@@ -1,6 +1,7 @@
 {
     "(answered by :provider)": "(beantwortet von :provider)",
     "(cut short)": "(abgebrochen)",
+    "(empty)": "(leer)",
     "(interrupted)": "(unterbrochen)",
     "(stopped)": "(gestoppt)",
     "/ min": "/ Min",
@@ -96,6 +97,7 @@
     "Negative": "Negativ",
     "Neutral": "Neutral",
     "New chat": "Neuer Chat",
+    "No": "Nein",
     "No chats yet": "Noch keine Chats",
     "No limits yet": "Noch keine Limits",
     "No prices set": "Keine Preise hinterlegt",
@@ -205,6 +207,7 @@
     "Write": "Schreiben",
     "Write: change data through the tools (still limited by your role)": "Schreiben: Daten über die Werkzeuge ändern (weiterhin durch deine Rolle begrenzt)",
     "Writing": "Schreibt",
+    "Yes": "Ja",
     "You cannot see :table.": "Du kannst :table nicht sehen.",
     "Your new token": "Ihr neues Token",
     "Your note": "Ihre Notiz",

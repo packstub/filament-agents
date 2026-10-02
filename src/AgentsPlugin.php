@@ -57,6 +57,9 @@ class AgentsPlugin implements Plugin
     /** @var list<class-string|object|Closure> */
     protected array $middleware = [];
 
+    /** @var list<Closure> */
+    protected array $chatsTable = [];
+
     protected ?Closure $authorize = null;
 
     protected ?Closure $roleLabel = null;
@@ -222,6 +225,23 @@ class AgentsPlugin implements Plugin
         $this->middleware = $middleware;
 
         return $this;
+    }
+
+    /**
+     * Add to the Chats list: fn (Table $table): Table, called once the page has built its table, so it can
+     * pushFilters(), pushColumns() or add actions on top. Given more than once, the callbacks run in that order.
+     */
+    public function chatsTable(Closure $modify): static
+    {
+        $this->chatsTable[] = $modify;
+
+        return $this;
+    }
+
+    /** @return list<Closure> */
+    public function getChatsTableModifiers(): array
+    {
+        return $this->chatsTable;
     }
 
     /** How a tool's ability is checked for the current person: fn (string $ability): bool. */

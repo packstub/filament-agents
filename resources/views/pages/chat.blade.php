@@ -222,6 +222,25 @@
                                         <x-filament::icon :icon="$tool['pending'] ? 'heroicon-m-question-mark-circle' : ($tool['rejected'] ? 'heroicon-m-x-circle' : 'heroicon-m-check-circle')" class="fi-chat-proposal-icon" />
                                         <div class="fi-chat-proposal-body">
                                             <p class="fi-chat-proposal-question">{{ $tool['question'] }}</p>
+                                            @if ($tool['preview'] ?? [])
+                                                {{-- What the call would change (AgentTool::preview()): the value now, struck through, and the value after. --}}
+                                                <dl class="fi-chat-proposal-preview">
+                                                    @foreach ($tool['preview'] as $row)
+                                                        <dt>{{ $row['label'] }}</dt>
+                                                        <dd>
+                                                            @if (array_key_exists('before', $row))
+                                                                <del>{{ \Packstub\Agents\Filament\Pages\Chat::previewValue($row['before']) }}</del>
+                                                            @endif
+                                                            @if (array_key_exists('before', $row) && array_key_exists('after', $row))
+                                                                <span aria-hidden="true">→</span>
+                                                            @endif
+                                                            @if (array_key_exists('after', $row))
+                                                                <ins>{{ \Packstub\Agents\Filament\Pages\Chat::previewValue($row['after']) }}</ins>
+                                                            @endif
+                                                        </dd>
+                                                    @endforeach
+                                                </dl>
+                                            @endif
                                             <button type="button" class="fi-chat-proposal-call" x-on:click="open = ! open" x-bind:aria-expanded="open">
                                                 <x-filament::icon icon="heroicon-m-chevron-right" class="fi-chat-proposal-chevron" x-bind:class="{ 'fi-chat-proposal-chevron-open': open }" />
                                                 <code>{{ $tool['tool'] }}</code>
