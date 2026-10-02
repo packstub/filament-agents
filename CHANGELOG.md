@@ -2,7 +2,7 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
-## 1.14.0 — unreleased
+## 1.14.0 — 2026-10-02
 
 What a write would change, shown before you approve it, and room for your own filters and columns on the Chats page, on packstub/agents 1.7.
 
