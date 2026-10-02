@@ -81,7 +81,20 @@ public function describe(array $arguments): ?string
 }
 ```
 
-Return `null` to fall back to the default. The sentence is stored with the pending approval, so a chat surface of your own can show it too — see [The proposal as a question](https://packstub.dev/docs/agents/tools#the-proposal-as-a-question) in the engine's docs. Should the turn that carries the decision fail, the chat shows the buttons again with the reason under the question.
+Give it a `preview()` too and the card shows what the call would change under the question: the value now, struck through, next to the value after, read while the proposal waits:
+
+```php
+public function preview(array $arguments): array
+{
+    $order = Order::query()->where('number', $arguments['number'] ?? null)->first();
+
+    return $order ? [['label' => 'Status', 'before' => $order->status->label(), 'after' => 'Confirmed']] : [];
+}
+```
+
+Leave out `before` for something new and `after` for something removed; see [A preview of the change](https://packstub.dev/docs/agents/tools#a-preview-of-the-change).
+
+Return `null` from `describe()` to fall back to the default. The sentence is stored with the pending approval, so a chat surface of your own can show it too — see [The proposal as a question](https://packstub.dev/docs/agents/tools#the-proposal-as-a-question) in the engine's docs. Should the turn that carries the decision fail, the chat shows the buttons again with the reason under the question.
 
 There is no separate "destructive" tier: a write is a write. If a change needs extra care, say so in the description, read the record first inside `run()` and refuse when the state is wrong.
 

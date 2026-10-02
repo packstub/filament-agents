@@ -436,6 +436,18 @@ class Chat extends Page
         return response()->streamDownload(fn () => print $transcript, "{$name}.md", ['Content-Type' => 'text/markdown; charset=UTF-8']);
     }
 
+    /** A value of a proposal's preview as the person reads it: yes or no, "(empty)" for nothing, a list joined. */
+    public static function previewValue(mixed $value): string
+    {
+        return match (true) {
+            $value === null || $value === '' || $value === [] => __('(empty)'),
+            is_bool($value) => $value ? __('Yes') : __('No'),
+            is_array($value) && array_is_list($value) && array_filter($value, 'is_scalar') === $value => implode(', ', $value),
+            is_scalar($value) || $value instanceof \Stringable => (string) $value,
+            default => (string) json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        };
+    }
+
     /**
      * A read tool's call on one line of the timeline: its first scalar arguments ("query: acme · status: live").
      *
