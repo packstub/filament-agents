@@ -95,6 +95,28 @@ it('runs the turn in a queued job and streams it to the page from the turn row',
     get($url)->assertNotFound();
 });
 
+it('fails a queued turn with the line when the person was suspended from the panel before the worker ran it', function () {
+    $user = $this->user();
+    actingAs($user);
+    Queue::fake();
+
+    livewire(Chat::class)->call('send', 'How many widgets are live?');
+    $conversation = Conversation::query()->where('participant_id', $user->id)->firstOrFail();
+    $turn = AgentTurn::query()->forConversation($conversation->id)->sole();
+
+    // canAccessPanel() turned false between the request and the worker: the panel is not entered, the turn ends failed.
+    $user->forceFill(['suspended_at' => now()])->save();
+    auth()->forgetGuards();
+    WidgetAgent::fake(['Two widgets are live.']);
+    pushedJob($turn->id)->handle(app(AgentTurns::class));
+
+    $turn->refresh();
+    expect($turn->status)->toBe(AgentTurn::FAILED)
+        ->and($turn->error)->toBe('You do not have access to this panel.')
+        ->and(Filament::auth()->user())->toBeNull()
+        ->and(ConversationMessage::query()->where('conversation_id', $conversation->id)->pluck('role')->all())->toBe(['user']);
+});
+
 it('stops a running turn and keeps what it had written, with a marker', function () {
     $user = $this->user();
     actingAs($user);

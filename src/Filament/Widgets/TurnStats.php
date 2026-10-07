@@ -2,8 +2,10 @@
 
 namespace Packstub\Agents\Filament\Widgets;
 
+use Filament\Facades\Filament;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Packstub\Agents\Filament\Pages\TurnLog;
 use Packstub\Agents\Models\AgentMessageFeedback;
 use Packstub\Agents\Models\AgentTurn;
 use Packstub\Agents\Support\AgentPricing;
@@ -11,7 +13,8 @@ use Packstub\Agents\Support\AgentPricing;
 /**
  * The numbers over the AI turns table: turns today and this week, tokens
  * and cost this week, the share of turns that failed, and how the answers
- * were rated — with a spark line of the last seven days under each.
+ * were rated — with a spark line of the last seven days under each. Reads
+ * the same turns as the page (the workspace's, on a panel with tenancy).
  */
 class TurnStats extends StatsOverviewWidget
 {
@@ -24,7 +27,7 @@ class TurnStats extends StatsOverviewWidget
     protected function getStats(): array
     {
         $since = now()->subDays(6)->startOfDay();
-        $week = AgentTurn::query()->where('created_at', '>=', $since)->whereNotIn('status', AgentTurn::OPEN)->get(['id', 'status', 'usage', 'cost', 'duration_ms', 'created_at']);
+        $week = TurnLog::turns()->where('created_at', '>=', $since)->whereNotIn('status', AgentTurn::OPEN)->get(['id', 'status', 'usage', 'cost', 'duration_ms', 'created_at']);
         $today = $week->filter(fn (AgentTurn $t) => $t->created_at?->isToday());
         $days = collect(range(6, 0))->map(fn (int $back) => now()->subDays($back)->toDateString());
         $perDay = fn (callable $value) => $days->map(fn (string $day) => (float) $week->filter(fn (AgentTurn $t) => $t->created_at?->toDateString() === $day)->sum($value))->all();
@@ -32,7 +35,9 @@ class TurnStats extends StatsOverviewWidget
         $tokens = $week->sum(fn (AgentTurn $t) => ($t->tokensIn() ?? 0) + ($t->tokensOut() ?? 0));
         $priced = $week->filter(fn (AgentTurn $t) => $t->cost !== null);
         $failed = $week->whereIn('status', [AgentTurn::FAILED])->count();
-        $ratings = AgentMessageFeedback::query()->where('created_at', '>=', $since)->get(['rating']);
+        $ratings = AgentMessageFeedback::query()->where('created_at', '>=', $since)
+            ->when(Filament::getTenant(), fn ($query) => $query->whereIn('turn_id', $week->pluck('id')))
+            ->get(['rating']);
         $up = $ratings->where('rating', 'up')->count();
 
         return [

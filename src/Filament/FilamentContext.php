@@ -4,6 +4,7 @@ namespace Packstub\Agents\Filament;
 
 use Closure;
 use Filament\Facades\Filament;
+use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
@@ -12,6 +13,7 @@ use Packstub\Agents\Contracts\AgentContext;
 use Packstub\Agents\Contracts\AgentResource;
 use Packstub\Agents\Exceptions\WorkspaceAccessDenied;
 use Packstub\Agents\Facades\Agents;
+use Packstub\Agents\Filament\Exceptions\PanelAccessDenied;
 
 /**
  * The context of a Filament panel: the panel the assistant lives in, its
@@ -25,6 +27,15 @@ use Packstub\Agents\Facades\Agents;
  */
 class FilamentContext implements AgentContext
 {
+    /**
+     * The panel and person of the last refused entry. RunAgentTurn::refuse() records the failed turn by entering the
+     * same runtime again without the workspace; that one entry is let in with nobody signed in (the turn's person is
+     * read by id), so the person refused by the panel never acts on it and the turn still ends with the line.
+     *
+     * @var array{panel: string, user: string}|null
+     */
+    protected ?array $refused = null;
+
     public function panelId(): ?string
     {
         return config('packstub-agents.panel');
@@ -93,6 +104,12 @@ class FilamentContext implements AgentContext
         $previousUser = $guard->user();
         $given = $context['user'] ?? null;
         $user = $given instanceof Authenticatable ? $given : ($given !== null ? $guard->getProvider()?->retrieveById($given) : null);
+
+        if ($this->isRefusalRecord($panel, $user, $context['tenant'] ?? null)) {
+            $user = null;
+        }
+
+        $this->refused = null;
         $userChanged = $user && $previousUser?->getAuthIdentifier() !== $user->getAuthIdentifier();
 
         if ($user) {
@@ -104,10 +121,18 @@ class FilamentContext implements AgentContext
         $key = $context['tenant'] ?? null;
         $tenant = $key !== null ? $this->findTenantIn($panel, $key) : null;
 
-        // Whoever acts inside the workspace: the person given, else the one already signed in on the guard.
+        // Whoever acts on the panel and inside the workspace: the person given, else the one already signed in on the guard.
         $actor = $user ?? $previousUser;
 
-        if ($tenant && $actor && ! $this->canAccessTenant($actor, $tenant)) {
+        // The panel first, as Filament's Authenticate middleware asks it on a page (a model without FilamentUser
+        // is let through, as there), then the workspace's membership.
+        $denied = match (true) {
+            $panel && $actor && ! $this->canAccessPanel($actor, $panel) => PanelAccessDenied::make(),
+            $tenant && $actor && ! $this->canAccessTenant($actor, $tenant) => WorkspaceAccessDenied::make(),
+            default => null,
+        };
+
+        if ($denied) {
             // Fail closed before the workspace is set: undo what was set so far and refuse.
             if ($userChanged) {
                 $previousUser ? $guard->setUser($previousUser) : $guard->forgetUser();
@@ -116,7 +141,11 @@ class FilamentContext implements AgentContext
             Auth::shouldUse($previousGuard);
             Filament::setCurrentPanel($previousPanel);
 
-            throw WorkspaceAccessDenied::make();
+            if ($denied instanceof PanelAccessDenied) {
+                $this->refused = ['panel' => $panel->getId(), 'user' => (string) $actor->getAuthIdentifier()];
+            }
+
+            throw $denied;
         }
 
         if ($tenant && $previousTenant?->getKey() !== $tenant->getKey()) {
@@ -189,6 +218,21 @@ class FilamentContext implements AgentContext
     public function canAccessTenant(Authenticatable $user, Model $tenant): bool
     {
         return method_exists($user, 'canAccessTenant') && (bool) $user->canAccessTenant($tenant);
+    }
+
+    /** The entry that records a turn refused by the panel: the same panel and person as the refusal, no workspace. */
+    protected function isRefusalRecord(?Panel $panel, ?Authenticatable $user, int|string|null $tenant): bool
+    {
+        return $this->refused !== null
+            && $tenant === null
+            && $panel?->getId() === $this->refused['panel']
+            && $user && (string) $user->getAuthIdentifier() === $this->refused['user'];
+    }
+
+    /** What Filament's Authenticate middleware asks on a page: canAccessPanel() when the model implements FilamentUser. */
+    public function canAccessPanel(Authenticatable $user, Panel $panel): bool
+    {
+        return ! $user instanceof FilamentUser || $user->canAccessPanel($panel);
     }
 
     /** The list given to the plugin, or every resource of the panel that implements AgentResource. */

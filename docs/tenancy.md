@@ -20,7 +20,7 @@ Put `{tenant}` in the path so an external agent works inside one workspace (on a
 3. checks that the token carries `tenant:{slug}` (403 when it was issued for another workspace, even when the person is a member there);
 4. sets the panel's guard to the token's user and calls `Filament::setTenant($tenant)`.
 
-That last step fires Filament's `TenantSet` event, the same one a page request fires, so anything that listens to it, [Filament Tenancy](https://packstub.dev/plugins/filament-tenancy) switching the database connection for instance, does exactly what it does for a page. Tools do not need to know they run over MCP. The queue worker that runs a chat turn, `AgentRun::in()` and the email channel enter the workspace the same way, membership check included: for a person who is not a member nothing is entered, the context throws `Packstub\Agents\Exceptions\WorkspaceAccessDenied` ("You are not a member of this workspace."), `AgentRun` lets it through, the email channel drops the mail, and a queued turn whose membership was revoked after the question ends `failed` with that line.
+That last step fires Filament's `TenantSet` event, the same one a page request fires, so anything that listens to it, [Filament Tenancy](https://packstub.dev/plugins/filament-tenancy) switching the database connection for instance, does exactly what it does for a page. Tools do not need to know they run over MCP. The queue worker that runs a chat turn, `AgentRun::in()` and the email channel enter the workspace the same way, membership check included: for a person who is not a member nothing is entered, the context throws `Packstub\Agents\Exceptions\WorkspaceAccessDenied` ("You are not a member of this workspace."), `AgentRun` lets it through, the email channel drops the mail, and a queued turn whose membership was revoked after the question ends `failed` with that line. The panel's own `canAccessPanel()` is asked first on each of these paths, see [Security](security.md).
 
 A turn also records the guard it was asked on, and the worker signs the person in on that guard (`agent_turns.guard`), so a panel with its own guard keeps its identity on the worker.
 
@@ -62,6 +62,8 @@ When the callback returns credentials with a key, the turn runs on that provider
 
 The operator's **AI limits** resource offers a "One workspace" scope in a panel with tenancy. A workspace row overrides the global one for that tenant; the **Assistant** switch on it turns the chat off for the workspace. See [Budgets and limits](budgets-and-limits.md).
 
+Registered on the tenant panel itself (`limits()` or `turnLog()` next to the chat), both pages follow the current workspace: **AI limits** lists, creates and edits that workspace's row alone (the scope and workspace pickers show it and stay disabled), and **AI turns** shows its turns alone. Only a panel without tenancy, the operator console, sees every workspace.
+
 ## Database per tenant
 
 By default the package runs its migrations from the vendor directory. In a database-per-tenant app, the tables belong to different databases:
@@ -83,7 +85,7 @@ So:
 php artisan vendor:publish --tag=packstub-agents-migrations
 ```
 
-Keep `create_agent_limits_table` with your central migrations and move `create_agent_chat_tables`, `create_agent_conversation_summaries_table` and `create_agent_turns_table` next to your tenant migrations. A later `add_*` migration of the package (a column added inside a major, such as `add_steps_to_agent_conversation_messages_table`) goes the same way: publish again after an upgrade and move it next to the tenant migrations, since the package does not run it for you. `AgentLimit` reads `limits_connection`, so the operator page works from any panel. The **AI turns** page reads `agent_turns`, which is then a tenant table: register it on the tenant panel (`limits(false, authorize: …)->turnLog()`) rather than on the central one.
+Keep `create_agent_limits_table` with your central migrations and move `create_agent_chat_tables`, `create_agent_conversation_summaries_table` and `create_agent_turns_table` next to your tenant migrations. A later `add_*` migration of the package (a column added inside a major, such as `add_steps_to_agent_conversation_messages_table`) goes the same way: publish again after an upgrade and move it next to the tenant migrations, since the package does not run it for you. `AgentLimit` reads `limits_connection`, so the operator page works from any panel. The **AI turns** page reads `agent_turns`, which is then a tenant table: register it on the tenant panel (`limits(false, authorize: …)->turnLog()`) rather than on the central one; there it shows the current workspace's turns.
 
 ## What follows the workspace
 

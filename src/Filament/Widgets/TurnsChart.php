@@ -3,6 +3,7 @@
 namespace Packstub\Agents\Filament\Widgets;
 
 use Filament\Widgets\ChartWidget;
+use Packstub\Agents\Filament\Pages\TurnLog;
 use Packstub\Agents\Models\AgentTurn;
 
 /** Turns per day over the last two weeks, done against failed, over the AI turns table. */
@@ -31,7 +32,7 @@ class TurnsChart extends ChartWidget
     protected function getData(): array
     {
         $since = now()->subDays(13)->startOfDay();
-        $turns = AgentTurn::query()->where('created_at', '>=', $since)->whereNotIn('status', AgentTurn::OPEN)->get(['status', 'created_at']);
+        $turns = TurnLog::turns()->where('created_at', '>=', $since)->whereNotIn('status', AgentTurn::OPEN)->get(['status', 'created_at']);
         $days = collect(range(13, 0))->map(fn (int $back) => now()->subDays($back));
         $count = fn (string $day, ?string $status) => $turns->filter(fn (AgentTurn $t) => $t->created_at?->toDateString() === $day && ($status === null ? $t->status !== AgentTurn::FAILED : $t->status === $status))->count();
 
