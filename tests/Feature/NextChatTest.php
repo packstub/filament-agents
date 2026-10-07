@@ -16,7 +16,9 @@ use Packstub\Agents\Models\AgentMessageFeedback;
 use Packstub\Agents\Models\AgentTurn;
 use Packstub\Agents\Support\AgentChat;
 use Packstub\Agents\Support\AgentConversationStore;
+use Packstub\Agents\Tests\Fixtures\Abilities;
 use Packstub\Agents\Tests\Fixtures\Filament\Resources\Widgets\WidgetResource;
+use Packstub\Agents\Tests\Fixtures\Models\Widget;
 use Packstub\Agents\Tests\Fixtures\WidgetAgent;
 
 use function Pest\Laravel\actingAs;
@@ -206,6 +208,24 @@ it('offers the panel\'s records for "@" and sends the mentioned ones with the qu
 
     $script = file_get_contents(__DIR__.'/../../resources/js/agent-chat.js');
     expect($script)->toContain('self.$wire.searchRecords(query)')->toContain('/(?:^|\\s)@([^\\s@]*)$/')->toContain('packstub-agents:draft:');
+});
+
+it('leaves a record the resource\'s canView() denies out of the "@" picker', function () {
+    actingAs($this->user());
+    [$alpha, $beta, $gamma] = $this->widgets();
+    Abilities::$hiddenWidgets = [$beta->id];
+
+    $page = livewire(Chat::class);
+    expect(collect($page->instance()->searchRecords(''))->pluck('ref')->all())->toBe(["widgets/{$gamma->id}", "widgets/{$alpha->id}"])
+        ->and($page->instance()->searchRecords('bet'))->toBe([])
+        ->and(collect($page->instance()->searchRecords('a'))->pluck('label')->all())->toBe(['Widget Gamma', 'Widget Alpha']);
+
+    // The page stays full while enough records remain: three more, one of them hidden, still give three results.
+    $delta = Widget::query()->create(['name' => 'Delta', 'status' => 'live', 'price' => 40]);
+    Widget::query()->create(['name' => 'Epsilon', 'status' => 'live', 'price' => 50]);
+    $zeta = Widget::query()->create(['name' => 'Zeta', 'status' => 'live', 'price' => 60]);
+    Abilities::$hiddenWidgets = [$beta->id, $zeta->id];
+    expect(collect($page->instance()->searchRecords(''))->pluck('label')->all())->toBe(['Widget Epsilon', 'Widget Delta', 'Widget Gamma']);
 });
 
 it('opens the chat as a slide-over from the Ask button and the shortcut, and embedded without the panel chrome', function () {

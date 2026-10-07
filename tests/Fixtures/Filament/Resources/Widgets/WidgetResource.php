@@ -34,6 +34,11 @@ class WidgetResource extends Resource implements AgentResource
         return Abilities::allows('widgets.view');
     }
 
+    public static function canView(Model $record): bool
+    {
+        return Abilities::allows('widgets.view') && ! in_array($record->getKey(), Abilities::$hiddenWidgets, true);
+    }
+
     public static function form(Schema $schema): Schema
     {
         return $schema->components([

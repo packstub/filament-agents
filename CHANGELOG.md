@@ -2,6 +2,12 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## 1.14.2 — 2026-10-07
+
+### Fixed
+
+- **The "@" picker in the composer leaves out a record the resource's `canView()` denies.** `Chat::searchRecords()` filtered resources by `canViewAny()` only and listed records straight from `getEloquentQuery()`, so the label of a record the person may not open (an order their role hides, say) showed up in the list. Each record now passes the resource's `canView($record)` before it is offered, the page size unchanged; a picked record a person may not open is already dropped before the model reads it (packstub/agents#29).
+
 ## 1.14.1 — 2026-10-07
 
 Requires `packstub/agents` ^1.7.1.

@@ -11,6 +11,7 @@ use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -212,7 +213,8 @@ class Chat extends Page
 
     /**
      * The records "@…" in the composer offers: every agent resource of the panel searched on its globally searchable
-     * attributes (or its title attribute), a few per resource, as ref ("orders/12"), label and resource name.
+     * attributes (or its title attribute), a few per resource, as ref ("orders/12"), label and resource name. A record
+     * the resource's canView() denies is left out, so the picker never shows a label of a record the person may not open.
      *
      * @return list<array{ref: string, label: string, resource: string}>
      */
@@ -233,6 +235,7 @@ class Chat extends Page
             }
 
             $model = $resource::getModel();
+            $limit = $query === '' ? 3 : 5;
             $records = $resource::getEloquentQuery()
                 ->when($query !== '', fn (Builder $q) => $q->where(function (Builder $q) use ($attributes, $query) {
                     foreach ($attributes as $attribute) {
@@ -240,8 +243,10 @@ class Chat extends Page
                     }
                 }))
                 ->orderByDesc((new $model)->getKeyName())
-                ->limit($query === '' ? 3 : 5)
-                ->get();
+                ->limit($limit * 2) // a few more than the page, since canView() may drop some
+                ->get()
+                ->filter(fn (Model $record) => $resource::canView($record))
+                ->take($limit);
 
             foreach ($records as $record) {
                 $results[] = ['ref' => $key.'/'.$record->getKey(), 'label' => $resource::agentContextLabel($record), 'resource' => (string) $resource::getPluralModelLabel()];
