@@ -21,7 +21,9 @@ class ManageAgentLimits extends ManageRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make()->label(__('Add limit'))->modalHeading(__('Add limit'))->after(fn () => AgentLimits::flush()),
+            CreateAction::make()->label(__('Add limit'))->modalHeading(__('Add limit'))
+                ->mutateDataUsing(fn (array $data) => AgentLimitResource::forceScope($data))
+                ->after(fn () => AgentLimits::flush()),
         ];
     }
 }
