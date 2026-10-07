@@ -5,6 +5,7 @@ namespace Packstub\Agents\Filament\Resources\AgentLimits;
 use BackedEnum;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
@@ -13,6 +14,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Packstub\Agents\Facades\Agents;
 use Packstub\Agents\Filament\Resources\AgentLimits\Pages\ManageAgentLimits;
@@ -23,7 +25,9 @@ use Packstub\Agents\Support\AgentLimits;
  * AI limits (the operator panel): the spending guard rails. One global row
  * applies to everyone; a workspace row overrides it for that workspace; a
  * user row overrides the per-user fields for one account in every
- * workspace. Empty fields inherit.
+ * workspace. Empty fields inherit. On a panel with tenancy the resource is
+ * the current workspace's row alone (see tenantScope()); the operator
+ * console, without tenancy, lists them all.
  */
 class AgentLimitResource extends Resource
 {
@@ -60,12 +64,37 @@ class AgentLimitResource extends Resource
 
     public static function canEdit(Model $record): bool
     {
-        return self::canViewAny();
+        return self::canViewAny() && self::inScope($record);
     }
 
     public static function canDelete(Model $record): bool
     {
-        return self::canViewAny();
+        return self::canViewAny() && self::inScope($record);
+    }
+
+    /**
+     * The one row a panel with tenancy may list and edit: the current workspace's. Null on a panel
+     * without tenancy (the operator console), where every row is in reach.
+     *
+     * @return array{scope: string, scope_id: string}|null
+     */
+    public static function tenantScope(): ?array
+    {
+        $tenant = Filament::getTenant();
+
+        return $tenant ? ['scope' => 'tenant', 'scope_id' => (string) $tenant->getKey()] : null;
+    }
+
+    public static function inScope(Model $record): bool
+    {
+        $scope = self::tenantScope();
+
+        return $scope === null || ($record->scope === $scope['scope'] && (string) $record->scope_id === $scope['scope_id']);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->when(self::tenantScope(), fn (Builder $query, array $scope) => $query->where($scope));
     }
 
     public static function form(Schema $schema): Schema
@@ -78,16 +107,26 @@ class AgentLimitResource extends Resource
 
         $tenantModel = AgentLimit::tenantModel();
         $scopes = ['global' => __('Everyone (defaults)')] + ($tenantModel ? ['tenant' => __('One workspace')] : []) + ['user' => __('One user')];
+        // On a panel with tenancy the row is the current workspace's: both pickers show it and stay disabled
+        // (so they are not saved); the page's actions write the scope server-side.
+        $forced = self::tenantScope();
 
         return $schema->components([
             Section::make(__('Who'))
                 ->columns(3)
                 ->components([
                     Select::make('scope')->label(__('Scope'))->required()->live()->native(false)
-                        ->options($scopes)
-                        ->disabled(fn (?AgentLimit $record) => $record !== null),
+                        ->options($forced ? ['tenant' => __('One workspace')] : $scopes)
+                        ->default($forced ? 'tenant' : null)
+                        ->disabled(fn (?AgentLimit $record) => $record !== null || $forced !== null),
                     Select::make('scope_id')->label(__('Workspace'))->searchable()->required()
-                        ->options(fn () => $tenantModel ? $tenantModel::query()->get()->mapWithKeys(fn ($t) => [$t->getKey() => AgentLimit::tenantName($t->getKey()) ?? $t->getKey()])->sort()->all() : [])
+                        ->options(fn () => match (true) {
+                            $forced !== null => [$forced['scope_id'] => AgentLimit::tenantName($forced['scope_id']) ?? $forced['scope_id']],
+                            $tenantModel !== null => $tenantModel::query()->get()->mapWithKeys(fn ($t) => [$t->getKey() => AgentLimit::tenantName($t->getKey()) ?? $t->getKey()])->sort()->all(),
+                            default => [],
+                        })
+                        ->default($forced['scope_id'] ?? null)
+                        ->disabled($forced !== null)
                         ->visible(fn ($get) => $get('scope') === 'tenant'),
                     Select::make('scope_id')->label(__('User'))->searchable()->required()
                         ->options(fn () => AgentLimit::userModel()::query()->get()->mapWithKeys(fn ($u) => [$u->getKey() => trim(($u->name ?? '').' <'.($u->email ?? $u->getKey()).'>')])->sort()->all())
@@ -143,11 +182,17 @@ class AgentLimitResource extends Resource
                 TextColumn::make('note')->label(__('Note'))->limit(40)->placeholder('—'),
             ])
             ->recordActions([
-                EditAction::make()->after(fn () => AgentLimits::flush()),
+                EditAction::make()->mutateDataUsing(fn (array $data) => self::forceScope($data))->after(fn () => AgentLimits::flush()),
                 DeleteAction::make()->after(fn () => AgentLimits::flush()),
             ])
             ->emptyStateHeading(__('No limits yet'))
             ->emptyStateDescription(__('Until a row exists, the platform defaults from .env apply: :defaults', ['defaults' => collect(config('packstub-agents.limits', []))->only(AgentLimit::FIELDS)->map(fn ($v, $k) => "{$k}={$v}")->join(', ')]));
+    }
+
+    /** What a create or edit saves, with the workspace's scope written over whatever the form sent on a panel with tenancy. */
+    public static function forceScope(array $data): array
+    {
+        return array_merge($data, self::tenantScope() ?? []);
     }
 
     public static function getPages(): array
