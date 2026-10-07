@@ -5,19 +5,24 @@ use Filament\Facades\Filament;
 use Illuminate\Foundation\Auth\User as PlainUser;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 use Laravel\Ai\PendingStep;
 use Packstub\Agents\Channels\Email\EmailChannel;
 use Packstub\Agents\Channels\Email\InboundEmail;
 use Packstub\Agents\Exceptions\WorkspaceAccessDenied;
+use Packstub\Agents\Exceptions\WorkspaceNotFound;
 use Packstub\Agents\Facades\Agents;
 use Packstub\Agents\Filament\Exceptions\PanelAccessDenied;
 use Packstub\Agents\Filament\FilamentContext;
+use Packstub\Agents\Jobs\RunAgentTurn;
 use Packstub\Agents\Mcp\AgentServer;
 use Packstub\Agents\Mcp\Tools\DrawChart;
 use Packstub\Agents\Mcp\Tools\ShowTable;
 use Packstub\Agents\Models\AgentTurn;
+use Packstub\Agents\Support\AgentConversationStore;
 use Packstub\Agents\Support\AgentRun;
 use Packstub\Agents\Support\AgentRuntime;
+use Packstub\Agents\Support\AgentTurns;
 use Packstub\Agents\Support\Installed;
 use Packstub\Agents\Tests\Fixtures\Filament\Resources\Widgets\WidgetResource;
 use Packstub\Agents\Tests\Fixtures\Models\Team;
@@ -151,14 +156,12 @@ it('refuses to enter the panel for a person its canAccessPanel() turns away, fro
         ->and(app()->getLocale())->toBe('en');
     Event::assertNotDispatched(TenantSet::class);
 
-    // The entry RunAgentTurn::refuse() makes right after, to record the failed turn (same panel and person, no
-    // workspace), is let in with nobody signed in; the next one is refused again.
-    $leave = AgentRuntime::enter(['panel' => 'admin', 'tenant' => null, 'user' => $owner->id]);
+    // The entry RunAgentTurn::refuse() makes right after, to record the failed turn (the panel, nobody, no
+    // workspace), is let in with nobody signed in; the person is still refused.
+    $leave = AgentRuntime::enter(['panel' => 'admin', 'tenant' => null, 'user' => null]);
     expect(Filament::getCurrentPanel()?->getId())->toBe('admin')->and(Filament::auth()->user())->toBeNull();
     $leave();
     expect(fn () => AgentRuntime::enter(['panel' => 'admin', 'user' => $owner->id]))->toThrow(PanelAccessDenied::class);
-    $leave = AgentRuntime::enter(['panel' => 'admin', 'tenant' => null, 'user' => $owner->id]);
-    $leave();
 
     $ran = 0;
     Agents::useMiddleware([function (PendingStep $step, Closure $next) use (&$ran) {
@@ -187,6 +190,110 @@ it('refuses to enter the panel for a person its canAccessPanel() turns away, fro
     $owner->forceFill(['suspended_at' => null])->save();
     $leave = AgentRuntime::enter(['panel' => 'admin', 'tenant' => $acme->id, 'user' => $owner->id]);
     expect(Filament::getTenant()?->is($acme))->toBeTrue();
+    $leave();
+});
+
+it('refuses a workspace key that matches nothing instead of running without a workspace, on every path', function () {
+    $owner = $this->user();
+    $acme = Team::query()->create(['owner_id' => $owner->id, 'name' => 'Acme', 'slug' => 'acme']);
+    Filament::getPanel('admin')->tenant(Team::class, slugAttribute: 'slug');
+    Event::fake([TenantSet::class]);
+    $ran = 0;
+    Agents::useMiddleware([function (PendingStep $step, Closure $next) use (&$ran) {
+        $ran++;
+
+        return $next($step);
+    }]);
+    WidgetAgent::fake(['Two.']);
+
+    // The context: a key of a workspace that is gone is refused, with and without a person, and refused as a
+    // WorkspaceAccessDenied too; the panel and the signed-in person are left as they were.
+    expect(fn () => AgentRuntime::enter(['panel' => 'admin', 'tenant' => 999, 'user' => $owner->id, 'locale' => 'de']))
+        ->toThrow(WorkspaceNotFound::class, 'This workspace no longer exists.')
+        ->and(Filament::getTenant())->toBeNull()
+        ->and(Filament::auth()->user())->toBeNull()
+        ->and(Filament::getCurrentPanel()?->getId())->toBe('admin')
+        ->and(app()->getLocale())->toBe('en');
+    Filament::auth()->login($owner);
+    expect(fn () => AgentRuntime::enter(['panel' => 'admin', 'tenant' => 999]))
+        ->toThrow(WorkspaceAccessDenied::class, 'This workspace no longer exists.')
+        ->and(Filament::getTenant())->toBeNull()
+        ->and(Filament::auth()->user()?->is($owner))->toBeTrue();
+    Filament::auth()->logout();
+    Event::assertNotDispatched(TenantSet::class);
+
+    // The worker: the workspace was deleted between the question and the turn — the turn fails with the line, nothing runs.
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
+    Filament::auth()->login($owner);
+    Filament::setTenant($acme);
+    Queue::fake();
+    $conversation = app(AgentConversationStore::class)->startConversation($owner, 'Still there?');
+    $turn = app(AgentTurns::class)->enqueue($conversation, $owner, ['prompt' => 'Still there?'], null, 'auto', null);
+    Filament::auth()->logout();
+    Filament::setTenant(null, isQuiet: true);
+    Filament::setCurrentPanel(null);
+    $acme->delete();
+
+    Queue::pushed(RunAgentTurn::class, fn (RunAgentTurn $job) => $job->turnId === $turn->id)->first()->handle(app(AgentTurns::class));
+
+    expect($turn->fresh()->status)->toBe(AgentTurn::FAILED)
+        ->and($turn->fresh()->error)->toBe('This workspace no longer exists.')
+        ->and($ran)->toBe(0)
+        ->and(Filament::getTenant())->toBeNull()
+        ->and(Filament::auth()->user())->toBeNull();
+    Event::assertDispatchedTimes(TenantSet::class, 1); // the request that asked, not the worker
+});
+
+it('ignores the workspace key on a panel without tenancy, as before', function () {
+    $owner = $this->user();
+
+    $leave = AgentRuntime::enter(['panel' => 'admin', 'tenant' => 999, 'user' => $owner->id]);
+    expect(Filament::getCurrentPanel()?->getId())->toBe('admin')
+        ->and(Filament::getTenant())->toBeNull()
+        ->and(Filament::auth()->user()?->is($owner))->toBeTrue();
+    $leave();
+});
+
+it('refuses to enter a workspace with nobody acting, unless the caller says the system itself acts', function () {
+    $owner = $this->user();
+    $acme = Team::query()->create(['owner_id' => $owner->id, 'name' => 'Acme', 'slug' => 'acme']);
+    $globex = Team::query()->create(['owner_id' => $this->user()->id, 'name' => 'Globex', 'slug' => 'globex']);
+    Filament::getPanel('admin')->tenant(Team::class, slugAttribute: 'slug');
+    Event::fake([TenantSet::class]);
+
+    // A tenant with no user given and nobody signed in: nothing was checked, so nothing is entered.
+    expect(fn () => AgentRuntime::enter(['panel' => 'admin', 'tenant' => $acme->id]))
+        ->toThrow(WorkspaceAccessDenied::class, 'You are not a member of this workspace.')
+        ->and(Filament::getTenant())->toBeNull()
+        ->and(Filament::getCurrentPanel()?->getId())->toBe('admin')
+        ->and(Filament::auth()->user())->toBeNull();
+    Event::assertNotDispatched(TenantSet::class);
+
+    // No workspace at all stays as it was: the panel is entered and needs nobody.
+    $leave = AgentRuntime::enter(['panel' => 'admin', 'tenant' => null, 'locale' => 'de']);
+    expect(Filament::getCurrentPanel()?->getId())->toBe('admin')->and(app()->getLocale())->toBe('de');
+    $leave();
+    expect(app()->getLocale())->toBe('en');
+
+    // The app opts in for a job of its own: the system acts, the workspace is set (quietly: TenantSet names a
+    // person, and there is none) and left on leaving.
+    $leave = AgentRuntime::enter(['panel' => 'admin', 'tenant' => $acme->id, 'system' => true]);
+    expect(Filament::getTenant()?->is($acme))->toBeTrue()->and(Filament::auth()->user())->toBeNull();
+    Event::assertNotDispatched(TenantSet::class);
+    $leave();
+    expect(Filament::getTenant())->toBeNull();
+
+    // system does not stand in for a membership check once someone acts: a non-member is still refused.
+    expect(fn () => AgentRuntime::enter(['panel' => 'admin', 'tenant' => $globex->id, 'user' => $owner->id, 'system' => true]))
+        ->toThrow(WorkspaceAccessDenied::class)
+        ->and(Filament::getTenant())->toBeNull()
+        ->and(Filament::auth()->user())->toBeNull();
+    Event::assertNotDispatched(TenantSet::class);
+
+    // A member with system set: entered as the person, TenantSet names them.
+    $leave = AgentRuntime::enter(['panel' => 'admin', 'tenant' => $acme->id, 'user' => $owner->id, 'system' => true]);
+    expect(Filament::getTenant()?->is($acme))->toBeTrue()->and(Filament::auth()->user()?->is($owner))->toBeTrue();
+    Event::assertDispatched(TenantSet::class, fn (TenantSet $event) => $event->getTenant()->is($acme) && $event->getUser()->is($owner));
     $leave();
 });
 
