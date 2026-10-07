@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Packstub\Agents\Contracts\AgentContext;
 use Packstub\Agents\Contracts\AgentResource;
+use Packstub\Agents\Exceptions\WorkspaceAccessDenied;
 use Packstub\Agents\Facades\Agents;
 
 /**
@@ -102,6 +103,19 @@ class FilamentContext implements AgentContext
 
         $key = $context['tenant'] ?? null;
         $tenant = $key !== null ? $this->findTenantIn($panel, $key) : null;
+
+        if ($tenant && $user && ! $this->canAccessTenant($user, $tenant)) {
+            // Fail closed before the workspace is set: undo what was set so far and refuse.
+            if ($userChanged) {
+                $previousUser ? $guard->setUser($previousUser) : $guard->forgetUser();
+            }
+
+            Auth::shouldUse($previousGuard);
+            Filament::setCurrentPanel($previousPanel);
+
+            throw WorkspaceAccessDenied::make();
+        }
+
         if ($tenant && $previousTenant?->getKey() !== $tenant->getKey()) {
             Filament::setTenant($tenant);
         }

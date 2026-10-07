@@ -2,7 +2,13 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
-## Unreleased
+## 1.14.1 — 2026-10-07
+
+Requires `packstub/agents` ^1.7.1.
+
+### Security
+
+- **Workspace membership is checked on every path that enters a workspace**, not only on the MCP request. `FilamentContext::enter()` now calls the person's `canAccessTenant()` when it is given a user and a tenant and throws `Packstub\Agents\Exceptions\WorkspaceAccessDenied` ("You are not a member of this workspace.") before `Filament::setTenant()`, so `AgentRun::as($user)->in($tenant)` with a workspace the person is not in, and a mail to the email channel whose `tenant` names another workspace, no longer run tools or scope queries inside it. The chat page, where the workspace is the panel's, was not affected. Same fix as Agents for Laravel 1.7.1; reported privately by Yusuf Kef — thank you.
 
 ### Changed
 

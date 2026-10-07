@@ -3,17 +3,22 @@
 use Filament\Events\TenantSet;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Event;
+use Laravel\Ai\PendingStep;
+use Packstub\Agents\Exceptions\WorkspaceAccessDenied;
 use Packstub\Agents\Facades\Agents;
 use Packstub\Agents\Filament\FilamentContext;
 use Packstub\Agents\Mcp\AgentServer;
 use Packstub\Agents\Mcp\Tools\DrawChart;
 use Packstub\Agents\Mcp\Tools\ShowTable;
+use Packstub\Agents\Models\AgentTurn;
+use Packstub\Agents\Support\AgentRun;
 use Packstub\Agents\Support\AgentRuntime;
 use Packstub\Agents\Support\Installed;
 use Packstub\Agents\Tests\Fixtures\Filament\Resources\Widgets\WidgetResource;
 use Packstub\Agents\Tests\Fixtures\Models\Team;
 use Packstub\Agents\Tests\Fixtures\Models\Widget;
 use Packstub\Agents\Tests\Fixtures\Tools\WhoAmI;
+use Packstub\Agents\Tests\Fixtures\WidgetAgent;
 
 use function Orchestra\Testbench\Pest\defineEnvironment;
 use function Pest\Laravel\postJson;
@@ -82,6 +87,38 @@ it('fires TenantSet when a worker or an MCP request enters a workspace', functio
 
     auth()->forgetGuards();
     $call('globex')->assertNotFound();
+});
+
+it('refuses to enter a workspace the person is not a member of, from a worker and from AgentRun', function () {
+    $owner = $this->user();
+    $acme = Team::query()->create(['owner_id' => $owner->id, 'name' => 'Acme', 'slug' => 'acme']);
+    $globex = Team::query()->create(['owner_id' => $this->user()->id, 'name' => 'Globex', 'slug' => 'globex']);
+    Filament::getPanel('admin')->tenant(Team::class, slugAttribute: 'slug');
+    Event::fake([TenantSet::class]);
+
+    expect(fn () => AgentRuntime::enter(['panel' => 'admin', 'tenant' => $globex->id, 'user' => $owner->id, 'locale' => 'de']))
+        ->toThrow(WorkspaceAccessDenied::class, 'You are not a member of this workspace.')
+        ->and(Filament::getTenant())->toBeNull()
+        ->and(Filament::auth()->user())->toBeNull()
+        ->and(app()->getLocale())->toBe('en');
+    Event::assertNotDispatched(TenantSet::class);
+
+    $ran = 0;
+    Agents::useMiddleware([function (PendingStep $step, Closure $next) use (&$ran) {
+        $ran++;
+
+        return $next($step);
+    }]);
+    WidgetAgent::fake(['Two.']);
+    expect(fn () => AgentRun::as($owner)->in($globex)->ask('How many?'))->toThrow(WorkspaceAccessDenied::class)
+        ->and($ran)->toBe(0)
+        ->and(AgentTurn::query()->count())->toBe(0);
+
+    // The person's own workspace is entered as before.
+    $leave = AgentRuntime::enter(['panel' => 'admin', 'tenant' => $acme->id, 'user' => $owner->id]);
+    expect(Filament::getTenant()?->is($acme))->toBeTrue();
+    Event::assertDispatched(TenantSet::class, fn (TenantSet $event) => $event->getTenant()->is($acme));
+    $leave();
 });
 
 it('scopes the panel\'s resources to the workspace a worker enters', function () {
