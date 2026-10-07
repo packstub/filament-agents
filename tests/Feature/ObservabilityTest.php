@@ -237,6 +237,17 @@ it('says what read a typed reply as the decisions, with the classifier\'s reason
         ->filterTable('decided_by', TypedDecisions::BY_CLASSIFIER)
         ->assertCanSeeTableRecords([$classifier])
         ->assertCanNotSeeTableRecords([$words, $app, $buttons, $question]);
+
+    // From Agents for Laravel 1.10 the turn also says which classifier read the reply and how sure it was.
+    $jev = $turn(['decisions' => ['c1' => true], 'said' => 'Sure, only that one.', 'decided_by' => TypedDecisions::BY_CLASSIFIER, 'decision_driver' => 'jev', 'decision_confidence' => 0.9351]);
+    $agent = $turn(['decisions' => ['c1' => true], 'said' => 'Yes, but only Alpha.', 'decided_by' => TypedDecisions::BY_CLASSIFIER, 'decision_driver' => 'agent', 'decision_reason' => 'Approves Alpha.']);
+    $own = $turn(['decisions' => ['c1' => false], 'said' => 'Not today.', 'decided_by' => TypedDecisions::BY_CLASSIFIER, 'decision_driver' => 'App\\Ai\\DeskClassifier', 'decision_confidence' => 0.88, 'decision_reason' => 'Postponed.']);
+    expect(TurnLog::decisionDetail($jev))->toBe('Jev · 0.94')
+        ->and(TurnLog::decisionDetail($agent))->toBe(__('Side agent').': Approves Alpha.')
+        ->and(TurnLog::decisionDetail($own))->toBe('DeskClassifier · 0.88: Postponed.')
+        ->and(TurnLog::decisionDetail($classifier))->toBe('Approves Alpha, rejects Beta.') // an older engine: the reason alone
+        ->and(TurnLog::decisionDetail($words))->toBeNull();
+    livewire(TurnLog::class)->assertSee('Jev · 0.94');
 });
 
 it('prunes ended turns after keep_turns_days and keeps open ones', function () {
