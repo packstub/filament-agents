@@ -12,8 +12,6 @@ Requires `packstub/agents` ^1.8.
 
 ### Changed
 
-- Requires `packstub/agents` ^1.8 (the deferred turn status and the posted message).
-
 - **Docs**: a shorter Features list in the README and on the docs index, one line per area; the README's chat and assistant sections name the composer shortcuts, the providers and the failover list.
 
 ## 1.14.0 — 2026-10-02

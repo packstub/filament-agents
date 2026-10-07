@@ -145,7 +145,7 @@ class Chat extends Page
         return $this->chat()->messages();
     }
 
-    /** @return array{active: ?array, queued: list<array>, held: array, ended: ?array} */
+    /** @return array{active: ?array, queued: list<array>, held: array, ended: ?array, deferred: ?array} */
     public function live(): array
     {
         return $this->chat()->live();
