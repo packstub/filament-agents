@@ -2,6 +2,18 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## Unreleased
+
+Requires `packstub/agents` ^1.9.
+
+### Added
+
+- **The AI turns page says what read a typed reply as the decisions.** A **Decided by** column (your rule, the word lists or the classifier, from Agents for Laravel 1.9's typed decisions) with the classifier's reason on hover, and a filter on it; empty for a question or a decision made with the buttons. See [The AI turns page](https://packstub.dev/docs/filament-agents/budgets-and-limits#the-ai-turns-page).
+
+### Changed
+
+- Requires `packstub/agents` ^1.9: a reply typed over a waiting proposal is now read by the app's rule, the word lists per locale (extendable and replaceable by the app) and an opt-in classifier, and a yes asked back ("Ok?") or with a condition ("Yes, but only Alpha.") no longer approves. See [Approvals](https://packstub.dev/docs/filament-agents/assistant#approvals).
+
 ## 1.15.0 — 2026-10-07
 
 Requires `packstub/agents` ^1.8.

@@ -22,12 +22,14 @@ use Packstub\Agents\Models\AgentLimit;
 use Packstub\Agents\Models\AgentMessageFeedback;
 use Packstub\Agents\Models\AgentTurn;
 use Packstub\Agents\Support\AgentPricing;
+use Packstub\Agents\Support\TypedDecisions;
 
 /**
  * AI turns (the operator panel): the week's numbers and a chart of turns
  * per day over every answer as one row — who asked and where, the provider
  * and model that answered, tokens in and out, the cost, the tools called,
- * the wall time, how it ended and how the answer was rated. The same record
+ * the wall time, how it ended, what read a typed reply as its decisions
+ * and how the answer was rated. The same record
  * the log line carries, without the log. Gated like the AI limits resource;
  * on a panel with tenancy it shows the current workspace's turns alone.
  */
@@ -125,6 +127,11 @@ class TurnLog extends Page implements HasTable
                     ->formatStateUsing(fn ($state) => number_format(((int) $state) / 1000, 1).' s'),
                 TextColumn::make('finish_reason')->label(__('Ended'))->placeholder('—')
                     ->formatStateUsing(fn (string $state) => Str::headline($state)),
+                TextColumn::make('decided_by')->label(__('Decided by'))->placeholder('—')->badge()->color('gray')
+                    ->state(fn (AgentTurn $turn) => $turn->decidedBy())
+                    ->formatStateUsing(fn (string $state) => self::decidedByLabel($state))
+                    ->tooltip(fn (AgentTurn $turn) => $turn->decisionReason())
+                    ->toggleable(),
                 TextColumn::make('rating')->label(__('Rating'))->placeholder('—')
                     ->state(fn (AgentTurn $turn) => self::ratingOf($turn)['rating'] ?? null)
                     ->formatStateUsing(fn (string $state) => $state === 'up' ? __('Helpful') : __('Not helpful'))
@@ -142,6 +149,11 @@ class TurnLog extends Page implements HasTable
                         ->mapWithKeys(fn (string $status) => [$status => self::statusLabel($status)])->all()),
                 SelectFilter::make('provider')->label(__('Provider'))
                     ->options(fn () => self::turns()->whereNotNull('provider')->distinct()->orderBy('provider')->pluck('provider', 'provider')->all()),
+                SelectFilter::make('decided_by')->label(__('Decided by'))
+                    ->options(collect([TypedDecisions::BY_APP, TypedDecisions::BY_WORDS, TypedDecisions::BY_CLASSIFIER])
+                        ->mapWithKeys(fn (string $by) => [$by => self::decidedByLabel($by)])->all())
+                    // `input` is a text column, which Postgres will not read with a JSON path: match the encoded pair instead.
+                    ->query(fn ($query, array $data) => filled($data['value'] ?? null) ? $query->where('input', 'like', '%'.substr((string) json_encode(['decided_by' => (string) $data['value']]), 1, -1).'%') : $query),
                 SelectFilter::make('rating')->label(__('Rating'))
                     ->options(['up' => __('Helpful'), 'down' => __('Not helpful')])
                     ->query(fn ($query, array $data) => filled($data['value'] ?? null) ? $query->whereIn('id', AgentMessageFeedback::query()->select('turn_id')->where('rating', $data['value'])->whereNotNull('turn_id')) : $query),
@@ -154,6 +166,17 @@ class TurnLog extends Page implements HasTable
     public static function statusLabel(string $status): string
     {
         return AgentTurn::statusLabel($status);
+    }
+
+    /** What read a typed reply as the turn's decisions (AgentTurn::decidedBy()), as the page names it. */
+    public static function decidedByLabel(string $by): string
+    {
+        return match ($by) {
+            TypedDecisions::BY_APP => __('Your rule'),
+            TypedDecisions::BY_WORDS => __('Word lists'),
+            TypedDecisions::BY_CLASSIFIER => __('Classifier'),
+            default => Str::headline($by),
+        };
     }
 
     /**
