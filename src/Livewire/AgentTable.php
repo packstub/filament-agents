@@ -14,6 +14,7 @@ use Filament\Tables\Table;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Packstub\Agents\AgentsPlugin;
 use Packstub\Agents\Filament\Pages\ResourceTable;
@@ -32,6 +33,13 @@ use Packstub\Agents\Support\AgentResources;
  * bubble. A result longer than the cap shows its first rows and a link to the
  * full table (the ResourceTable page), where this same component renders with
  * $full: the list page's search, filters and pagination over the same rows.
+ *
+ * What the component shows is decided on the server when it is mounted (the
+ * stored tool result, or the ResourceTable page after normalizing the URL),
+ * so the four properties are locked: a Livewire request from the browser
+ * cannot swap the resource, flip the full view, change the caption or send
+ * filter values that skipped normalization to the resource's filter closures.
+ * The ability is still checked on every request, in table().
  */
 class AgentTable extends Component implements HasActions, HasSchemas, HasTable
 {
@@ -42,14 +50,18 @@ class AgentTable extends Component implements HasActions, HasSchemas, HasTable
     /** How many rows an answer shows when the plugin says nothing (AgentsPlugin::embeddedTable(limit:)). */
     public const int DEFAULT_LIMIT = 25;
 
+    #[Locked]
     public string $resource = '';
 
     /** @var array<string, mixed> */
+    #[Locked]
     public array $filters = [];
 
+    #[Locked]
     public string $title = '';
 
     /** The whole result with the list page's controls (the ResourceTable page), not the compact table of an answer. */
+    #[Locked]
     public bool $full = false;
 
     /** The row count, read once per request. */

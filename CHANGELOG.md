@@ -2,6 +2,12 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## 1.14.2 — 2026-10-07
+
+### Security
+
+- **The embedded table's properties are locked** (related: #75). `AgentTable`'s `resource`, `filters`, `title` and `full` are `#[Locked]`: a Livewire request from the browser could set them after the component was mounted from a stored answer, and while the resource's ability was checked on every request and its query stayed scoped, a tampered `filters` array skipped `normalizeFilters()` and reached the resource's filter closures as sent. Livewire now refuses such a request with `CannotUpdateLockedPropertyException`.
+
 ## 1.14.1 — 2026-10-07
 
 Requires `packstub/agents` ^1.7.1.
