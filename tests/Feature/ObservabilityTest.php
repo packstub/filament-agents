@@ -219,7 +219,8 @@ it('says what read a typed reply as the decisions, with the classifier\'s reason
         'input' => $input, 'status' => AgentTurn::DONE, 'model' => 'auto', 'panel' => 'admin', 'started_at' => now(), 'finished_at' => now(),
     ]);
 
-    $words = $turn(['decisions' => ['c1' => true], 'said' => 'Yes, go ahead.', 'decided_by' => TypedDecisions::BY_WORDS]);
+    // A reply quoting the stored pair is escaped inside the JSON, so the filter does not match it.
+    $words = $turn(['decisions' => ['c1' => true], 'said' => 'Yes "decided_by":"classifier"', 'decided_by' => TypedDecisions::BY_WORDS]);
     $classifier = $turn(['decisions' => ['c1' => true, 'c2' => false], 'said' => 'Yes, but only Alpha.', 'decided_by' => TypedDecisions::BY_CLASSIFIER, 'decision_reason' => 'Approves Alpha, rejects Beta.']);
     $app = $turn(['decisions' => ['c1' => false], 'said' => 'Leave it', 'decided_by' => TypedDecisions::BY_APP]);
     $buttons = $turn(['decisions' => ['c1' => true]]);

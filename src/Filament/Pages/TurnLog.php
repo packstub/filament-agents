@@ -152,7 +152,8 @@ class TurnLog extends Page implements HasTable
                 SelectFilter::make('decided_by')->label(__('Decided by'))
                     ->options(collect([TypedDecisions::BY_APP, TypedDecisions::BY_WORDS, TypedDecisions::BY_CLASSIFIER])
                         ->mapWithKeys(fn (string $by) => [$by => self::decidedByLabel($by)])->all())
-                    ->query(fn ($query, array $data) => filled($data['value'] ?? null) ? $query->where('input->decided_by', $data['value']) : $query),
+                    // `input` is a text column, which Postgres will not read with a JSON path: match the encoded pair instead.
+                    ->query(fn ($query, array $data) => filled($data['value'] ?? null) ? $query->where('input', 'like', '%'.substr((string) json_encode(['decided_by' => (string) $data['value']]), 1, -1).'%') : $query),
                 SelectFilter::make('rating')->label(__('Rating'))
                     ->options(['up' => __('Helpful'), 'down' => __('Not helpful')])
                     ->query(fn ($query, array $data) => filled($data['value'] ?? null) ? $query->whereIn('id', AgentMessageFeedback::query()->select('turn_id')->where('rating', $data['value'])->whereNotNull('turn_id')) : $query),
