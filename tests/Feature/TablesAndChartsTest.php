@@ -4,6 +4,7 @@ use Illuminate\Support\Str;
 use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Models\ConversationMessage;
 use Laravel\Mcp\Request;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 use Packstub\Agents\AgentsPlugin;
 use Packstub\Agents\Filament\Pages\Chat;
@@ -199,6 +200,26 @@ it('shows the first rows of a long result with a link to the full table, where t
     get(ResourceTable::getUrl(['resource' => 'nope']))->assertNotFound();
     Abilities::$allowed = ['nothing'];
     get(ResourceTable::getUrl(['resource' => 'widgets']))->assertForbidden();
+});
+
+it('refuses a Livewire request that changes what the embedded table shows: the resource, the filters, the caption and the full view are locked', function () {
+    actingAs($this->user());
+    [$alpha] = $this->widgets();
+
+    $table = livewire(AgentTable::class, ['resource' => 'widgets', 'filters' => ['live_only' => true], 'title' => 'Live ones'])
+        ->loadTable()
+        ->assertCanSeeTableRecords([$alpha]);
+
+    // A tampered filter value would skip normalizeFilters() and reach the resource's closures as sent.
+    foreach (['resource' => 'orders', 'filters' => ['query' => ['x'], 'status' => 'live'], 'title' => 'Mine', 'full' => true] as $property => $value) {
+        expect(fn () => $table->set($property, $value))->toThrow(CannotUpdateLockedPropertyException::class, $property);
+    }
+
+    $table->assertSet('resource', 'widgets')->assertSet('filters', ['live_only' => true])->assertSet('title', 'Live ones')->assertSet('full', false);
+
+    // The ability is checked on every request, not only when the component is mounted.
+    Abilities::$allowed = ['nothing'];
+    $table->call('$refresh')->assertForbidden();
 });
 
 it('titles the full-table page without a resource, as Shield reads every page\'s title for its permissions', function () {
