@@ -103,6 +103,15 @@ it('refuses to enter a workspace the person is not a member of, from a worker an
         ->and(app()->getLocale())->toBe('en');
     Event::assertNotDispatched(TenantSet::class);
 
+    // A tenant named without a person: the one already signed in on the panel's guard is checked the same way.
+    Filament::auth()->login($owner);
+    expect(fn () => AgentRuntime::enter(['panel' => 'admin', 'tenant' => $globex->id]))
+        ->toThrow(WorkspaceAccessDenied::class)
+        ->and(Filament::getTenant())->toBeNull()
+        ->and(Filament::auth()->user()?->is($owner))->toBeTrue();
+    Event::assertNotDispatched(TenantSet::class);
+    Filament::auth()->logout();
+
     $ran = 0;
     Agents::useMiddleware([function (PendingStep $step, Closure $next) use (&$ran) {
         $ran++;

@@ -4,7 +4,7 @@ The package works in a panel without tenancy: one workspace, the app's name, eve
 
 ## The MCP path
 
-Put `{tenant}` in the path so an external agent works inside one workspace:
+Put `{tenant}` in the path so an external agent works inside one workspace (on a panel with tenancy, a path without it is refused with a 404 and the line to fix it):
 
 ```php
 // config/packstub-agents.php

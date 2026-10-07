@@ -104,7 +104,10 @@ class FilamentContext implements AgentContext
         $key = $context['tenant'] ?? null;
         $tenant = $key !== null ? $this->findTenantIn($panel, $key) : null;
 
-        if ($tenant && $user && ! $this->canAccessTenant($user, $tenant)) {
+        // Whoever acts inside the workspace: the person given, else the one already signed in on the guard.
+        $actor = $user ?? $previousUser;
+
+        if ($tenant && $actor && ! $this->canAccessTenant($actor, $tenant)) {
             // Fail closed before the workspace is set: undo what was set so far and refuse.
             if ($userChanged) {
                 $previousUser ? $guard->setUser($previousUser) : $guard->forgetUser();
