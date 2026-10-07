@@ -2,6 +2,14 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## 1.15.0 — 2026-10-07
+
+Requires `packstub/agents` ^1.8.
+
+### Added
+
+- **A chat the app opens for you** (#71). The chat page starts a conversation's deferred first turn (`AgentTurns::defer()`, Agents for Laravel 1.8) the first time its owner opens it — once, on this panel and as this person, through `AgentTurns::startDeferred()` in `Chat::mount` — and attaches to it as to any running answer. When the budget refuses at that moment the question is shown with the reason and "It will be answered the next time you open this chat.", with no Retry, and the next open tries again. A message the app posted as the assistant (`AgentConversationStore::storePostedMessage()`) renders like any answer with a "(posted)" note and no Regenerate. The AI turns page filters on Deferred and lists a posted message as a done turn ended Posted, without tokens. See [A chat the app opens for you](https://packstub.dev/docs/filament-agents/assistant#a-chat-the-app-opens-for-you).
+
 ## 1.14.2 — 2026-10-07
 
 Requires `packstub/agents` ^1.7.2.

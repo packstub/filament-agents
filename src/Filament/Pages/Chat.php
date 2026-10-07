@@ -24,6 +24,7 @@ use Packstub\Agents\Support\AgentAttachments;
 use Packstub\Agents\Support\AgentChat;
 use Packstub\Agents\Support\AgentModels;
 use Packstub\Agents\Support\AgentResources;
+use Packstub\Agents\Support\AgentTurns;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
@@ -89,6 +90,9 @@ class Chat extends Page
             abort_unless(AgentChat::for(auth()->user())->owns($conversation), 404);
             $this->conversation = $conversation;
             $this->chat = null;
+            // A conversation the app opened for this person with its first question held back: the turn starts now,
+            // once, on this panel and under the budget as it stands (a refusal is read under the question).
+            app(AgentTurns::class)->startDeferred($conversation, auth()->user());
         }
 
         if ($prompt = session()->pull('packstub-agents.prompt') ?? request()->query('prompt')) {
@@ -142,7 +146,7 @@ class Chat extends Page
         return $this->chat()->messages();
     }
 
-    /** @return array{active: ?array, queued: list<array>, held: array, ended: ?array} */
+    /** @return array{active: ?array, queued: list<array>, held: array, ended: ?array, deferred: ?array} */
     public function live(): array
     {
         return $this->chat()->live();

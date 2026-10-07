@@ -138,7 +138,7 @@ class TurnLog extends Page implements HasTable
             ])
             ->filters([
                 SelectFilter::make('status')->label(__('Status'))
-                    ->options(collect([AgentTurn::QUEUED, AgentTurn::PENDING, AgentTurn::RUNNING, AgentTurn::DONE, AgentTurn::STOPPED, AgentTurn::FAILED])
+                    ->options(collect([AgentTurn::DEFERRED, AgentTurn::QUEUED, AgentTurn::PENDING, AgentTurn::RUNNING, AgentTurn::DONE, AgentTurn::STOPPED, AgentTurn::FAILED])
                         ->mapWithKeys(fn (string $status) => [$status => self::statusLabel($status)])->all()),
                 SelectFilter::make('provider')->label(__('Provider'))
                     ->options(fn () => self::turns()->whereNotNull('provider')->distinct()->orderBy('provider')->pluck('provider', 'provider')->all()),
