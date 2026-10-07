@@ -22,6 +22,7 @@ use Packstub\Agents\Jobs\RunAgentTurn;
 use Packstub\Agents\Models\AgentTurn;
 use Packstub\Agents\Support\AgentModels;
 use Packstub\Agents\Support\AgentTurns;
+use Packstub\Agents\Support\TypedDecisions;
 use Packstub\Agents\Tests\Fixtures\WidgetAgent;
 
 use function Pest\Laravel\actingAs;
@@ -209,6 +210,32 @@ it('lists the turns for the operator, gated like the limits', function () {
         ->and($page(AgentsPlugin::make()->limits()->turnLog(false)))->toBeFalse()
         ->and($page(AgentsPlugin::make()->turnLog()))->toBeTrue()
         ->and($page(AgentsPlugin::make()))->toBeFalse();
+});
+
+it('says what read a typed reply as the decisions, with the classifier\'s reason, and filters on it', function () {
+    $user = $this->user();
+    $turn = fn (array $input) => AgentTurn::query()->create([
+        'id' => (string) Str::uuid7(), 'conversation_id' => (string) Str::uuid(), 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id,
+        'input' => $input, 'status' => AgentTurn::DONE, 'model' => 'auto', 'panel' => 'admin', 'started_at' => now(), 'finished_at' => now(),
+    ]);
+
+    $words = $turn(['decisions' => ['c1' => true], 'said' => 'Yes, go ahead.', 'decided_by' => TypedDecisions::BY_WORDS]);
+    $classifier = $turn(['decisions' => ['c1' => true, 'c2' => false], 'said' => 'Yes, but only Alpha.', 'decided_by' => TypedDecisions::BY_CLASSIFIER, 'decision_reason' => 'Approves Alpha, rejects Beta.']);
+    $app = $turn(['decisions' => ['c1' => false], 'said' => 'Leave it', 'decided_by' => TypedDecisions::BY_APP]);
+    $buttons = $turn(['decisions' => ['c1' => true]]);
+    $question = $turn(['prompt' => 'What does this change?']);
+
+    actingAs($this->user(['is_admin' => true]));
+    livewire(TurnLog::class)
+        ->assertCanSeeTableRecords([$words, $classifier, $app, $buttons, $question])
+        ->assertTableColumnFormattedStateSet('decided_by', __('Word lists'), $words)
+        ->assertTableColumnFormattedStateSet('decided_by', __('Classifier'), $classifier)
+        ->assertTableColumnFormattedStateSet('decided_by', __('Your rule'), $app)
+        ->assertTableColumnStateNotSet('decided_by', TypedDecisions::BY_WORDS, $buttons)
+        ->assertSee('Approves Alpha, rejects Beta.')
+        ->filterTable('decided_by', TypedDecisions::BY_CLASSIFIER)
+        ->assertCanSeeTableRecords([$classifier])
+        ->assertCanNotSeeTableRecords([$words, $app, $buttons, $question]);
 });
 
 it('prunes ended turns after keep_turns_days and keeps open ones', function () {
