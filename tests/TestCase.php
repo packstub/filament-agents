@@ -72,13 +72,19 @@ abstract class TestCase extends Orchestra
 
     protected function defineEnvironment($app): void
     {
-        $app['config']->set('database.default', 'sqlite');
-        $app['config']->set('database.connections.sqlite', [
-            'driver' => 'sqlite',
-            'database' => ':memory:',
-            'prefix' => '',
-            'foreign_key_constraints' => false,
-        ]);
+        // DB_CONNECTION=pgsql, mysql or mariadb runs the suite on that database (DB_HOST, DB_DATABASE… as in an app), as
+        // CI's database jobs do; anything else runs it on SQLite in memory.
+        if (in_array($connection = env('DB_CONNECTION'), ['pgsql', 'mysql', 'mariadb'], true)) {
+            $app['config']->set('database.default', $connection);
+        } else {
+            $app['config']->set('database.default', 'sqlite');
+            $app['config']->set('database.connections.sqlite', [
+                'driver' => 'sqlite',
+                'database' => ':memory:',
+                'prefix' => '',
+                'foreign_key_constraints' => false,
+            ]);
+        }
 
         $app['config']->set('auth.providers.users.model', User::class);
         $app['config']->set('packstub-agents.enabled', true);

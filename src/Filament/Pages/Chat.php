@@ -243,7 +243,7 @@ class Chat extends Page
             $records = $resource::getEloquentQuery()
                 ->when($query !== '', fn (Builder $q) => $q->where(function (Builder $q) use ($attributes, $query) {
                     foreach ($attributes as $attribute) {
-                        $q->orWhere($attribute, 'like', '%'.str_replace(['%', '_'], ['\\%', '\\_'], $query).'%');
+                        $q->orWhereLike($attribute, '%'.str_replace(['%', '_'], ['\\%', '\\_'], $query).'%', caseSensitive: false);
                     }
                 }))
                 ->orderByDesc((new $model)->getKeyName())
