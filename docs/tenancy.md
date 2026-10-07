@@ -62,6 +62,8 @@ When the callback returns credentials with a key, the turn runs on that provider
 
 The operator's **AI limits** resource offers a "One workspace" scope in a panel with tenancy. A workspace row overrides the global one for that tenant; the **Assistant** switch on it turns the chat off for the workspace. See [Budgets and limits](budgets-and-limits.md).
 
+Registered on the tenant panel itself (`limits()` or `turnLog()` next to the chat), both pages follow the current workspace: **AI limits** lists, creates and edits that workspace's row alone (the scope and workspace pickers show it and stay disabled), and **AI turns** shows its turns alone. Only a panel without tenancy, the operator console, sees every workspace.
+
 ## Database per tenant
 
 By default the package runs its migrations from the vendor directory. In a database-per-tenant app, the tables belong to different databases:
@@ -83,7 +85,7 @@ So:
 php artisan vendor:publish --tag=packstub-agents-migrations
 ```
 
-Keep `create_agent_limits_table` with your central migrations and move `create_agent_chat_tables`, `create_agent_conversation_summaries_table` and `create_agent_turns_table` next to your tenant migrations. A later `add_*` migration of the package (a column added inside a major, such as `add_steps_to_agent_conversation_messages_table`) goes the same way: publish again after an upgrade and move it next to the tenant migrations, since the package does not run it for you. `AgentLimit` reads `limits_connection`, so the operator page works from any panel. The **AI turns** page reads `agent_turns`, which is then a tenant table: register it on the tenant panel (`limits(false, authorize: …)->turnLog()`) rather than on the central one.
+Keep `create_agent_limits_table` with your central migrations and move `create_agent_chat_tables`, `create_agent_conversation_summaries_table` and `create_agent_turns_table` next to your tenant migrations. A later `add_*` migration of the package (a column added inside a major, such as `add_steps_to_agent_conversation_messages_table`) goes the same way: publish again after an upgrade and move it next to the tenant migrations, since the package does not run it for you. `AgentLimit` reads `limits_connection`, so the operator page works from any panel. The **AI turns** page reads `agent_turns`, which is then a tenant table: register it on the tenant panel (`limits(false, authorize: …)->turnLog()`) rather than on the central one; there it shows the current workspace's turns.
 
 ## What follows the workspace
 

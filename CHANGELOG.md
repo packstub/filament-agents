@@ -2,6 +2,12 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## 1.14.2 — 2026-10-07
+
+### Security
+
+- **The AI limits and AI turns pages scope to the workspace on a panel with tenancy** (#75). Registered on a tenant panel, `limits()` gated on `canManageLimits()`, which is "any signed-in user" without an authorize closure, so a member of one workspace saw the turns of every workspace (who asked what, errors, feedback notes) and could pick any workspace in the limits form, switch its assistant off or change its limits. With `Filament::getTenant()` set, the turn log, its stats and its chart now read the current workspace's turns alone, and the limits resource lists, creates and edits the one row of the current workspace: both pickers show that workspace and stay disabled, what is saved carries its scope whatever the form sent, and another workspace's row cannot be opened. A panel without tenancy (the operator console) is unchanged. Found while auditing after the 1.14.1 membership fix.
+
 ## 1.14.1 — 2026-10-07
 
 Requires `packstub/agents` ^1.7.1.
