@@ -337,7 +337,7 @@
                             </div>
                         @endif
 
-                        @if (trim($message['html']) !== '' || $message['stopped'] || $message['failed'])
+                        @if (trim($message['html']) !== '' || $message['stopped'] || $message['failed'] || $message['posted'])
                             {{-- The controls under an answer show when it is hovered or focused (always on a touch screen); a rating
                                  that was given stays visible, and so do the notes on how the answer ended. --}}
                             <div class="fi-chat-answer-footer flex flex-wrap items-center gap-1 text-gray-400" x-data="{ note: false }">
@@ -388,6 +388,10 @@
                                 <span class="fi-chat-answer-tool ml-1 text-xs">{{ $message['at']?->format('H:i') }}</span>
                                 @if ($message['stopped'])
                                     <span class="ml-1 text-xs">· {{ __('(stopped)') }}</span>
+                                @endif
+                                @if ($message['posted'])
+                                    {{-- Written by the app as the assistant (a digest, a reminder), not by the model: nothing to produce again. --}}
+                                    <span class="ml-1 text-xs" title="{{ __('Posted by :name, not written by the model.', ['name' => \Packstub\Agents\Facades\Agents::name()]) }}">· {{ __('(posted)') }}</span>
                                 @endif
                                 @if ($message['failed'])
                                     {{-- The provider gave up midway: what arrived is kept, the error says why; Regenerate produces the answer again. --}}
@@ -453,6 +457,15 @@
                     </div>
                 @endforeach
             </div>
+
+            {{-- The first question waits for the budget: opening the chat tried to start it and the budget said no. It is
+                 kept as it is and tried again on the next open, so nothing is offered under it but the reason. --}}
+            @if ($live['deferred']['error'] ?? null)
+                <div class="fi-chat-deferred flex items-center justify-end gap-2 text-xs text-gray-500" role="status" wire:key="deferred-{{ $live['deferred']['id'] }}">
+                    <x-filament::icon icon="heroicon-m-exclamation-circle" class="h-4 w-4 text-warning-500" />
+                    <span>{{ $live['deferred']['error'] }} {{ __('It will be answered the next time you open this chat.') }}</span>
+                </div>
+            @endif
 
             {{-- Questions on their way to the server (a moment, while an earlier send is in flight). --}}
             <div wire:ignore class="flex flex-col gap-5 empty:hidden">
