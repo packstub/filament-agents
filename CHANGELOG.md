@@ -2,6 +2,12 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## 1.14.2 — 2026-10-07
+
+### Security
+
+- **The panel's `canAccessPanel()` is asked on every path that acts on the panel for a person**, not only on a page (#74). Filament's `Authenticate` middleware asks it on each page request, but an MCP request (a token minted while the person was active), a queued turn restored in the worker, `AgentRun::as()` and the email channel signed the person in on the panel's guard without it, so someone suspended through `canAccessPanel()` (memberships untouched) kept running every tool. `FilamentContext::enter()` now asks it the way the middleware does, when the model implements `FilamentUser` (a model without it is let through, as on a page), and throws `Packstub\Agents\Filament\Exceptions\PanelAccessDenied` ("You do not have access to this panel.", a `WorkspaceAccessDenied`) before anything is entered: the MCP request is answered 403 with the line, a queued turn ends `failed` with it, the email channel drops the mail, `AgentRun` lets it through. The line ships in the German, Spanish, Romanian and Russian files.
+
 ## 1.14.1 — 2026-10-07
 
 Requires `packstub/agents` ^1.7.1.
