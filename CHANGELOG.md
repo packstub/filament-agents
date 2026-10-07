@@ -2,7 +2,7 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
-## 1.16.0 — 2026-10-07
+## Unreleased
 
 Requires `packstub/agents` ^1.9.
 
