@@ -126,10 +126,10 @@ it('enforces the budget when the turn runs, whatever queued it', function () {
 
     // …but by the time it runs the day's answer was given elsewhere.
     $other = Conversation::query()->create(['id' => (string) Str::uuid(), 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id, 'title' => 'Earlier']);
-    ConversationMessage::query()->create([
-        'id' => (string) Str::uuid(), 'conversation_id' => $other->id, 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id,
-        'agent' => WidgetAgent::class, 'role' => 'assistant', 'content' => 'Earlier answer.', 'attachments' => [], 'meta' => [], 'steps' => [], 'status' => 'completed',
-        'usage' => ['input_tokens' => 10, 'output_tokens' => 10],
+    // The answer given earlier today, as the record its turn left.
+    AgentTurn::query()->create([
+        'id' => (string) Str::uuid7(), 'conversation_id' => $other->id, 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id,
+        'status' => AgentTurn::DONE, 'input' => ['prompt' => 'Earlier'], 'usage' => ['input_tokens' => 10, 'output_tokens' => 10], 'finished_at' => now(),
     ]);
 
     WidgetAgent::fake(['Should never be produced.']);
