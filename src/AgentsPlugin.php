@@ -305,7 +305,10 @@ class AgentsPlugin implements Plugin
         return $this;
     }
 
-    /** The operator's AI limits resource; $authorize decides who may edit it (default: any user of the panel). */
+    /**
+     * The operator's AI limits resource; $authorize decides who may edit it (default: any user of the panel).
+     * On a panel with tenancy it is the current workspace's row alone, so a member cannot reach another's.
+     */
     public function limits(bool $enabled = true, ?Closure $authorize = null): static
     {
         $this->limits = $enabled;
@@ -317,7 +320,8 @@ class AgentsPlugin implements Plugin
     /**
      * The operator's AI turns page — every answer with who asked, the model, tokens, tools, duration and how it
      * ended. Shown with the limits resource by default and gated the same way; register it on the tenant panel
-     * instead (limits(false, authorize: …)->turnLog()) when the turns live in a tenant database.
+     * instead (limits(false, authorize: …)->turnLog()) when the turns live in a tenant database. On a panel with
+     * tenancy it shows the current workspace's turns alone.
      */
     public function turnLog(bool $enabled = true): static
     {

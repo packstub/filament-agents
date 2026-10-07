@@ -2,13 +2,41 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
-## Unreleased
+## 1.15.0 — 2026-10-07
 
 Requires `packstub/agents` ^1.8.
 
 ### Added
 
 - **A chat the app opens for you** (#71). The chat page starts a conversation's deferred first turn (`AgentTurns::defer()`, Agents for Laravel 1.8) the first time its owner opens it — once, on this panel and as this person, through `AgentTurns::startDeferred()` in `Chat::mount` — and attaches to it as to any running answer. When the budget refuses at that moment the question is shown with the reason and "It will be answered the next time you open this chat.", with no Retry, and the next open tries again. A message the app posted as the assistant (`AgentConversationStore::storePostedMessage()`) renders like any answer with a "(posted)" note and no Regenerate. The AI turns page filters on Deferred and lists a posted message as a done turn ended Posted, without tokens. See [A chat the app opens for you](https://packstub.dev/docs/filament-agents/assistant#a-chat-the-app-opens-for-you).
+
+## 1.14.2 — 2026-10-07
+
+Requires `packstub/agents` ^1.7.2.
+
+### Security
+
+- **A deleted or unknown workspace key no longer runs the turn without a workspace, and a workspace with nobody acting is refused** (#77). `FilamentContext::enter()` resolved the `tenant` key it was given and, when nothing matched (the workspace deleted between the question and the worker), went on with no workspace: the membership check needs a tenant to check, so the turn ran unscoped on a tenant panel. It now throws the engine's `Packstub\Agents\Exceptions\WorkspaceNotFound` ("This workspace no longer exists.", a `WorkspaceAccessDenied`) before `Filament::setTenant()` whenever the panel has a tenant model and the key matches no row, so the queued turn ends `failed` with the line and nothing runs; a panel without tenancy ignores the key as before. And a tenant given with no `user` and nobody signed in on the panel's guard is refused like a non-member instead of entered unchecked; a job that acts for the app itself passes `system => true` (the engine's context key, which sets the workspace quietly since `TenantSet` names a person), and it never replaces the membership check once someone acts. Same fix as Agents for Laravel 1.7.2 (packstub/agents#25, #30).
+- **The panel's `canAccessPanel()` is asked on every path that acts on the panel for a person**, not only on a page (#74). Filament's `Authenticate` middleware asks it on each page request, but an MCP request (a token minted while the person was active), a queued turn restored in the worker, `AgentRun::as()` and the email channel signed the person in on the panel's guard without it, so someone suspended through `canAccessPanel()` (memberships untouched) kept running every tool. `FilamentContext::enter()` now asks it the way the middleware does, when the model implements `FilamentUser` (a model without it is let through, as on a page), and throws `Packstub\Agents\Filament\Exceptions\PanelAccessDenied` ("You do not have access to this panel.", a `WorkspaceAccessDenied`) before anything is entered: the MCP request is answered 403 with the line, a queued turn ends `failed` with it, the email channel drops the mail, `AgentRun` lets it through. The line ships in the German, Spanish, Romanian and Russian files.
+- **The AI limits and AI turns pages scope to the workspace on a panel with tenancy** (#75). Registered on a tenant panel, `limits()` gated on `canManageLimits()`, which is "any signed-in user" without an authorize closure, so a member of one workspace saw the turns of every workspace (who asked what, errors, feedback notes) and could pick any workspace in the limits form, switch its assistant off or change its limits. With `Filament::getTenant()` set, the turn log, its stats and its chart now read the current workspace's turns alone, and the limits resource lists, creates and edits the one row of the current workspace: both pickers show that workspace and stay disabled, what is saved carries its scope whatever the form sent, and another workspace's row cannot be opened. A panel without tenancy (the operator console) is unchanged. Found while auditing after the 1.14.1 membership fix.
+- **The embedded table's properties are locked** (related: #75). `AgentTable`'s `resource`, `filters`, `title` and `full` are `#[Locked]`: a Livewire request from the browser could set them after the component was mounted from a stored answer, and while the resource's ability was checked on every request and its query stayed scoped, a tampered `filters` array skipped `normalizeFilters()` and reached the resource's filter closures as sent. Livewire now refuses such a request with `CannotUpdateLockedPropertyException`.
+
+### Changed
+
+- **Requires `packstub/agents` ^1.7.2.** The engine's `RunAgentTurn::refuse()` records a refused turn by entering the runtime with `user => null`, so the one-shot marker `FilamentContext` kept for that entry (the panel and person of the last refusal, let in once without a membership check) is gone with it.
+
+### Fixed
+
+- **The "@" picker in the composer leaves out a record the resource's `canView()` denies.** `Chat::searchRecords()` filtered resources by `canViewAny()` only and listed records straight from `getEloquentQuery()`, so the label of a record the person may not open (an order their role hides, say) showed up in the list. Each record now passes the resource's `canView($record)` before it is offered, the page size unchanged; a picked record a person may not open is already dropped before the model reads it (packstub/agents#29).
+
+## 1.14.1 — 2026-10-07
+
+Requires `packstub/agents` ^1.7.1.
+
+### Security
+
+- **Workspace membership is checked on every path that enters a workspace**, not only on the MCP request. `FilamentContext::enter()` now calls `canAccessTenant()` for the person it enters as (the one given, else the one already signed in on the panel's guard) whenever it is given a tenant, and throws `Packstub\Agents\Exceptions\WorkspaceAccessDenied` ("You are not a member of this workspace.") before `Filament::setTenant()`, so `AgentRun::as($user)->in($tenant)` with a workspace the person is not in, and a mail to the email channel whose `tenant` names another workspace, no longer run tools or scope queries inside it. The chat page, where the workspace is the panel's, was not affected. Same fix as Agents for Laravel 1.7.1; reported privately by Yusuf Kef — thank you.
+- **An MCP path without `{tenant}` is refused once the panel has tenancy.** With `mcp.path` left at `mcp` on a panel with tenancy, the MCP request set no tenant, so Filament's tenancy scope did not apply and a tool listed every workspace's rows to a member of one. `AuthenticateAgent` (Agents for Laravel 1.7.1) now answers 404 with the line to fix the config; `mcp/{tenant}`, which the docs always asked for, is unaffected.
 
 ### Changed
 

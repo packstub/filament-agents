@@ -3,6 +3,7 @@
 namespace Packstub\Agents\Filament\Pages;
 
 use BackedEnum;
+use Filament\Facades\Filament;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -11,6 +12,8 @@ use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Packstub\Agents\Facades\Agents;
 use Packstub\Agents\Filament\Widgets\TurnsChart;
@@ -25,7 +28,8 @@ use Packstub\Agents\Support\AgentPricing;
  * per day over every answer as one row — who asked and where, the provider
  * and model that answered, tokens in and out, the cost, the tools called,
  * the wall time, how it ended and how the answer was rated. The same record
- * the log line carries, without the log. Gated like the AI limits resource.
+ * the log line carries, without the log. Gated like the AI limits resource;
+ * on a panel with tenancy it shows the current workspace's turns alone.
  */
 class TurnLog extends Page implements HasTable
 {
@@ -59,6 +63,17 @@ class TurnLog extends Page implements HasTable
         return __('Every answer of the assistant: who asked, which model answered, what it cost and how it ended.');
     }
 
+    /**
+     * The turns the page and its widgets read: every turn on a panel without tenancy (the operator
+     * console), the current workspace's on a panel with it.
+     *
+     * @return Builder<AgentTurn>
+     */
+    public static function turns(): Builder
+    {
+        return AgentTurn::query()->when(Filament::getTenant(), fn (Builder $query, Model $tenant) => $query->where('tenant', (string) $tenant->getKey()));
+    }
+
     protected function getHeaderWidgets(): array
     {
         return [TurnStats::class, TurnsChart::class];
@@ -74,7 +89,7 @@ class TurnLog extends Page implements HasTable
         $number = fn ($state) => $state === null ? null : number_format((int) $state);
 
         return $table
-            ->query(fn () => AgentTurn::query())
+            ->query(fn () => self::turns())
             ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('created_at')->label(__('When'))->since()->sortable()
@@ -126,7 +141,7 @@ class TurnLog extends Page implements HasTable
                     ->options(collect([AgentTurn::DEFERRED, AgentTurn::QUEUED, AgentTurn::PENDING, AgentTurn::RUNNING, AgentTurn::DONE, AgentTurn::STOPPED, AgentTurn::FAILED])
                         ->mapWithKeys(fn (string $status) => [$status => self::statusLabel($status)])->all()),
                 SelectFilter::make('provider')->label(__('Provider'))
-                    ->options(fn () => AgentTurn::query()->whereNotNull('provider')->distinct()->orderBy('provider')->pluck('provider', 'provider')->all()),
+                    ->options(fn () => self::turns()->whereNotNull('provider')->distinct()->orderBy('provider')->pluck('provider', 'provider')->all()),
                 SelectFilter::make('rating')->label(__('Rating'))
                     ->options(['up' => __('Helpful'), 'down' => __('Not helpful')])
                     ->query(fn ($query, array $data) => filled($data['value'] ?? null) ? $query->whereIn('id', AgentMessageFeedback::query()->select('turn_id')->where('rating', $data['value'])->whereNotNull('turn_id')) : $query),

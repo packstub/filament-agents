@@ -4,13 +4,17 @@ namespace Packstub\Agents\Filament;
 
 use Closure;
 use Filament\Facades\Filament;
+use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Packstub\Agents\Contracts\AgentContext;
 use Packstub\Agents\Contracts\AgentResource;
+use Packstub\Agents\Exceptions\WorkspaceAccessDenied;
+use Packstub\Agents\Exceptions\WorkspaceNotFound;
 use Packstub\Agents\Facades\Agents;
+use Packstub\Agents\Filament\Exceptions\PanelAccessDenied;
 
 /**
  * The context of a Filament panel: the panel the assistant lives in, its
@@ -102,8 +106,38 @@ class FilamentContext implements AgentContext
 
         $key = $context['tenant'] ?? null;
         $tenant = $key !== null ? $this->findTenantIn($panel, $key) : null;
+
+        // Whoever acts on the panel and inside the workspace: the person given, else the one already signed in on the guard.
+        // Nobody at all is not a membership we checked: refused, unless the app says the system itself acts.
+        $actor = $user ?? $previousUser;
+
+        // The panel first, as Filament's Authenticate middleware asks it on a page (a model without FilamentUser
+        // is let through, as there); then the workspace: a key that matches no row of the panel's tenant model
+        // (deleted between the question and the worker) is never entered as "no workspace", and a member is
+        // required. A panel without tenancy cannot look the key up and ignores it, as before.
+        $denied = match (true) {
+            $panel && $actor && ! $this->canAccessPanel($actor, $panel) => PanelAccessDenied::make(),
+            $key !== null && ! $tenant && $panel?->getTenantModel() !== null => WorkspaceNotFound::make(),
+            $tenant && $actor && ! $this->canAccessTenant($actor, $tenant) => WorkspaceAccessDenied::make(),
+            $tenant && ! $actor && ! ($context['system'] ?? false) => WorkspaceAccessDenied::make(),
+            default => null,
+        };
+
+        if ($denied) {
+            // Fail closed before the workspace is set: undo what was set so far and refuse.
+            if ($userChanged) {
+                $previousUser ? $guard->setUser($previousUser) : $guard->forgetUser();
+            }
+
+            Auth::shouldUse($previousGuard);
+            Filament::setCurrentPanel($previousPanel);
+
+            throw $denied;
+        }
+
         if ($tenant && $previousTenant?->getKey() !== $tenant->getKey()) {
-            Filament::setTenant($tenant);
+            // TenantSet names who entered; with the system acting there is nobody to name, so it is set quietly.
+            Filament::setTenant($tenant, isQuiet: $actor === null);
         }
 
         if (filled($context['locale'] ?? null)) {
@@ -172,6 +206,12 @@ class FilamentContext implements AgentContext
     public function canAccessTenant(Authenticatable $user, Model $tenant): bool
     {
         return method_exists($user, 'canAccessTenant') && (bool) $user->canAccessTenant($tenant);
+    }
+
+    /** What Filament's Authenticate middleware asks on a page: canAccessPanel() when the model implements FilamentUser. */
+    public function canAccessPanel(Authenticatable $user, Panel $panel): bool
+    {
+        return ! $user instanceof FilamentUser || $user->canAccessPanel($panel);
     }
 
     /** The list given to the plugin, or every resource of the panel that implements AgentResource. */

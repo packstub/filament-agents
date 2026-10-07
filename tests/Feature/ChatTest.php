@@ -99,10 +99,10 @@ it('stops a turn before the provider when the budget is spent', function () {
         ->and(AgentBudget::refusal('hi'))->toBeNull();
 
     $conversation = Conversation::query()->create(['id' => (string) Str::uuid(), 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id, 'title' => 'Earlier']);
-    ConversationMessage::query()->create([
-        'id' => (string) Str::uuid(), 'conversation_id' => $conversation->id, 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id,
-        'agent' => WidgetAgent::class, 'role' => 'assistant', 'content' => 'Earlier answer.', 'attachments' => [], 'meta' => [], 'steps' => [], 'status' => 'completed',
-        'usage' => ['input_tokens' => 600, 'output_tokens' => 500],
+    // The answer given earlier today, as the record its turn left.
+    AgentTurn::query()->create([
+        'id' => (string) Str::uuid7(), 'conversation_id' => $conversation->id, 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id,
+        'status' => AgentTurn::DONE, 'input' => ['prompt' => 'Earlier'], 'usage' => ['input_tokens' => 600, 'output_tokens' => 500], 'finished_at' => now(),
     ]);
 
     expect(AgentBudget::turnsToday())->toBe(1)

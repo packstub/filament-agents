@@ -10,6 +10,9 @@ class Abilities
 
     public static ?string $role = 'Owner';
 
+    /** Widget ids the current person may not open (WidgetResource::canView()). */
+    public static array $hiddenWidgets = [];
+
     public static function allows(string $ability): bool
     {
         return in_array('*', self::$allowed, true) || in_array($ability, self::$allowed, true);
@@ -19,5 +22,6 @@ class Abilities
     {
         self::$allowed = ['*'];
         self::$role = 'Owner';
+        self::$hiddenWidgets = [];
     }
 }
