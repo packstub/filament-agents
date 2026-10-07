@@ -2,10 +2,15 @@
 
 use Filament\Events\TenantSet;
 use Filament\Facades\Filament;
+use Illuminate\Foundation\Auth\User as PlainUser;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Mail;
 use Laravel\Ai\PendingStep;
+use Packstub\Agents\Channels\Email\EmailChannel;
+use Packstub\Agents\Channels\Email\InboundEmail;
 use Packstub\Agents\Exceptions\WorkspaceAccessDenied;
 use Packstub\Agents\Facades\Agents;
+use Packstub\Agents\Filament\Exceptions\PanelAccessDenied;
 use Packstub\Agents\Filament\FilamentContext;
 use Packstub\Agents\Mcp\AgentServer;
 use Packstub\Agents\Mcp\Tools\DrawChart;
@@ -127,6 +132,61 @@ it('refuses to enter a workspace the person is not a member of, from a worker an
     $leave = AgentRuntime::enter(['panel' => 'admin', 'tenant' => $acme->id, 'user' => $owner->id]);
     expect(Filament::getTenant()?->is($acme))->toBeTrue();
     Event::assertDispatched(TenantSet::class, fn (TenantSet $event) => $event->getTenant()->is($acme));
+    $leave();
+});
+
+it('refuses to enter the panel for a person its canAccessPanel() turns away, from a worker, AgentRun and the email channel', function () {
+    $owner = $this->user();
+    $acme = Team::query()->create(['owner_id' => $owner->id, 'name' => 'Acme', 'slug' => 'acme']);
+    Filament::getPanel('admin')->tenant(Team::class, slugAttribute: 'slug');
+    Event::fake([TenantSet::class]);
+
+    // Suspended after the question was queued: still a member of Acme, no longer allowed on the panel.
+    $owner->forceFill(['suspended_at' => now()])->save();
+
+    expect(fn () => AgentRuntime::enter(['panel' => 'admin', 'tenant' => $acme->id, 'user' => $owner->id, 'locale' => 'de']))
+        ->toThrow(PanelAccessDenied::class, 'You do not have access to this panel.')
+        ->and(Filament::getTenant())->toBeNull()
+        ->and(Filament::auth()->user())->toBeNull()
+        ->and(app()->getLocale())->toBe('en');
+    Event::assertNotDispatched(TenantSet::class);
+
+    // The entry RunAgentTurn::refuse() makes right after, to record the failed turn (same panel and person, no
+    // workspace), is let in with nobody signed in; the next one is refused again.
+    $leave = AgentRuntime::enter(['panel' => 'admin', 'tenant' => null, 'user' => $owner->id]);
+    expect(Filament::getCurrentPanel()?->getId())->toBe('admin')->and(Filament::auth()->user())->toBeNull();
+    $leave();
+    expect(fn () => AgentRuntime::enter(['panel' => 'admin', 'user' => $owner->id]))->toThrow(PanelAccessDenied::class);
+    $leave = AgentRuntime::enter(['panel' => 'admin', 'tenant' => null, 'user' => $owner->id]);
+    $leave();
+
+    $ran = 0;
+    Agents::useMiddleware([function (PendingStep $step, Closure $next) use (&$ran) {
+        $ran++;
+
+        return $next($step);
+    }]);
+    WidgetAgent::fake(['Two.']);
+    expect(fn () => AgentRun::as($owner)->in($acme)->ask('How many?'))->toThrow(PanelAccessDenied::class)
+        ->and($ran)->toBe(0)
+        ->and(AgentTurn::query()->count())->toBe(0);
+
+    // The email channel drops the mail, as it does for a non-member: no answer, nothing sent.
+    Mail::fake();
+    $mail = new InboundEmail(from: $owner->email, subject: 'Widgets', text: 'How many?', tenant: 'acme');
+    expect(EmailChannel::receive($mail))->toBeNull()->and($ran)->toBe(0);
+    Mail::assertNothingSent();
+
+    // A model without FilamentUser is let onto the panel, as Filament's Authenticate middleware does.
+    $plain = (new PlainUser)->setTable('users')->newQuery()->findOrFail($this->user(['suspended_at' => now()])->id);
+    $leave = AgentRuntime::enter(['panel' => 'admin', 'user' => $plain]);
+    expect(Filament::auth()->user()?->is($plain))->toBeTrue();
+    $leave();
+
+    // Reinstated: entered as before.
+    $owner->forceFill(['suspended_at' => null])->save();
+    $leave = AgentRuntime::enter(['panel' => 'admin', 'tenant' => $acme->id, 'user' => $owner->id]);
+    expect(Filament::getTenant()?->is($acme))->toBeTrue();
     $leave();
 });
 

@@ -16,9 +16,10 @@ class User extends Authenticatable implements FilamentUser
 
     protected $casts = ['is_admin' => 'bool'];
 
+    /** Suspended people keep their rows and memberships but may not use the panel, as on a page. */
     public function canAccessPanel(Panel $panel): bool
     {
-        return true;
+        return $this->suspended_at === null;
     }
 
     /** A workspace is the team the person owns (what Filament's HasTenants and the headless context both ask). */

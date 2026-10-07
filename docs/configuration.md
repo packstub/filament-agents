@@ -181,8 +181,8 @@ AgentsPlugin::make()
 | `history(?int $maxTokens, ?int $keepToolResultsTurns, ?float $noticeShare, ?float $meterShare, ?int $compressKeepTurns)` | what a long chat replays and when the context ring shows; each argument given is mirrored into the `history.*` key of the same name |
 | `chat(bool $enabled, ?string $driver)` | the Chat and Chats pages, the topbar button and the sidebar block (an "Ask …" navigation item on a panel with top navigation); `driver` is `queue` (a worker) or `sync` (inside the request), mirrored into `chat.driver` |
 | `agentAccess(bool $enabled, ?string $ability, Closure\|string\|null $group)` | the token page, its gate and navigation group |
-| `limits(bool $enabled, ?Closure $authorize)` | the operator's AI limits resource and who may edit it (default: any signed-in user of the panel) |
-| `turnLog(bool $enabled)` | the operator's AI turns page (one row per turn: who, model, tokens, tools, duration, how it ended), gated like the limits; default: shown wherever `limits()` is |
+| `limits(bool $enabled, ?Closure $authorize)` | the operator's AI limits resource and who may edit it (default: any signed-in user of the panel); on a panel with tenancy, the current workspace's row alone |
+| `turnLog(bool $enabled)` | the operator's AI turns page (one row per turn: who, model, tokens, tools, duration, how it ended), gated like the limits; default: shown wherever `limits()` is; on a panel with tenancy, the current workspace's turns alone |
 | `hideAskButtonOn(array $routePatterns)` | route name patterns without the topbar button (the chat itself is always excluded) |
 | `slideOver(bool $enabled)` | whether the "Ask …" button opens the chat as a slide-over on the right of the current page (default) or leads to the chat page |
 | `shortcut(?string $keys)` | the keyboard shortcut that opens the chat from any page: `mod+j` (the default: ⌘J on a Mac, Ctrl+J elsewhere), `mod+shift+a`…; `null` for none |
