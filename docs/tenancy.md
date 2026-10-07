@@ -4,7 +4,7 @@ The package works in a panel without tenancy: one workspace, the app's name, eve
 
 ## The MCP path
 
-Put `{tenant}` in the path so an external agent works inside one workspace:
+Put `{tenant}` in the path so an external agent works inside one workspace (on a panel with tenancy, a path without it is refused with a 404 and the line to fix it):
 
 ```php
 // config/packstub-agents.php
@@ -20,7 +20,7 @@ Put `{tenant}` in the path so an external agent works inside one workspace:
 3. checks that the token carries `tenant:{slug}` (403 when it was issued for another workspace, even when the person is a member there);
 4. sets the panel's guard to the token's user and calls `Filament::setTenant($tenant)`.
 
-That last step fires Filament's `TenantSet` event, the same one a page request fires, so anything that listens to it, [Filament Tenancy](https://packstub.dev/plugins/filament-tenancy) switching the database connection for instance, does exactly what it does for a page. Tools do not need to know they run over MCP. The queue worker that runs a chat turn enters the workspace the same way.
+That last step fires Filament's `TenantSet` event, the same one a page request fires, so anything that listens to it, [Filament Tenancy](https://packstub.dev/plugins/filament-tenancy) switching the database connection for instance, does exactly what it does for a page. Tools do not need to know they run over MCP. The queue worker that runs a chat turn, `AgentRun::in()` and the email channel enter the workspace the same way, membership check included: for a person who is not a member nothing is entered, the context throws `Packstub\Agents\Exceptions\WorkspaceAccessDenied` ("You are not a member of this workspace."), `AgentRun` lets it through, the email channel drops the mail, and a queued turn whose membership was revoked after the question ends `failed` with that line.
 
 A turn also records the guard it was asked on, and the worker signs the person in on that guard (`agent_turns.guard`), so a panel with its own guard keeps its identity on the worker.
 
