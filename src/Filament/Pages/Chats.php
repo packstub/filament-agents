@@ -126,17 +126,18 @@ class Chats extends Page implements HasTable
                     ->color('primary')
                     ->width('2rem'),
                 TextColumn::make('title')->label(__('Chat'))
-                    // The search box looks into the messages as well as the titles.
+                    // The search box looks into the messages as well as the titles, case-insensitive on every database
+                    // (a plain like is case-sensitive on Postgres).
                     ->searchable(query: fn (Builder $query, string $search) => $query->where(fn (Builder $q) => $q
-                        ->where('title', 'like', '%'.self::escapeLike($search).'%')
-                        ->orWhereIn('id', ConversationMessage::query()->select('conversation_id')->where('content', 'like', '%'.self::escapeLike($search).'%'))))
+                        ->whereLike('title', '%'.self::escapeLike($search).'%', caseSensitive: false)
+                        ->orWhereIn('id', ConversationMessage::query()->select('conversation_id')->whereLike('content', '%'.self::escapeLike($search).'%', caseSensitive: false))))
                     ->description(fn (Conversation $c) => $this->snippetFor($c))
                     ->url(fn (Conversation $c) => Chat::getUrl(['conversation' => $c->id])),
                 ...($classified ? [
                     TextColumn::make('topic')->label(__('Topic'))
                         ->badge()->color('gray')
                         ->formatStateUsing(fn (?string $state) => $state === null ? null : Str::headline($state))
-                        ->sortable(query: fn (Builder $query, string $direction) => $query->orderBy('topic', $direction)),
+                        ->sortable(query: fn (Builder $query, string $direction) => self::orderNullsFirst($query, 'topic', $direction)),
                     TextColumn::make('sentiment')->label(__('Sentiment'))
                         ->badge()
                         ->formatStateUsing(fn (?string $state) => self::sentiments()[$state] ?? $state)
@@ -145,11 +146,11 @@ class Chats extends Page implements HasTable
                             'negative' => 'danger',
                             default => 'gray',
                         })
-                        ->sortable(query: fn (Builder $query, string $direction) => $query->orderBy('sentiment', $direction)),
+                        ->sortable(query: fn (Builder $query, string $direction) => self::orderNullsFirst($query, 'sentiment', $direction)),
                     IconColumn::make('resolved')->label(__('Resolved'))
                         ->state(fn (Conversation $c) => $c->getAttribute('resolved') === null ? null : (bool) $c->getAttribute('resolved'))
                         ->boolean()
-                        ->sortable(query: fn (Builder $query, string $direction) => $query->orderBy('resolved', $direction)),
+                        ->sortable(query: fn (Builder $query, string $direction) => self::orderNullsFirst($query, 'resolved', $direction)),
                 ] : []),
                 TextColumn::make('updated_at')->label(__('Last message'))->since()->sortable(),
             ])
@@ -198,6 +199,19 @@ class Chats extends Page implements HasTable
         return $table;
     }
 
+    /**
+     * Sort by a classification column with the unclassified chats first going up and last going down, as SQLite and
+     * MySQL do; Postgres sorts nulls the other way round, so it is told.
+     */
+    protected static function orderNullsFirst(Builder $query, string $column, string $direction): Builder
+    {
+        if ($query->getConnection()->getDriverName() !== 'pgsql') {
+            return $query->orderBy($column, $direction);
+        }
+
+        return $query->orderByRaw($query->getGrammar()->wrap($column).(strtolower($direction) === 'desc' ? ' desc nulls last' : ' asc nulls first'));
+    }
+
     /** Whether chats are classified (config `classify.enabled`), so the list shows and filters by topic, sentiment and resolved. */
     public static function classified(): bool
     {
@@ -221,7 +235,7 @@ class Chats extends Page implements HasTable
 
         $content = ConversationMessage::query()
             ->where('conversation_id', $conversation->id)
-            ->where('content', 'like', '%'.self::escapeLike($search).'%')
+            ->whereLike('content', '%'.self::escapeLike($search).'%', caseSensitive: false)
             ->orderBy('id')
             ->value('content');
 

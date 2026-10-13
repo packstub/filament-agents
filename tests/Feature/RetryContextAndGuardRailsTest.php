@@ -246,7 +246,12 @@ it('shows what each chat is about, how it went and whether it was resolved on th
         ->resetTableFilters()
         ->filterTable('resolved', true)
         ->assertCanSeeTableRecords([$catalog])
-        ->assertCanNotSeeTableRecords([$orders, $old]);
+        ->assertCanNotSeeTableRecords([$orders, $old])
+        ->resetTableFilters()
+        // The search reads the messages whatever the case, on Postgres too, where a plain like would not.
+        ->searchTable('WHERE IS MY')
+        ->assertCanSeeTableRecords([$orders])
+        ->assertCanNotSeeTableRecords([$catalog, $old]);
 
     // Another person's topics are not offered, and their chats are not listed.
     actingAs($this->user());
