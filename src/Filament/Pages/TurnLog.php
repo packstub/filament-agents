@@ -130,7 +130,7 @@ class TurnLog extends Page implements HasTable
                 TextColumn::make('decided_by')->label(__('Decided by'))->placeholder('—')->badge()->color('gray')
                     ->state(fn (AgentTurn $turn) => $turn->decidedBy())
                     ->formatStateUsing(fn (string $state) => self::decidedByLabel($state))
-                    ->tooltip(fn (AgentTurn $turn) => $turn->decisionReason())
+                    ->tooltip(fn (AgentTurn $turn) => self::decisionDetail($turn))
                     ->toggleable(),
                 TextColumn::make('rating')->label(__('Rating'))->placeholder('—')
                     ->state(fn (AgentTurn $turn) => self::ratingOf($turn)['rating'] ?? null)
@@ -166,6 +166,34 @@ class TurnLog extends Page implements HasTable
     public static function statusLabel(string $status): string
     {
         return AgentTurn::statusLabel($status);
+    }
+
+    /**
+     * The Decided by tooltip: which classifier read the reply and its lowest confidence ("Jev · 0.94"), then its
+     * reason; null when there is nothing to add. Read from the turn's input, which Agents for Laravel 1.10 writes
+     * (AgentTurn::decisionDriver(), decisionConfidence()), so an older engine shows the reason alone.
+     */
+    public static function decisionDetail(AgentTurn $turn): ?string
+    {
+        $driver = $turn->input['decision_driver'] ?? null;
+        $confidence = $turn->input['decision_confidence'] ?? null;
+
+        $head = implode(' · ', array_filter([
+            match ($driver) {
+                null => null,
+                'agent' => __('Side agent'),
+                'jev' => 'Jev',
+                default => class_basename((string) $driver),
+            },
+            is_numeric($confidence) ? number_format((float) $confidence, 2) : null,
+        ]));
+        $reason = $turn->decisionReason();
+
+        return match (true) {
+            $head !== '' && filled($reason) => "{$head}: {$reason}",
+            $head !== '' => $head,
+            default => filled($reason) ? $reason : null,
+        };
     }
 
     /** What read a typed reply as the turn's decisions (AgentTurn::decidedBy()), as the page names it. */

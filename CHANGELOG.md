@@ -8,7 +8,7 @@ Requires `packstub/agents` ^1.9.
 
 ### Added
 
-- **The AI turns page says what read a typed reply as the decisions.** A **Decided by** column (your rule, the word lists or the classifier, from Agents for Laravel 1.9's typed decisions) with the classifier's reason on hover, and a filter on it; empty for a question or a decision made with the buttons. See [The AI turns page](https://packstub.dev/docs/filament-agents/budgets-and-limits#the-ai-turns-page).
+- **The AI turns page says what read a typed reply as the decisions.** A **Decided by** column (your rule, the word lists or the classifier, from Agents for Laravel 1.9's typed decisions) with the classifier's reason on hover (and, from Agents for Laravel 1.10, which classifier read the reply and its lowest confidence: "Jev · 0.94"), and a filter on it; empty for a question or a decision made with the buttons. See [The AI turns page](https://packstub.dev/docs/filament-agents/budgets-and-limits#the-ai-turns-page).
 
 ### Changed
 
