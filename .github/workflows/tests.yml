@@ -49,3 +49,73 @@ jobs:
 
       - name: Run tests
         run: vendor/bin/pest
+
+  databases:
+    name: Tests (${{ matrix.db }})
+    runs-on: ubuntu-latest
+
+    # The suite runs on SQLite above; these run it once more on the databases apps use, which read JSON, LIKE and
+    # mismatched key types differently.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - db: pgsql
+            port: 5432
+            username: postgres
+          - db: mysql
+            port: 3306
+            username: root
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: testing
+        ports: ["5432:5432"]
+        options: --health-cmd=pg_isready --health-interval=5s --health-timeout=5s --health-retries=10
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: testing
+        ports: ["3306:3306"]
+        options: --health-cmd="mysqladmin ping -h 127.0.0.1 -ppassword" --health-interval=5s --health-timeout=5s --health-retries=10
+
+    env:
+      DB_CONNECTION: ${{ matrix.db }}
+      DB_HOST: 127.0.0.1
+      DB_PORT: ${{ matrix.port }}
+      DB_DATABASE: testing
+      DB_USERNAME: ${{ matrix.username }}
+      DB_PASSWORD: password
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup PHP 8.4
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: "8.4"
+          extensions: pdo_pgsql, pdo_mysql, intl
+          coverage: none
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer downloads
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ runner.os }}-php8.4-${{ hashFiles('composer.json') }}
+          restore-keys: |
+            composer-${{ runner.os }}-php8.4-
+
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-interaction --no-progress
+
+      - name: Run tests
+        run: vendor/bin/pest

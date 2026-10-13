@@ -14,6 +14,10 @@ Requires `packstub/agents` ^1.9.
 
 - Requires `packstub/agents` ^1.9: a reply typed over a waiting proposal is now read by the app's rule, the word lists per locale (extendable and replaceable by the app) and an opt-in classifier, and a yes asked back ("Ok?") or with a condition ("Yes, but only Alpha.") no longer approves. See [Approvals](https://packstub.dev/docs/filament-agents/assistant#approvals).
 
+### Fixed
+
+- **Postgres: the chat searches ignore case, unclassified chats sort as on the other databases, and a workspace slug no longer crashes a key lookup.** The Chats page search, its snippets and the "@" record picker matched with a plain `like`, which is case-sensitive on Postgres; they now use `whereLike(..., caseSensitive: false)`. Sorting the Chats page by topic, sentiment or resolved puts unclassified chats first going up and last going down on Postgres too (it sorts nulls the other way round). `FilamentContext::findTenant()` and `findTenantBySlug()` (on a panel without a slug attribute) passed a slug to an integer primary key, which Postgres refuses with an error; a key that cannot be the model's now matches nothing. The suite runs on Postgres and MySQL in CI as well as SQLite.
+
 ## 1.15.0 — 2026-10-07
 
 Requires `packstub/agents` ^1.8.
