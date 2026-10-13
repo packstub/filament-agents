@@ -62,7 +62,7 @@ it('hands domain errors back to the model as tool errors', function () {
 
 it('serves MCP over HTTP with a read or write token', function () {
     $user = $this->user();
-    $this->widgets();
+    [$alpha] = $this->widgets(); // its own id: Postgres and MySQL keep counting across tests
     $read = $user->createToken('laptop', ['read'])->plainTextToken;
     $write = $user->createToken('desk', ['read', 'write'])->plainTextToken;
     // The headers a real MCP client sends.
@@ -83,7 +83,7 @@ it('serves MCP over HTTP with a read or write token', function () {
         ->assertJsonPath('result.isError', false);
 
     // A read token cannot write, even for a person whose role could: the write tool is not on its list.
-    postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 3, 'method' => 'tools/call', 'params' => ['name' => 'rename-widget', 'arguments' => ['id' => 1, 'name' => 'Renamed']]], $headers($read))
+    postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 3, 'method' => 'tools/call', 'params' => ['name' => 'rename-widget', 'arguments' => ['id' => $alpha->id, 'name' => 'Renamed']]], $headers($read))
         ->assertStatus(400) // a JSON-RPC error, as laravel/mcp 1.0 reports it
         ->assertJsonPath('error.message', 'Tool [rename-widget] not found.');
     expect(app(RenameWidget::class)->tokenRefusal())->toBe('This access token is read-only.');
@@ -91,16 +91,16 @@ it('serves MCP over HTTP with a read or write token', function () {
     // Each MCP request is its own request in production; the test kernel keeps the resolved guard, so reset it.
     auth()->forgetGuards();
 
-    postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 4, 'method' => 'tools/call', 'params' => ['name' => 'rename-widget', 'arguments' => ['id' => 1, 'name' => 'Renamed']]], $headers($write))
+    postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 4, 'method' => 'tools/call', 'params' => ['name' => 'rename-widget', 'arguments' => ['id' => $alpha->id, 'name' => 'Renamed']]], $headers($write))
         ->assertOk()
         ->assertJsonPath('result.isError', false);
 
-    expect(Widget::query()->find(1)->name)->toBe('Renamed');
+    expect(Widget::query()->find($alpha->id)->name)->toBe('Renamed');
 });
 
 it('limits a scoped token to the tools it names, in the list and by name', function () {
     $user = $this->user();
-    $this->widgets();
+    [$alpha] = $this->widgets();
     $mcp = ['Accept' => 'application/json, text/event-stream', 'MCP-Protocol-Version' => '2025-06-18'];
     $headers = fn (string $token) => ['Authorization' => 'Bearer '.$token] + $mcp;
     $call = fn (int $id, string $tool, array $args, string $token) => postJson('/mcp', ['jsonrpc' => '2.0', 'id' => $id, 'method' => 'tools/call', 'params' => ['name' => $tool, 'arguments' => $args]], $headers($token));
@@ -110,8 +110,8 @@ it('limits a scoped token to the tools it names, in the list and by name', funct
     expect(postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/list'], $headers($scoped))->assertOk()->json('result.tools.*.name'))
         ->toBe(['rename-widget']);
 
-    $call(2, 'rename-widget', ['id' => 1, 'name' => 'Scoped'], $scoped)->assertOk()->assertJsonPath('result.isError', false);
-    expect(Widget::query()->find(1)->name)->toBe('Scoped');
+    $call(2, 'rename-widget', ['id' => $alpha->id, 'name' => 'Scoped'], $scoped)->assertOk()->assertJsonPath('result.isError', false);
+    expect(Widget::query()->find($alpha->id)->name)->toBe('Scoped');
 
     // A tool outside the scope is unknown to the server, even though the role allows it.
     $call(3, 'list-widgets', [], $scoped)->assertStatus(400)->assertJsonPath('error.message', 'Tool [list-widgets] not found.');
