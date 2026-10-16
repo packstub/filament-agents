@@ -71,10 +71,10 @@
                 @endif
                 @if ($embedded)
                     <x-filament::link :href="$this->pageUrl()" target="_top" size="sm" color="gray" icon="heroicon-m-arrow-top-right-on-square">{{ __('Open full page') }}</x-filament::link>
-                    <x-filament::button tag="a" :href="\Packstub\Agents\Filament\Pages\Chat::getUrl(['embedded' => 1])" size="sm" color="gray" outlined icon="heroicon-m-plus">{{ __('New chat') }}</x-filament::button>
+                    <x-filament::button tag="a" :href="$this->newChatUrl()" size="sm" color="gray" outlined icon="heroicon-m-plus">{{ __('New chat') }}</x-filament::button>
                 @else
                     <x-filament::link :href="\Packstub\Agents\Filament\Pages\Chats::getUrl()" size="sm" color="gray" class="ms-1">{{ __('All chats') }}</x-filament::link>
-                    <x-filament::button tag="a" :href="\Packstub\Agents\Filament\Pages\Chat::getUrl()" size="sm" color="gray" outlined icon="heroicon-m-plus" class="ms-1">{{ __('New chat') }}</x-filament::button>
+                    <x-filament::button tag="a" :href="$this->newChatUrl()" size="sm" color="gray" outlined icon="heroicon-m-plus" class="ms-1">{{ __('New chat') }}</x-filament::button>
                 @endif
             </div>
         </div>
@@ -496,10 +496,13 @@
             </button>
         </div>
 
-        <x-packstub-agents::composer method="send" :model="$model" :attachments="$this->attachmentSettings()" :files="$attachments" :mentions="$this->canMention()" class="sticky bottom-4 shadow-lg">
+        {{-- The composer and what an app adds under it (ChatRenderHook::COMPOSER_AFTER) stick to the bottom together. --}}
+        <div class="fi-chat-bottom sticky bottom-4 z-10">
+        <x-packstub-agents::composer method="send" :model="$model" :attachments="$this->attachmentSettings()" :files="$attachments" :mentions="$this->canMention()" class="shadow-lg">
+            <x-slot:tools>
+                {{ \Filament\Support\Facades\FilamentView::renderHook(\Packstub\Agents\Filament\ChatRenderHook::COMPOSER_TOOLS_BEFORE, scopes: $this->getRenderHookScopes()) }}
             @if ($context && $context['meter'])
                 {{-- The context ring: how full the history window is, from history.meter_share on. Click for what fills it, what the chat cost so far, Compress now and Continue in a new chat. --}}
-                <x-slot:tools>
                     @php($percent = (int) round($context['share'] * 100))
                     <x-filament::dropdown placement="top-end" width="sm" shift>
                         <x-slot name="trigger">
@@ -575,8 +578,11 @@
                             </div>
                         </div>
                     </x-filament::dropdown>
-                </x-slot>
             @endif
+            </x-slot>
         </x-packstub-agents::composer>
+
+        {{ \Filament\Support\Facades\FilamentView::renderHook(\Packstub\Agents\Filament\ChatRenderHook::COMPOSER_AFTER, scopes: $this->getRenderHookScopes()) }}
+        </div>
     </div>
 </x-filament-panels::page>

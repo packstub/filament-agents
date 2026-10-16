@@ -69,6 +69,22 @@ Two guard rails of the engine show in the chat when they are on. The [prompt gua
 
 The "Ask …" button opens the chat as a slide-over on the right of the page you are on — the record in view as context, the page still visible — with a link to the full page; `AgentsPlugin::make()->slideOver(false)` makes it a link to the chat page again. `Ctrl/⌘ J` opens it from any page (`->shortcut('mod+shift+a')` for another combination, `->shortcut(null)` for none). The chat page itself renders without the panel's chrome inside the slide-over (`?embedded=1`).
 
+Your own controls go in through two render hooks, without publishing the chat view: `ChatRenderHook::COMPOSER_TOOLS_BEFORE` adds to the composer's row (a toggle, a mode), `ChatRenderHook::COMPOSER_AFTER` adds a row under the composer that sticks to the bottom with it. Scope them to the chat page; the markup is rendered inside the page's Livewire component, so it can call its actions:
+
+```php
+use Filament\Support\Facades\FilamentView;
+use Packstub\Agents\Filament\ChatRenderHook;
+use Packstub\Agents\Filament\Pages\Chat;
+
+FilamentView::registerRenderHook(
+    ChatRenderHook::COMPOSER_TOOLS_BEFORE,
+    fn (): string => view('chat.fast-toggle')->render(),
+    scopes: Chat::class,
+);
+```
+
+In the slide-over, New chat starts a chat about the same record.
+
 The transcript is a live region for screen readers (new answers are announced), the rating buttons say whether they are pressed, and every icon button has a label.
 
 ### How a turn runs

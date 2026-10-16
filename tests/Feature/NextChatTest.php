@@ -1,12 +1,14 @@
 <?php
 
 use Filament\Facades\Filament;
+use Filament\Support\Facades\FilamentView;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Models\ConversationMessage;
 use Laravel\Ai\Responses\Data\ToolCall;
 use Packstub\Agents\AgentsPlugin;
+use Packstub\Agents\Filament\ChatRenderHook;
 use Packstub\Agents\Filament\Pages\Chat;
 use Packstub\Agents\Filament\Pages\Chats;
 use Packstub\Agents\Filament\Pages\TurnLog;
@@ -325,4 +327,28 @@ it('shows the week\'s numbers, a chart and the ratings on the AI turns page', fu
     expect($data['labels'])->toHaveCount(14)->and(array_sum($data['datasets'][0]['data']))->toBe(1);
 
     get(TurnLog::getUrl())->assertOk()->assertSee(__('Turns per day'));
+});
+
+it('lets an app add controls to the composer row and under it, and keeps the record in the slide-over\'s New chat', function () {
+    $user = $this->user();
+    actingAs($user);
+    [$alpha] = $this->widgets();
+
+    FilamentView::registerRenderHook(ChatRenderHook::COMPOSER_TOOLS_BEFORE, fn () => '<label class="app-fast">Fast</label>', scopes: Chat::class);
+    FilamentView::registerRenderHook(ChatRenderHook::COMPOSER_AFTER, fn () => '<div class="app-chat-actions">Actions</div>', scopes: Chat::class);
+    FilamentView::registerRenderHook(ChatRenderHook::COMPOSER_AFTER, fn () => '<div class="other-page">Elsewhere</div>', scopes: Chats::class);
+
+    // In the composer's row (before the page's own tools), and under the composer, inside the part that sticks.
+    $html = get(Chat::getUrl())->assertOk()->content();
+    $composer = strpos($html, 'fi-agent-composer');
+    expect($html)->toContain('app-fast')->toContain('app-chat-actions')->not->toContain('other-page')
+        ->and(strpos($html, 'app-fast'))->toBeGreaterThan($composer)
+        ->and(strpos($html, 'app-chat-actions'))->toBeGreaterThan(strpos($html, 'app-fast'))
+        ->and(substr($html, strpos($html, 'fi-chat-bottom'), strpos($html, 'app-chat-actions') - strpos($html, 'fi-chat-bottom')))->toContain('fi-agent-composer');
+
+    // New chat: on the full page a fresh one; in the slide-over of a record page, one about that record again.
+    $fresh = Chat::getUrl();
+    expect($html)->toContain('href="'.e($fresh).'"');
+    $embedded = get(Chat::getUrl(['embedded' => 1, 'context' => 'widgets/'.$alpha->id]))->assertOk()->content();
+    expect($embedded)->toContain('href="'.e(Chat::getUrl(['embedded' => 1, 'context' => 'widgets/'.$alpha->id])).'"');
 });

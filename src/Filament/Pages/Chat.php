@@ -183,6 +183,21 @@ class Chat extends Page
         return $panel->route($name, array_filter(['conversation' => $this->conversation, 'tenant' => Filament::getTenant()]));
     }
 
+    /**
+     * Where New chat goes. In the slide-over it stays about the record the chat is about (the context it was opened
+     * with, or its conversation's), as the slide-over of a record page opens; on the full page it starts afresh.
+     */
+    public function newChatUrl(): string
+    {
+        if (! $this->embedded) {
+            return static::getUrl();
+        }
+
+        $context = $this->context ?? ($this->conversation ? $this->chat()->context() : null);
+
+        return static::getUrl(array_filter(['embedded' => 1, 'context' => $context]));
+    }
+
     /** The full-page URL of this chat (the slide-over links to it). */
     public function pageUrl(): string
     {
