@@ -2,6 +2,12 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## Unreleased
+
+### Changed
+
+- **The chat page is assembled from parts that can be published one at a time.** `pages/chat.blade.php` now includes `pages/chat/header`, `suggestions`, `question`, `answer` (with `answer/lookups`, `answer/proposals`, `answer/embeds`, `answer/footer`), `live` and `composer`. Publish one of them into `resources/views/vendor/packstub-agents/pages/chat/` to change only that part; it gets the page's variables and `$this` as before. The rendered page is unchanged.
+
 ## 1.16.0 — 2026-10-13
 
 Requires `packstub/agents` ^1.9.

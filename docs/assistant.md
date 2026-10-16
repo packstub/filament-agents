@@ -71,6 +71,25 @@ The "Ask …" button opens the chat as a slide-over on the right of the page you
 
 The transcript is a live region for screen readers (new answers are announced), the rating buttons say whether they are pressed, and every icon button has a label.
 
+### Changing one part of the chat page
+
+The chat page is assembled from parts, so an app can publish and change one of them and keep the package's version of the rest (and its fixes):
+
+| View | What it renders |
+|---|---|
+| `pages/chat/header` | the title (rename), what the chat is about, pin, export and New chat |
+| `pages/chat/suggestions` | a new chat's starter questions |
+| `pages/chat/question` | a question, its files and mentions, Edit, and how an unanswered one ended |
+| `pages/chat/answer` | an answer: the reasoning and the text, around the parts below |
+| `pages/chat/answer/lookups` | what the assistant looked up (its read-only tool calls) |
+| `pages/chat/answer/proposals` | the changes it proposed, each a card with the decision |
+| `pages/chat/answer/embeds` | the record tables and charts its tools returned |
+| `pages/chat/answer/footer` | the row under an answer: copy, rating, regenerate, versions, the notes |
+| `pages/chat/live` | the question being sent, the running turn, the questions waiting |
+| `pages/chat/composer` | Jump to latest and the composer with the context ring |
+
+Copy the one you change from the package to `resources/views/vendor/packstub-agents/pages/chat/`. A part reads the page's variables (each file names the ones it uses) and the page itself as `$this`; the composer's own markup is the `packstub-agents::composer` component, published the same way.
+
 ### How a turn runs
 
 A question (or an approval decision) becomes a row in `agent_turns`, and the `RunAgentTurn` job produces the answer: it restores the panel, the workspace, the person and the locale of the request, streams the answer from the provider and writes what it has so far to the row (the status line says when the model is reasoning, writing or calling a tool), then stores the answer as laravel/ai 1.0 does: one message per turn with its steps — text, reasoning, tool calls and their results. What the model thought before answering, when the provider reports it, folds under **Reasoning** above the answer; an answer the provider gave up on midway is kept with what arrived, marked *(interrupted)* with the error, and can be produced again. The page polls a small JSON route on the panel (`chat.poll_interval`) for the answer so far and re-renders the transcript from the database when the turn ends — so reloading, navigating away and back, or opening the same chat in a second tab shows the running answer where it is, and a closed tab does not stop it. Follow-ups wait as `queued` rows and start, in order, as soon as the previous turn is done; the question is recorded in the transcript at that moment. When a turn ends its row keeps the record — provider and model, tokens, tools called, duration, how it ended — for the operator's AI turns page and, optionally, one log line (see [What each turn cost](budgets-and-limits.md#what-each-turn-cost)).
