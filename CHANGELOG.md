@@ -4,364 +4,222 @@ All notable changes to `packstub/filament-agents` are documented here.
 
 ## 1.17.0 — 2026-10-22
 
-### Added
+- The composer on a page of your own: `<x-packstub-agents::composer standalone method="ask" />` (#88)
+- Two render hooks on the chat page, around the composer, for your own toggles and actions
+- The chat page view is split into parts you can publish one at a time
+- New chat in the slide-over keeps the record the chat was opened about
+- Requires `packstub/agents` ^1.11, which adds a log of tool calls
 
-- **The composer on a page of your own** (#88). `<x-packstub-agents::composer standalone method="ask" />` brings its own Alpine scope (`agent-composer.js`) and Send calls the host Livewire component's method with the text, so a dashboard's home can take a question and hand it to the chat page (`session(['packstub-agents.prompt' => $text])`, then redirect). Rendered outside the chat page without `standalone`, the composer threw Alpine errors and Send called nothing. `:models="false"` hides the model picker for a host without a `model` property. Run `php artisan filament:assets` after updating: the scope is a new script.
-- **Render hooks on the chat page** — `Packstub\Agents\Filament\ChatRenderHook::COMPOSER_TOOLS_BEFORE` (in the composer's row, before the context ring) and `ChatRenderHook::COMPOSER_AFTER` (under the composer, sticking to the bottom with it). Register them with `FilamentView::registerRenderHook(…, scopes: Chat::class)` to add a toggle or a row of the app's own actions without publishing the view. The composer's tools slot is now always rendered, so the first hook has a place when the context ring is off.
-
-### Fixed
-
-- **New chat in the slide-over stays about the record.** Opened from a record page, the slide-over's New chat dropped the record and started a chat about nothing; it now keeps the context the chat was opened with (or its conversation's), as the slide-over itself opens. On the full chat page New chat still starts afresh.
-
-### Changed
-
-- **Requires `packstub/agents` ^1.11.** The engine release carries the tool call log, the kept provider continuation on tool steps, the side agent read again on laravel/ai 1.3 (a generated title and a compression summary where the chat kept the question) and the poll that no longer deadlocks with a finishing turn on MySQL. Run `php artisan migrate` for the `agent_tool_calls` table.
-- **The chat page is assembled from parts that can be published one at a time.** `pages/chat.blade.php` now includes `pages/chat/header`, `suggestions`, `question`, `answer` (with `answer/lookups`, `answer/proposals`, `answer/embeds`, `answer/footer`), `live` and `composer`. Publish one of them into `resources/views/vendor/packstub-agents/pages/chat/` to change only that part; it gets the page's variables and `$this` as before. The rendered page is unchanged.
+**Upgrading:** run `php artisan migrate` (the `agent_tool_calls` table) and `php artisan filament:assets`.
 
 ## 1.16.0 — 2026-10-13
 
-Requires `packstub/agents` ^1.9.
-
-### Added
-
-- **The AI turns page says what read a typed reply as the decisions.** A **Decided by** column (your rule, the word lists or the classifier, from Agents for Laravel 1.9's typed decisions) with the classifier's reason on hover (and, from Agents for Laravel 1.10, which classifier read the reply and its lowest confidence: "Jev · 0.94"), and a filter on it; empty for a question or a decision made with the buttons. See [The AI turns page](https://packstub.dev/docs/filament-agents/budgets-and-limits#the-ai-turns-page).
-
-### Changed
-
-- Requires `packstub/agents` ^1.9: a reply typed over a waiting proposal is now read by the app's rule, the word lists per locale (extendable and replaceable by the app) and an opt-in classifier, and a yes asked back ("Ok?") or with a condition ("Yes, but only Alpha.") no longer approves. See [Approvals](https://packstub.dev/docs/filament-agents/assistant#approvals).
-
-### Fixed
-
-- **Postgres: the chat searches ignore case, unclassified chats sort as on the other databases, and a workspace slug no longer crashes a key lookup.** The Chats page search, its snippets and the "@" record picker matched with a plain `like`, which is case-sensitive on Postgres; they now use `whereLike(..., caseSensitive: false)`. Sorting the Chats page by topic, sentiment or resolved puts unclassified chats first going up and last going down on Postgres too (it sorts nulls the other way round). `FilamentContext::findTenant()` and `findTenantBySlug()` (on a panel without a slug attribute) passed a slug to an integer primary key, which Postgres refuses with an error; a key that cannot be the model's now matches nothing. The suite runs on Postgres and MySQL in CI as well as SQLite.
+- The AI turns page has a **Decided by** column and filter: what read a typed reply as a decision
+- A typed reply to a proposal is read more carefully: "Ok?" or "Yes, but only Alpha." no longer approves
+- Postgres: chat search ignores case and unclassified chats sort as on the other databases
+- Postgres: a workspace slug no longer crashes a tenant lookup
+- Requires `packstub/agents` ^1.9
 
 ## 1.15.0 — 2026-10-07
 
-Requires `packstub/agents` ^1.8.
-
-### Added
-
-- **A chat the app opens for you** (#71). The chat page starts a conversation's deferred first turn (`AgentTurns::defer()`, Agents for Laravel 1.8) the first time its owner opens it — once, on this panel and as this person, through `AgentTurns::startDeferred()` in `Chat::mount` — and attaches to it as to any running answer. When the budget refuses at that moment the question is shown with the reason and "It will be answered the next time you open this chat.", with no Retry, and the next open tries again. A message the app posted as the assistant (`AgentConversationStore::storePostedMessage()`) renders like any answer with a "(posted)" note and no Regenerate. The AI turns page filters on Deferred and lists a posted message as a done turn ended Posted, without tokens. See [A chat the app opens for you](https://packstub.dev/docs/filament-agents/assistant#a-chat-the-app-opens-for-you).
+- A chat the app opens for you: its first turn starts when the owner first opens it (#71)
+- A message the app posts as the assistant shows like any answer, with a "(posted)" note
+- The AI turns page filters on Deferred and lists posted messages
+- Requires `packstub/agents` ^1.8
 
 ## 1.14.2 — 2026-10-07
 
-Requires `packstub/agents` ^1.7.2.
+A security release with more workspace and panel access fixes, the same as Agents for Laravel 1.7.2. Please update.
 
-### Security
-
-- **A deleted or unknown workspace key no longer runs the turn without a workspace, and a workspace with nobody acting is refused** (#77). `FilamentContext::enter()` resolved the `tenant` key it was given and, when nothing matched (the workspace deleted between the question and the worker), went on with no workspace: the membership check needs a tenant to check, so the turn ran unscoped on a tenant panel. It now throws the engine's `Packstub\Agents\Exceptions\WorkspaceNotFound` ("This workspace no longer exists.", a `WorkspaceAccessDenied`) before `Filament::setTenant()` whenever the panel has a tenant model and the key matches no row, so the queued turn ends `failed` with the line and nothing runs; a panel without tenancy ignores the key as before. And a tenant given with no `user` and nobody signed in on the panel's guard is refused like a non-member instead of entered unchecked; a job that acts for the app itself passes `system => true` (the engine's context key, which sets the workspace quietly since `TenantSet` names a person), and it never replaces the membership check once someone acts. Same fix as Agents for Laravel 1.7.2 (packstub/agents#25, #30).
-- **The panel's `canAccessPanel()` is asked on every path that acts on the panel for a person**, not only on a page (#74). Filament's `Authenticate` middleware asks it on each page request, but an MCP request (a token minted while the person was active), a queued turn restored in the worker, `AgentRun::as()` and the email channel signed the person in on the panel's guard without it, so someone suspended through `canAccessPanel()` (memberships untouched) kept running every tool. `FilamentContext::enter()` now asks it the way the middleware does, when the model implements `FilamentUser` (a model without it is let through, as on a page), and throws `Packstub\Agents\Filament\Exceptions\PanelAccessDenied` ("You do not have access to this panel.", a `WorkspaceAccessDenied`) before anything is entered: the MCP request is answered 403 with the line, a queued turn ends `failed` with it, the email channel drops the mail, `AgentRun` lets it through. The line ships in the German, Spanish, Romanian and Russian files.
-- **The AI limits and AI turns pages scope to the workspace on a panel with tenancy** (#75). Registered on a tenant panel, `limits()` gated on `canManageLimits()`, which is "any signed-in user" without an authorize closure, so a member of one workspace saw the turns of every workspace (who asked what, errors, feedback notes) and could pick any workspace in the limits form, switch its assistant off or change its limits. With `Filament::getTenant()` set, the turn log, its stats and its chart now read the current workspace's turns alone, and the limits resource lists, creates and edits the one row of the current workspace: both pickers show that workspace and stay disabled, what is saved carries its scope whatever the form sent, and another workspace's row cannot be opened. A panel without tenancy (the operator console) is unchanged. Found while auditing after the 1.14.1 membership fix.
-- **The embedded table's properties are locked** (related: #75). `AgentTable`'s `resource`, `filters`, `title` and `full` are `#[Locked]`: a Livewire request from the browser could set them after the component was mounted from a stored answer, and while the resource's ability was checked on every request and its query stayed scoped, a tampered `filters` array skipped `normalizeFilters()` and reached the resource's filter closures as sent. Livewire now refuses such a request with `CannotUpdateLockedPropertyException`.
-
-### Changed
-
-- **Requires `packstub/agents` ^1.7.2.** The engine's `RunAgentTurn::refuse()` records a refused turn by entering the runtime with `user => null`, so the one-shot marker `FilamentContext` kept for that entry (the panel and person of the last refusal, let in once without a membership check) is gone with it.
-
-### Fixed
-
-- **The "@" picker in the composer leaves out a record the resource's `canView()` denies.** `Chat::searchRecords()` filtered resources by `canViewAny()` only and listed records straight from `getEloquentQuery()`, so the label of a record the person may not open (an order their role hides, say) showed up in the list. Each record now passes the resource's `canView($record)` before it is offered, the page size unchanged; a picked record a person may not open is already dropped before the model reads it (packstub/agents#29).
+- A deleted or unknown workspace no longer runs a turn without a workspace (#77)
+- `canAccessPanel()` is checked for MCP requests, queued turns, `AgentRun` and email, not only pages (#74)
+- On a tenant panel, the AI limits and AI turns pages show only the current workspace (#75)
+- The embedded table's properties are locked against tampered Livewire requests
+- The "@" picker leaves out records the resource's `canView()` denies
+- Requires `packstub/agents` ^1.7.2
 
 ## 1.14.1 — 2026-10-07
 
-Requires `packstub/agents` ^1.7.1.
+A security release, the same fix as Agents for Laravel 1.7.1. Reported privately by Yusuf Kef, thank you.
 
-### Security
-
-- **Workspace membership is checked on every path that enters a workspace**, not only on the MCP request. `FilamentContext::enter()` now calls `canAccessTenant()` for the person it enters as (the one given, else the one already signed in on the panel's guard) whenever it is given a tenant, and throws `Packstub\Agents\Exceptions\WorkspaceAccessDenied` ("You are not a member of this workspace.") before `Filament::setTenant()`, so `AgentRun::as($user)->in($tenant)` with a workspace the person is not in, and a mail to the email channel whose `tenant` names another workspace, no longer run tools or scope queries inside it. The chat page, where the workspace is the panel's, was not affected. Same fix as Agents for Laravel 1.7.1; reported privately by Yusuf Kef — thank you.
-- **An MCP path without `{tenant}` is refused once the panel has tenancy.** With `mcp.path` left at `mcp` on a panel with tenancy, the MCP request set no tenant, so Filament's tenancy scope did not apply and a tool listed every workspace's rows to a member of one. `AuthenticateAgent` (Agents for Laravel 1.7.1) now answers 404 with the line to fix the config; `mcp/{tenant}`, which the docs always asked for, is unaffected.
-
-### Changed
-
-- **Docs**: a shorter Features list in the README and on the docs index, one line per area; the README's chat and assistant sections name the composer shortcuts, the providers and the failover list.
+- Workspace membership is checked on every path into a workspace (`AgentRun`, email), not only MCP
+- An MCP path without `{tenant}` on a panel with tenancy is refused with a hint to fix the config
+- A shorter Features list in the README and docs
+- Requires `packstub/agents` ^1.7.1
 
 ## 1.14.0 — 2026-10-02
 
-What a write would change, shown before you approve it, and room for your own filters and columns on the Chats page, on packstub/agents 1.7.
+- Approval cards preview what a write would change, from the tool's `preview()`
+- Add your own filters, columns or actions to the Chats page with `->chatsTable()` (#69)
+- From packstub/agents 1.7: `Agents::mapToolResultsUsing()` and a `ToolAuthorized` event for every call
+- New strings in German, Spanish, Romanian and Russian
 
-Upgrading: `composer update packstub/agents` (1.7 is required). Nothing changes until you use the new hooks.
-
-### Added
-
-- **A preview on the approval card** (packstub/agents#17). A write tool with a `preview(array $arguments): array` shows what the call would change under its question while it waits: each field with the value now struck through and the value after. A preview that throws is left out. See [Read-only versus write](https://packstub.dev/docs/filament-agents/tools#read-only-versus-write).
-- **Your own filters and columns on the Chats page** (#69). `AgentsPlugin::make()->chatsTable(fn (Table $table) => $table->pushFilters([...]))` runs once the page has built its table, so a callback can push filters, columns or actions onto it; given more than once, the callbacks run in order. See [Rename, pin, export, versions, continue](https://packstub.dev/docs/filament-agents/assistant#rename-pin-export-versions-continue).
-- From packstub/agents 1.7, for every panel: `Agents::mapToolResultsUsing()` changes what a tool returns before the model reads it (packstub/agents#16), and `ToolAuthorized` fires for every call, allowed or refused (packstub/agents#18). See the engine's [changelog](https://github.com/packstub/agents/blob/main/CHANGELOG.md).
-- The new strings ship in the German, Spanish, Romanian and Russian files.
+**Upgrading:** `composer update packstub/agents` (1.7 is required). Nothing changes until you use the new hooks.
 
 ## 1.13.1 — 2026-10-01
 
-### Fixed
-
-- **Filament Shield no longer fails on the full-table page.** Shield reads the title of every page, unmounted, to label its permissions, and the new `ResourceTable` page looked up a resource it did not have yet, so `shield:generate` (and a seeder that syncs permissions) threw `Unknown table ""`. Without a resource the page is titled "Table".
-
-### Docs
-
-- Every screenshot retaken from the demo's rig in one setup, light mode forced: the compact table, the linked page context and the primary Ask button now sit beside the chart, approval, new-chat, token and limits shots.
+- Filament Shield's `shield:generate` no longer fails on the full-table page
+- Every docs screenshot retaken in one setup, in light mode
 
 ## 1.13.0 — 2026-10-01
 
-The chat gets its polish and its guard rails: a compact table in every answer with the full table one click away, a Retry under every unanswered question, the record a chat is about kept and linked, the Ask button in the panel's colour — and, from the engine's 1.6, a prompt guard, redaction, a classification of every chat on the Chats page, web search with its sources under the answer and a knowledge base, each a switch on `AgentsPlugin`.
+The chat gets its polish and its guard rails, with the engine's 1.6.
 
-Upgrading: the plugin requires `packstub/agents` ^1.6; run the migrations (one new table, `agent_conversation_classifications`; with `run_migrations => false`, publish the migrations again and put it next to the chat tables) and `php artisan filament:assets`. The topbar "Ask …" button is in the panel's primary colour now: `AgentsPlugin::make()->askButtonColor('gray')` keeps the old look. A test that read a new chat's title from the assistant's fake gives `TitleAgent` its own fake, see the engine's [changelog](https://github.com/packstub/agents/blob/main/CHANGELOG.md).
+- Compact tables in answers, with "Open all 37 in a full table" for long results (#42)
+- The chat header links the record it is about, and that context stays with the chat (#40)
+- Retry under every unanswered question (#19)
+- Opt-in on `AgentsPlugin`: prompt guard, redaction, chat classification, web search, a knowledge base
+- The "Ask …" button is in the panel's primary colour (`->askButtonColor('gray')` for the old look)
+- A 90-second demo video in the README and docs
 
-### Added
-
-- **Embedded tables: short results shown whole, long ones with the list page's controls** (closes #42). The table under an answer is compact: one header with the caption and the row count, small column titles, every row up to a cap of 25, no search box, filter button, bulk actions or pager — three pending orders are three rows. A longer result shows its first rows and a link, "Open all 37 in a full table", to a new page of the panel (`/agent-table/{resource}`) where the same rows come with the resource's search, filters, pagination (ten a page) and bulk actions, under the caption as its title and a breadcrumb to the resource. `AgentsPlugin::make()->embeddedTable(limit: 50)` moves the cap; the tool tells the model which case it is in. Checked at phone width: the table scrolls inside its card, the page does not.
-- **The chat page header** (closes #40). "About Order RO-00012" links the record to its page, the context stays with the conversation after the redirect to its URL, a reload, the Chats page or the slide-over (the engine records it with every question), and the topbar "Ask …" button is in the panel's primary colour, so it reads as the assistant rather than one more action (`->askButtonColor()`).
-- **Retry on every unanswered question** (closes #19). A question that failed, was refused or was stopped before an answer keeps its line ("The assistant could not answer. …") and a Retry wherever it sits, not only when it is the last one; Retry on an earlier question moves it to the end of the chat, where its answer lands, and sends it whole, with its files and mentioned records.
-- **Structured-output side agents and a classification of every chat** (closes #31). The title, the rolling summary and the new classification are asked of side agents with a schema (the engine's `TitleAgent`, `SummaryAgent`, `ClassifierAgent`). `->classify(topics: [...])` (or `AGENT_CLASSIFY=true`) classifies each chat after an answer — topic, sentiment, resolved — and the Chats page gains three columns (a topic badge, sentiment coloured, resolved as a tick), a filter for each and a sort on each.
-- **A prompt guard** (closes #28). `->promptGuard(provider: 'ollama', model: 'llama-guard3', refuse: [...])` (or `AGENT_PROMPT_GUARD=true`) has a small model classify every question before the assistant reads it; an injection, a jailbreak or a data exfiltration attempt is refused with a friendly line under the question and a Retry, the AI turns page records the turn as refused, and the category and reason go to the log and to the `PromptFlagged` event.
-- **Redaction** (closes #29). `->redact(patterns: ['iban' => '/…/'], using: fn (string $text) => …)` (or `AGENT_REDACT=true`) replaces card numbers, social security numbers, API keys and your own patterns in the answer as it streams — the value under way is held back, so it is never shown and then taken back — in the stored answer and in the tool results stored with it; a turn that had something replaced logs a `critical` line and fires `OutputRedacted`.
-- **A knowledge base** (closes #32). `->knowledgeBase(Article::class, 'embedding', content: 'body', url: fn ($a) => …)` gives the assistant the engine's `search-knowledge-base` tool for "how do I…" questions over the app's own documents (pgvector, or a search of your own, or a provider's vector stores), shown on the timeline like any read tool; `php artisan packstub-agents:embed` fills the embeddings.
-- **Web search, held to an allow-list** (closes #33). `->webSearch(allow: ['docs.acme.com'], max: 3, location: ['country' => 'RO'])` switches on the provider's web search; the searches appear on the timeline as **Web Search** lines with their query (a globe icon), the pages the answer cites are listed under it as **Sources** chips, and the status line says "Searching the web…". A provider without web search answers without it.
-- The new strings ship in the German, Spanish, Romanian and Russian files.
-
-### Changed
-
-- Requires `packstub/agents` ^1.6.
-- `show-table`'s description and note no longer promise a paginated table; the `docs/images/chat-table.png` and `orders-ask-button.png` screenshots are retaken.
-
-### Docs
-
-- **The demo video.** The README and the docs index link the new [90-second demo](https://youtu.be/d_lLxKsFfVU): the install in one line, a question answered with the live orders table, a chart, a change approved in one click, and the same tools in Claude Code over MCP.
+**Upgrading:** requires `packstub/agents` ^1.6. Run the migrations (new `agent_conversation_classifications` table; with `run_migrations => false`, publish them again) and `php artisan filament:assets`. A test that faked a new chat's title needs a fake for `TitleAgent`, see the engine's changelog.
 
 ## 1.12.1 — 2026-09-29
 
-Upgrading: nothing to run.
-
-### Fixed
-
-- **The "Ask …" button in a panel with the chat off.** The plugin registered the topbar button, the sidebar chats and the slide-over for the whole process, so a process that served a panel with the chat on and then one with `AgentsPlugin::make()->chat(false)` (an operator console next to the app panel, under Octane or in a test) rendered them there too and failed with `Route [filament.<panel>.pages.chat…] not defined`. Each now renders only in the panel whose plugin registered it.
+- The "Ask …" button no longer shows up in a panel with the chat off (it failed on a missing route under Octane or in tests)
 
 ## 1.12.0 — 2026-09-28
 
-The panel follows the engine to laravel/ai 1.0 and laravel/mcp 1.0: the model's reasoning folds above an answer, an answer the provider gave up on is kept and marked, the status line says when the model reasons, and app middleware wraps each model round-trip.
+The panel follows the engine to laravel/ai 1.0 and laravel/mcp 1.0.
 
-Upgrading: the plugin requires `packstub/agents` ^1.5, which pulls laravel/ai 1.0 and laravel/mcp 1.0 (Composer updates them); run the migrations (one, rewriting `agent_conversation_messages` into steps — decide or abandon a proposal still waiting first; with `run_migrations => false`, publish the migrations again and put `add_steps_to_agent_conversation_messages_table` next to the tenant ones). Your own middleware, if any, moves from `handle(AgentPrompt $prompt, Closure $next)` to `handle(PendingStep $step, Closure $next)`; a turn's usage reads `input_tokens` and `output_tokens`; a proposal decided with the buttons continues in the same answer bubble. The details are in the [engine's changelog](https://github.com/packstub/agents/blob/main/CHANGELOG.md) and under [Middleware](https://packstub.dev/docs/filament-agents/assistant#middleware).
+- The model's reasoning folds above the answer, when the provider reports it
+- An answer the provider gave up on is kept, marked *(interrupted)*, with Regenerate
+- The status line says "Reasoning…" while the model thinks
+- App middleware now wraps each model round-trip
 
-### Added
-
-- **Reasoning.** What the model thought before it answered, when the provider reports it (Anthropic's extended thinking, OpenAI's and xAI's reasoning summaries), folds under a **Reasoning** line above the answer, styled like the tool timeline.
-- **An interrupted answer.** An answer the provider gave up on midway is kept with what arrived and marked *(interrupted)*, the error on hover, with Regenerate under it — where the question showed a bare Retry before.
-- **A reasoning status.** The live status line says `Reasoning…` while the model thinks, before `Writing…`.
-
-### Changed
-
-- Requires `packstub/agents` ^1.5 (laravel/ai ^1.0, laravel/mcp ^1.0).
-- `AgentsPlugin::middleware()` takes middleware of the per-step shape; the docs and the docblock say so.
-- The live tool timeline no longer tags the last tool `running…` while the status line says `Reasoning…`.
-- The turn log, the stats widget and the context popup read a turn's tokens through the engine's `AgentUsage`, so rows written before and after the upgrade add up the same.
+**Upgrading:** requires `packstub/agents` ^1.5. Decide or abandon any waiting proposal, then run the migrations (with `run_migrations => false`, publish them again and put `add_steps_to_agent_conversation_messages_table` next to the tenant ones). Your own middleware moves from `handle(AgentPrompt $prompt, Closure $next)` to `handle(PendingStep $step, Closure $next)`, and a turn's usage reads `input_tokens` and `output_tokens`. Details in the engine's changelog.
 
 ## 1.11.0 — 2026-09-25
 
-The chat catches up with what people expect from an assistant: answers stream in as they are written, code and files are first-class, records are mentioned with `@`, chats are renamed, pinned, searched and exported, an answer is continued or paged through its earlier versions, and the "Ask …" button opens the chat over any page. The operator's AI turns page gets the week's numbers, a chart, the cost and the ratings.
+The chat catches up with what people expect from an assistant.
 
-Upgrading: the plugin requires `packstub/agents` ^1.4 (Composer updates it); run the migrations (two new tables and three columns, see the engine's changelog). The "Ask …" button now opens a slide-over instead of leaving the page — `AgentsPlugin::make()->slideOver(false)` keeps the old link — and `Ctrl/⌘ J` opens the chat from any page (`->shortcut(null)` switches it off). Regenerate and Edit keep the earlier answer as a version instead of deleting it. Nothing else changes.
+- Answers stream in, and the tools an answer called show as a timeline (#41)
+- Code blocks with copy, attachments, `@` to mention a record, `/` for starter questions
+- The "Ask …" button opens the chat in a slide-over, and `Ctrl/⌘ J` opens it from anywhere
+- Rename, pin, export and search chats; earlier answer versions and Continue
+- The AI turns page shows the week's numbers, a chart, the cost and the ratings
+- A leaner download: development files stay in the repository
 
-### Added
-
-- **Answers stream in.** The page listens to the turn's event stream (`…/packstub-agents/chat/{conversation}/stream` on the panel's routes) and every change is pushed as it happens; the tools the assistant calls appear one by one above the answer while it runs; the poll endpoint stays as the fallback when the stream cannot be held open. The tab's title follows the chat's once it is titled or renamed (#23). (engine 1.4)
-- **The tools as a timeline** (#41): the read tools an answer called, one line each with the tool's name, its first arguments and what came back ("3 found"), the full call folded under it. Proposals keep their card.
-- **Code blocks with copy and colours, a copy button under every answer** (#20).
-- **Attachments.** A paper clip in the composer, drop or paste: files go with the question, show above it (a thumbnail for an image) and are read by the provider (config `chat.attachments`).
-- **`@` mentions a record, `/` offers the starter questions.** `@` searches the panel's agent resources on their globally searchable attributes; the picked record goes into the question as "@Order RO-00012" and its summary rides with it for the model. A draft survives a reload, per chat (#21).
-- **The slide-over and the shortcut.** The "Ask …" button opens the chat on the right of the page you are on, the record in view as context; `Ctrl/⌘ J` opens it from anywhere. `AgentsPlugin::make()->slideOver(false)`, `->shortcut('mod+shift+a')` or `->shortcut(null)`; `?embedded=1` renders the chat page without the panel's chrome.
-- **Rename, pin, export, search.** A pencil, a bookmark and an export arrow in the chat's header; pinned chats first in the sidebar and on the Chats page, whose search box now looks into the messages (with a line of the first match) and whose rows rename, pin, export and delete, with a bulk delete.
-- **Versions and Continue.** Regenerate and Edit keep the earlier answer; a `2/2` switcher under the newest answer opens the earlier ones and puts one back. An answer the length limit cut short gets **Continue**, and the continuation reads as one answer.
-- **A thumbs-down with a note**, shown to the operator on the AI turns page with the rating; `aria-pressed` on the rating buttons, a live region on the transcript, a label on every icon button.
-- **The AI turns page**: turns today and this week, tokens and cost this week, the share of failed turns and of answers rated helpful (with spark lines), a chart of turns per day over two weeks, a cost column, a rating column with the note on hover, and a rating filter.
-- The new strings ship in the German, Spanish, Romanian and Russian files.
-
-### Changed
-
-- **Leaner dist archive**: `composer require` downloads what an install runs; the changelog (read it on GitHub, or in each release's notes), `pint.json` and the other development files stay in the repository (`.gitattributes` `export-ignore`).
-- **Package health in CI** (`.github/workflows/package-health.yml`, `.github/scripts/package-health.sh`): every push checks what the package health score on filamentphp.com checks (Powered by [Plumb](https://plumbphp.dev/packstub/filament-agents)) — a lean dist archive, no `composer.lock` in it, actions pinned to a commit SHA, Dependabot with a cooldown for every ecosystem that has a lockfile, a security policy — on the commit, before a tag ships it. A weekly run reads the published score and fails below 100.
+**Upgrading:** requires `packstub/agents` ^1.4; run the migrations. `->slideOver(false)` keeps the old link and `->shortcut(null)` turns the shortcut off. Regenerate and Edit now keep the earlier answer as a version.
 
 ## 1.10.0 — 2026-09-16
 
-Upgrading: nothing to run. The plugin requires `packstub/agents` ^1.3 (Composer updates it).
+- A held decision keeps the chat busy, so Edit and Regenerate can no longer break a paused answer
+- Deleting a chat also deletes its ratings
+- The chat logic moved into the engine; nothing changes on screen
+- Requires `packstub/agents` ^1.3
 
-### Fixed
-
-- **A held decision keeps the chat busy.** Approving one of two proposals holds the decision until the other is decided; the page still offered Edit and Regenerate on the question above meanwhile, and using them deleted the paused answer and failed the held decision when it ran. The engine now counts a held decision as busy, so the page offers only the other decision until both are in. Deleting a chat now also deletes its ratings. (engine 1.3)
-
-### Changed
-
-- **The chat logic lives in the engine.** The Chat page delegates to `Packstub\Agents\Support\AgentChat` (the transcript with its proposals, what runs and what waits, send / decide / retry / regenerate / resend / stop, the queued line, ratings, the context meter, compress and continue) and keeps what only the panel knows: the URL, the poll route, the notifications and the redirects. The Agent access page mints tokens through `AgentTokens`, the turn log labels a status through `AgentTurn::statusLabel()`, and deleting a chat goes through `AgentConversationStore::deleteConversation()`, which also drops its rolling summary. Nothing changes on screen. The page's static helpers (`Chat::question()`, `resultText()`, `writeToolNames()`, `rejectionResult()`, `modelMenu()`, `breakdownLabels()`, `duration()`, `cutShortText()`, `chartFromResult()`, `tableFromResult()`) are now `AgentChat`'s; the strings they emit moved to the engine's language files.
+**Upgrading:** if you called the Chat page's static helpers (`Chat::question()` and the others), call them on `Packstub\Agents\Support\AgentChat`.
 
 ## 1.9.1 — 2026-09-15
 
-Upgrading: nothing to run. The plugin requires `packstub/agents` ^1.2.1 (Composer updates it). The table under an answer no longer shows its search box and filter button; `AgentsPlugin::make()->embeddedTable(search: true, filters: true)` brings them back.
+**Security:** a tool run by a queue worker or over MCP could read every workspace's rows through a resource on a shared database; it now stays inside the person's workspace. Update if your panel uses Filament's tenancy.
 
-### Changed
-
-- **A typed "Yes, go ahead." decides.** Over a proposal waiting for Approve / Reject, a short reply in words is the decision (yes, go ahead, ok, confirm… approve; no, cancel… reject; also in German, Spanish, Romanian and Russian), the reply shown like any question and the proposal marked as decided; anything else is a question of its own and the proposal is declined first, with a note the model reads. An answer that proposed two changes can be decided one at a time: the first decision waits, shown on its row ("Approved, once the other proposal is decided"), and both run together once the second is in. Before, a question over a pending proposal left two proposals that no decision could be applied to. (engine 1.2.1)
-
-- **A quieter table under the answer.** The table `show-table` embeds starts without the resource's search box and filter button: the assistant chose the filters and the answer says what the table shows, so the rows, the sorting, the pagination and the row actions are what is left. `AgentsPlugin::make()->embeddedTable(search: true, filters: true)` keeps either.
-- **Docs.** The README and the docs index link the [60-second demo](https://youtu.be/-O5P8rHw4S4) on YouTube. The installation page shows the OpenRouter key next to the other providers. The configuration page's `models` section is a field table and two worked examples: a provider without entries of its own (OpenRouter, pinned to Mercury 2.5, GLM 5.3 Flash and DeepSeek 4.1 Flash) and a mixed picker (Claude, Gemini Flash and a local Ollama model, with the keys and the failover rules as a list); the assistant page points there instead of repeating the rules.
-
-### Fixed
-
-- **A worker's tool queries stay inside the workspace.** Filament scopes a panel's resources to the tenant with a global scope that the panel's boot registers, and that boot runs in a panel request only; a chat turn on the queue (and an MCP request) entered the workspace without it, so a tool that reads through the resource (`OrderResource::getEloquentQuery()`, the count behind `show-table`) saw every workspace's rows while the table under the answer, rendered in the request, showed the right ones. Entering the panel now registers the scope and the tenant-on-create observer for its resources, once per model.
+- A typed "Yes, go ahead." over a proposal decides it, in all five languages
+- Two proposals in one answer can be decided one at a time
+- The table under an answer starts without search and filters (`->embeddedTable(search: true, filters: true)` brings them back)
+- Docs: a 60-second demo video, the OpenRouter key and worked `models` examples
+- Requires `packstub/agents` ^1.2.1
 
 ## 1.9.0 — 2026-09-10
 
-Upgrading: nothing to run. The plugin requires `packstub/agents` ^1.2 (Composer updates it); give your agent a `suggestions()` for starter questions from your domain.
-
-### Added
-
-- **Starter questions on a new chat.** An empty chat shows the assistant's name and a row of questions to click instead of a bare composer: what needs attention today, the latest records of the first agent resources ("Show me the latest orders."), what the assistant can do — or, opened from a record, "What should I know about Order RO-00012?" and "What is the next step for it?". They come from `Agent::suggestions()` in the engine, so an app returns its own ("Which orders are waiting for a phone call?"); a click sends the question. (#22)
-- **"Ask …" in the top navigation.** A panel with `topNavigation()` has no sidebar for the recent chats, so the Chats page registers a navigation item with the assistant's name and icon, active on the chats list and on a chat; the topbar button keeps opening a new chat with the record being viewed. A sidebar panel is unchanged. (#39)
-
-### Changed
-
-- **A one-row composer.** The question, the context ring, Stop while an answer runs, the model and a square Send sit on one line; the field grows with the text up to eight lines. The placeholder is the assistant's name ("Ask Acme…") and, while an answer runs, the note that the next question waits its turn. The model is a small text button that opens a list — each entry with what it runs under it, the picked one ticked, provider headings when entries of more than one provider are listed — instead of a native select. (#44)
-- **Answer controls on hover.** The thumbs, Regenerate and the time under an answer appear when the answer is hovered or focused, so a long chat is no longer a column of grey controls; a rating that was given stays visible, and so do the "(stopped)", "(cut short)" and "(answered by …)" notes. A touch screen, which has no hover, shows them always. (#44)
+- Starter questions on a new chat, from your agent's `suggestions()` (#22)
+- "Ask …" in the top navigation for panels with `topNavigation()` (#39)
+- A one-row composer with a compact model picker (#44)
+- Answer controls show on hover, and always on touch screens (#44)
+- Requires `packstub/agents` ^1.2
 
 ## 1.8.0 — 2026-09-10
 
-Upgrading: nothing to run. The plugin requires `packstub/agents` ^1.1 (Composer updates it); a write tool may add `describe(array $arguments): ?string` to phrase its own proposals.
-
-### Changed
-
-- **A proposed change is a question with a decision.** A write tool waiting for approval is one row: an icon, the call as a question ("Confirm order RO-00016 for Nordwind GmbH?"), Approve and Reject on the right, the exact call folded under it (the tool name and how many arguments; click to open the argument list). The question comes from the tool's `describe()` in the engine, or its title and the first argument. While it waits the row is the most prominent element on the page (primary border and tint); once decided the same row shows Approved or Rejected where the buttons were, with the tool's result in the fold, so nothing moves. The stylesheet reads the panel's own colour variables (`--primary-500`, `--gray-500`…) instead of Tailwind's, so it renders the same whatever the app's CSS build includes. (#43)
-- **A missing worker is named.** A question handed to the queue that no worker takes within `chat.worker_wait` seconds (`AGENT_WORKER_WAIT`, 10) shows "No queue worker has taken this turn yet…" on the status line, with the command to run or the sync driver to set, instead of "Thinking…" until the job timeout. The line comes from the engine (`AgentTurns::statusText()`).
-- **A decision that could not be applied says so.** When the turn that carries an Approve or Reject fails (a worker that died, a history the provider or laravel/ai could not match), the buttons come back with the reason under the question, instead of returning silently as before.
-
-### Fixed
-
-- **Approve and Reject did nothing.** Since 1.4 the buttons carried the `@js()` directive uncompiled — a Blade directive inside a component tag's attribute is a plain string — so Alpine raised a syntax error on the click. The expression is bound now, and the test reads the compiled attribute.
-- **Docs: Shield roles in the worker.** The tenancy page shows the `TenantSet` listener a Shield app needs so a queue worker or an MCP request sees the person's role (tenant middleware never runs there).
+- A proposed change reads as a question with Approve and Reject, phrased by the tool's optional `describe()` (#43)
+- A missing queue worker is named on the status line, with the command to run
+- A decision that could not be applied says why
+- Fixed Approve and Reject, which did nothing since 1.4
+- Docs: the `TenantSet` listener a Shield app needs for roles in a worker
+- Requires `packstub/agents` ^1.1
 
 ## 1.7.0 — 2026-09-09
 
-Upgrading: run `php artisan migrate` (a nullable `guard` column on `agent_turns`); nothing changes for a panel app. `Agents::panel()` and `Agents::panelId()` moved to `Packstub\Agents\Filament\FilamentContext` (`app(FilamentContext::class)->panel()`); `AgentRuntime::capture()` carries a `guard` key. The engine now comes from `packstub/agents`, which Composer installs with this plugin; a `@source` line, a published config, a `packstub-agents:*` command or a class name in your code all stay as they are.
+The engine is now its own package, [packstub/agents](https://github.com/packstub/agents), which also runs in a plain Laravel app. This plugin requires it and keeps the panel parts.
 
-### Changed
+- Classes keep their names; the config, env vars, commands and migrations are unchanged
+- The plugin's provider is `Packstub\Agents\Filament\FilamentAgentsServiceProvider` (auto-discovered)
+- A turn runs on the auth guard it was asked on
 
-- **The engine is its own package, `packstub/agents`.** The tools, the MCP server and its tokens, the turn job and the poll endpoint, the conversation store, budgets and limits, the `Agent` class, the context, the config, the migrations, the scaffold commands and the `Agents` facade now live in [packstub/agents](https://github.com/packstub/agents), which runs in a plain Laravel app without Filament; this plugin requires it and keeps what a panel adds — `AgentsPlugin`, the chat pages, the Ask button and recent chats, the Agent access page, the AI limits resource and the AI turns page, `show-table`, the embedded table, `FilamentContext`, the views, the stylesheet, the Alpine component and the UI strings. Both packages share the `Packstub\Agents\` namespace, so every class keeps its name; the config file, its keys, the env vars, the commands and the migration file names are unchanged. The plugin's provider is now `Packstub\Agents\Filament\FilamentAgentsServiceProvider` (auto-discovered), `Packstub\Agents\AgentsServiceProvider` is the engine's. `filament/filament` is a requirement of this plugin again; the headless install is documented with the engine ([Agents for Laravel](https://packstub.dev/docs/agents)). The base `Agent` writes its rule about live tables only when `show-table` is on the tool list.
-
-### Added
-
-- **Works without Filament.** The package installs in a plain Laravel app: `filament/filament` is a suggestion (a dev dependency here), and the MCP endpoint, tokens, the turn job, budgets and limits run without a panel. Who is acting and where now comes from `Packstub\Agents\Contracts\AgentContext`, bound in the container — `Support\Context\LaravelContext` by default (the guard in use, the workspace from `Agents::tenantUsing(resolve)` and `Agents::tenantModel(Model::class, slugAttribute)`, membership through the user's own `canAccessTenant()`, and `Agents::enteringTenant(fn (Model $tenant): ?Closure)` for what a database switch needs when a worker or an MCP request enters a workspace — what it returns runs on leaving), `Filament\FilamentContext` once `AgentsPlugin` registers (the panel, its guard, its tenant; `TenantSet` keeps firing for a worker and an MCP request). `Agents::tenant()`, `inPanel()` and `resourceClasses()` delegate to it, `Agents::context()` returns it, `AgentRuntime` and `AuthenticateAgent` go through it. The base `AgentServer` serves `draw-chart` by default and the plugin adds `show-table` in a panel with agent resources; `Support\Markdown::render()` and `AgentTurns::rejectionResult()` take over from the chat page so the job and the poll controller import nothing from the panel; the poll endpoint is registered outside a panel too (`GET {chat.path}/chat/{conversation}/turn` under `chat.middleware`, new config keys, skipped when a panel registered its own); the assets, the embedded table and the panel warm-up are registered only with Filament, and the scaffold commands print the service-provider registration without it. See [Agents for Laravel](https://packstub.dev/docs/agents/installation).
-
-- **A turn runs on the guard it was asked on.** `agent_turns` records the auth guard (`guard`, nullable, falling back to the panel's guard or the default one for older rows), the queued job carries it and the worker signs the person in on that guard; until now a chat endpoint under a non-default guard ran its turns on the default one. `AgentTurns::participant()` retrieves the person through the turn's guard.
+**Upgrading:** run `php artisan migrate` (a nullable `guard` column on `agent_turns`). `Agents::panel()` and `Agents::panelId()` moved to `FilamentContext`: `app(FilamentContext::class)->panel()`.
 
 ## 1.6.0 — 2026-09-09
 
-Upgrading: nothing to run. A published `config/packstub-agents.php` keeps its Auto / Fast / Deep labels; drop them (`'label' => null`) to show model names like a fresh install.
+- Prompt caching covers the whole stable prefix, so a long chat reads its settled turns from the cache (#14)
+- Provider failover: `AGENT_FAILOVER=gemini,openai` tries the next provider when one refuses a turn (#30)
+- Picker entries from more than one provider, such as Gemini Flash or a local Ollama model next to Claude (#38)
+- The picker shows model names, such as Claude Opus 5
+- The context meter is a ring next to Send, with a breakdown, Compress now and Continue in a new chat
 
-### Added
-
-- **Prompt caching of the whole stable prefix.** The dynamic block (date and time, workspace, person, language, page context) no longer sits in the system prompt, where it changed every turn and invalidated the provider's cache for everything behind it; the new `Packstub\Agents\Ai\Middleware\AttachContext`, last in the pipeline, prepends it to the question instead (`Agent::instructions()` is now the static block alone; an approval turn goes without the block). On Anthropic the system prompt keeps its `cache_control` breakpoint and the history gets a second one, on the newest answer whose tool results are already placeholders (`AgentConversationStore::cachingFor()`), so a long chat reads its settled turns from the cache and pays in full only for the last `history.keep_tool_results_turns` and the new question. OpenAI, Gemini and xAI cache prefixes on their own; the static system prompt now lets the history count as one. The turn log's cache reads show the effect. (#14)
-
-- **Provider failover.** Config `failover` (`AGENT_FAILOVER=gemini,openai`) names the providers to try next, in order, when the platform provider refuses a turn before it started answering (overloaded, rate limited, unreachable, out of credits); until now such a turn failed and left the person with a Retry. `AgentModels::resolve()` now returns `providers`, the ordered provider => model list the turn runs on: the first choice, then each fallback with the same picker key on its own catalog (or its smartest / cheapest model), a provider without a key in `config/ai.php` left out, none for a workspace on its own key. The turn job passes that list to laravel/ai, which moves down it and fires `Laravel\Ai\Events\AgentFailedOver`; the record on `agent_turns` names the provider and model that answered, and when it was a fallback the answer carries a note ("answered by Gemini", the model in the tooltip — `AgentConversationStore::markAnsweredBy()` / `answeredBy()`). `Agent::withModels()` gives each provider its own model, so a fallback's options (reasoning effort on OpenAI and xAI) are read for the model it runs; `AgentModels::failover()` and `providerLabel()` are new. (#30)
-
-- **Model picker entries from more than one provider.** A `models` entry may name the provider it runs on — `'flash' => ['label' => 'Gemini Flash', 'provider' => 'gemini', 'model' => 'gemini-3.5-flash-lite', 'effort' => 'low']` under `anthropic` puts a cheap Gemini model next to Claude, or a local Ollama one for data that must stay on the server; until now a picker key never carried a provider and one install offered one provider's entries. Such an entry is listed when its provider has a key in `config/ai.php`, the select groups the entries under provider headings when more than one provider is present (`AgentModels::groups()`), its model and effort are in its provider's terms, and it fails over down the `failover` list with its own provider left out — or down its own `failover` list when the entry carries one (`[]` keeps a local model local). `AgentModels::resolve()`, `modelFor()`, `failover()` and the new `entry()` take the provider from the entry; `catalog()` fills in each entry's `provider`; `enabled()` is true when the provider in use or any listed entry's provider has a key. A workspace on its own key sees only the entries of its provider, since an entry on another provider would run on the platform's key. (#38)
-
-- **The picker shows model names.** The shipped `models` entries no longer carry a label: the picker names an entry after the model it runs — Claude Opus 5, Claude Haiku 4.5, Gemini 3.5 Flash Lite — and a second unlabelled entry on the same model adds its key to tell them apart (Claude Opus 5 · Deep); an entry with a label shows the label, so a published config keeps its Auto / Fast / Deep. A `null` model is named after the model laravel/ai resolves it to, a provider without entries too. `AgentModels::modelName()` turns an id into that name (`claude-haiku-4-5` → Claude Haiku 4.5, `gpt-5-mini` → GPT-5 Mini, `qwen3.5:0.8b` → Qwen3.5 0.8b). The select is as wide as its longest name.
-
-- **The context ring.** The context meter that sat above the composer is now a small ring in the composer's footer, next to Send, shown only from `history.meter_share` (0.25) of the history window on — below that the composer is clean. Its stroke is the share in use, in the warning colour once the chat is long. Click it for the breakdown: what fills the window (rolling summary, questions, answers, tool calls, tool results kept or pruned to a placeholder, estimated) and what the chat cost so far over its recorded turns (turns, tokens in and out, tool calls, wall time), with the last turn's input tokens as the context the provider actually read. Two actions: **Compress now** folds everything but the last `history.compress_keep_turns` (2) exchanges into the rolling summary in the same chat (`AgentConversationStore::compactNow()`), and **Continue in a new chat** as before. The long-chat notice lives in the popup. `AgentsPlugin::make()->history(maxTokens:, keepToolResultsTurns:, noticeShare:, meterShare:, compressKeepTurns:)` mirrors into `history.*`; `contextUsage()` reports a `breakdown`.
+A published config keeps its Auto / Fast / Deep labels; set `'label' => null` to show model names.
 
 ## 1.5.0 — 2026-09-09
 
-Upgrading: run `php artisan migrate` (new columns on `agent_turns` and `agent_limits`).
+- Every turn is recorded (model, tokens, tools, time, how it ended) and listed on a new **AI turns** page
+- Agent middleware: add your own with `AgentsPlugin::make()->middleware([...])`
+- A daily token budget per workspace (`AGENT_TOKENS_PER_DAY`)
+- A refused question is kept, with the reason and a Retry
 
-### Added
-
-- **Per-turn observability.** When a turn ends its `agent_turns` row keeps the record: the provider and model that answered, the token usage (prompt, completion, cache reads and writes, reasoning), the tools called in order, the wall time and how it ended (`stop`, `length`, `content_filter`, `dropped`, `stopped`, `refused`, `failed`). The operator panel that registers `limits()` gets an **AI turns** page listing them (who, workspace, status, model, tokens in and out, tools, duration, how it ended; filter by status or provider) — `AgentsPlugin::make()->turnLog(false)` hides it, `->turnLog()` shows it without the limits resource. Config `log.channel` (`AGENT_LOG_CHANNEL`) writes one info line per ended turn to a log channel, with the whole record in the context. Ended turns are pruned after `chat.keep_turns_days` (`AGENT_KEEP_TURNS_DAYS`, 90) by `model:prune --model=Packstub\Agents\Models\AgentTurn`.
-
-- **Agent middleware.** Every turn runs through laravel/ai's middleware pipeline. The package's budget check moved there (`Packstub\Agents\Ai\Middleware\EnforceBudget`), so the limits hold for every turn however it was started; an app adds its own with `AgentsPlugin::make()->middleware([...])` or the new `middleware` config key — classes with `handle(AgentPrompt $prompt, Closure $next)` that can revise the prompt, read the finished answer through `->then()`, or stop the turn by throwing `Packstub\Agents\Exceptions\TurnRefused` (the person reads the message under their question, with a Retry). `Agents::middleware()` reads the list back.
-
-- **A daily token budget per workspace.** Config `limits.tokens_per_day` (`AGENT_TOKENS_PER_DAY`, 600,000) next to the monthly one, with a field and column on the AI limits page (global and workspace rows). A busy day now locks a workspace out until midnight ("This workspace used its AI budget for today.") instead of spending the whole month; `AgentBudget::summary()` reports `tokens_today` and `tokens_per_day`.
-
-### Changed
-
-- **A refused question is kept.** The chat page no longer checks the budget before queueing a question and drops it with a notification; the question is recorded, the `EnforceBudget` middleware refuses the turn when it runs, and the reason is read under the question with a Retry (and the pencil to edit it first), like a question the provider could not answer. The per-minute turn counter is hit when a turn runs, not when it is queued.
+**Upgrading:** run `php artisan migrate` (new columns on `agent_turns` and `agent_limits`).
 
 ## 1.4.0 — 2026-09-08
 
-Upgrading: run `php artisan migrate` (new `agent_turns` table) and `php artisan filament:assets` (the chat page's Alpine component changed). Answers are now produced by a queued job: run a queue worker (`php artisan queue:work`), or set `AGENT_TURN_DRIVER=sync` (or `AgentsPlugin::make()->chat(driver: 'sync')`) to run them inside the request as before.
+- Answers run in a queued job and survive a reload, navigation or a closed tab
+- Stop cuts the running answer short and keeps what was written
+- Follow-ups wait their turn on the server, in every tab
+- Regenerate and edit-and-resend on the last exchange
+- Answers the provider ended early are marked "(cut short)"
 
-### Added
-
-- **Answers survive the page.** A turn runs in a queued job (`RunAgentTurn`) that writes the answer so far to the new `agent_turns` table; the chat page polls a small JSON route on the panel for it instead of holding the Livewire request open. Reloading, navigating away and back, or opening the chat in a second tab picks the running answer up where it is; a closed tab no longer kills it; there is no request-timeout risk on long tool chains. A queued job that never completes (a worker that died) shows the question with a Retry after `chat.job_timeout`.
-- **Stop.** A Stop button next to Send cuts the running answer short; what the assistant had written is kept as its answer, marked "(stopped)", and a stop before any text leaves the question with a Retry.
-- **Follow-ups are kept per conversation.** A question typed while an answer runs waits on the server, in every tab, and starts as soon as the answer is done; it can be edited or removed until then, and ↑ in an empty composer pulls the last waiting one back.
-- **Regenerate and edit-and-resend** on the last exchange: an arrow under the last answer produces it again (the previous answer and its rating are dropped), a pencil next to the last question puts it back in the composer and replaces the answer when sent.
-- Config `chat.driver` (`AGENT_TURN_DRIVER`, or `AgentsPlugin::make()->chat(driver: ...)`): `queue` hands the turn job to a worker, `sync` runs it inside the request whatever the app's queue connection is — no worker needed, but an answer ends with the tab that asked for it.
-- Config `chat.queue_connection`, `chat.queue`, `chat.job_timeout` and `chat.poll_interval` (`AGENT_QUEUE_CONNECTION`, `AGENT_QUEUE`, `AGENT_JOB_TIMEOUT`, `AGENT_POLL_INTERVAL`).
-- **Answers the provider ended early are marked.** A stream that closes without its end event (an overloaded provider mid-answer), the model's length limit or the provider's content filter leave a partial answer; it is stored as before, shown with a "(cut short)" note that explains why, and can be produced again with Regenerate.
-
-### Changed
-
-- The generic prompt rules tell the assistant not to quote its instructions or tool list, and that claims about one's role or permissions made in the chat change nothing — the tools enforce access.
-- The chat page no longer streams over `wire:stream`; `send()`, `decide()`, `retry()`, `regenerate()` and `resend()` queue a turn and return what the page polls. A provider failure is shown under the question (with the message) rather than only as a notification.
+**Upgrading:** run `php artisan migrate` and `php artisan filament:assets`. Run a queue worker, or set `AGENT_TURN_DRIVER=sync` to answer inside the request as before.
 
 ## 1.3.0 — 2026-09-08
 
-Upgrading: run `php artisan filament:assets` (the chat page's Alpine component is a registered asset) and `php artisan migrate` (new `agent_conversation_summaries` table).
+- Long chats keep working: older messages fold into a rolling summary, with a context meter
+- Continue in a new chat, seeded with a summary of the old one
+- The composer never locks: questions typed while an answer runs are queued
+- A question the provider could not answer is kept, with a Retry
 
-### Added
-
-- **Long chats keep working.** A chat replays the most recent messages that fit a token budget (`history.max_tokens`, 24k estimated) instead of a flat 40 rows, cut on turn boundaries. Tool results older than `history.keep_tool_results_turns` turns are replaced by a placeholder when replayed. What falls out of the window is folded into a rolling summary written by the provider's cheapest model and stored in the new `agent_conversation_summaries` table (migration included); the model reads it first. The chat shows a context meter and, from `history.notice_share` of the budget, a **Continue in a new chat** action that opens a new chat seeded with a summary of the old one.
-
-### Changed
-
-- **The composer never locks.** A question shows in the transcript the moment it is sent (client-side, handed over to the persisted message on re-render). Anything typed while an answer is still streaming is queued and sent next, one turn at a time; a queued question can be edited or removed, and ↑ in an empty composer pulls the last queued question back for editing (or the last one sent). The textarea grows with the text; the page follows the streaming answer unless you scroll up, with a "Jump to latest" button; the answer shows a caret while it streams. A new chat no longer reloads the page after the first answer — it takes the conversation's URL in place. The composer sends the text as an argument (`send(string $prompt)`); `send()` without one still sends the component's `prompt` (a question from the URL or session). Assets: run `php artisan filament:assets` after updating — the page's Alpine component is a registered asset like the stylesheet.
-
-### Fixed
-
-- **A question the provider could not answer is no longer lost.** The chat records the question before calling the provider (laravel/ai stores a question and its answer together, once the answer is in), so a provider error, a timeout or a closed tab leaves the question in the conversation with a Retry link under it; the error notification says so. Retry sends the same recorded question again without storing it twice or repeating it to the model as history. The conversation store binding is `Packstub\Agents\Support\AgentConversationStore` (extends laravel/ai's database store); a new chat is titled after the question until the first answer arrives, then titled by the provider as before.
+**Upgrading:** run `php artisan migrate` (new `agent_conversation_summaries` table) and `php artisan filament:assets`.
 
 ## 1.2.0 — 2026-09-08
 
-### Added
-
-- **Gemini and xAI out of the box.** `AGENT_PROVIDER=gemini` (`GEMINI_API_KEY`) runs on Gemini 3.8 Flash with Gemini 3.5 Flash-Lite as Fast; `AGENT_PROVIDER=xai` (`XAI_API_KEY`) on Grok 4.6. The picker's effort becomes Gemini's thinking level (`generationConfig.thinkingConfig.thinkingLevel`) and xAI's `reasoning.effort`, as it already did for Anthropic and OpenAI. `Agent::supportsReasoning()` takes the provider as a second argument.
-- **Any other laravel/ai text provider** (Ollama, OpenRouter, Mistral, Groq, DeepSeek…) works without config: the picker offers the provider's smartest model as Auto and its cheapest as Fast. Before, a provider without `models` entries fell back to the Anthropic entries and asked the provider for a Claude model.
-
-### Changed
-
-- The chat column is 48rem wide instead of 72rem, a reading width for the answers; embedded tables, charts and the composer share it.
-- The Create token modal lists the tools in one table (checkbox, title, Read / Write badge, one line of description with the full text on hover) instead of two checkbox lists with the model-facing descriptions in full. A header checkbox ticks all; write rows are switched off until Write is ticked. The action's form key is `tools` (was `read_tools` and `write_tools`), which only matters to tests that call the action directly.
-- The AI limits table shows the workspace columns (Assistant, Answers / day, Tokens / month, Note) by default; the per-user detail (/ min, User tokens / day and / month, Max chars) is toggleable, so the table fits a laptop screen without a horizontal scroll.
+- Gemini and xAI out of the box (`AGENT_PROVIDER=gemini` or `xai`)
+- Any other laravel/ai text provider (Ollama, OpenRouter, Mistral, Groq, DeepSeek…) works without config
+- A narrower chat column, easier to read
+- A simpler Create token modal: one table of tools
+- The AI limits table fits a laptop screen
 
 ## 1.1.0 — 2026-09-04
 
-### Added
+- Scoped access tokens: limit a token to a few tools, and let it expire
+- Helpers on `AgentTool` for apps that gate their own tools by token
+- An MCP request without a valid token gets a JSON 401 instead of a 500
 
-- **Scoped agent access tokens.** The Create token modal lists the tools the person's role allows, reads and writes apart, so a token can be limited to the few an agent needs (`tool:{name}` abilities). A scoped token sees only those tools in `tools/list` and a direct call to any other is refused; a read token no longer lists write tools at all. Tokens can also expire (7, 30, 90 or 365 days, Sanctum's `expires_at`). The table shows each token's tools and expiry. Existing tokens keep working unchanged: no `tool:` ability means every tool the role allows.
-- `AgentTool::tokenRefusal()`, `accessToken()`, `tokenTools()` and `tokenIsScoped()` for apps that gate their own tools or show what a token may do.
-
-### Fixed
-
-- A request to the MCP endpoint without a valid token is answered with a JSON `401` whatever `Accept` header the client sent. Before, a client that did not ask for JSON was redirected to the app's `login` route, which a panel-only app does not define, so it got a `500` and an error in the log.
+Existing tokens keep working unchanged.
 
 ## 1.0.1 — 2026-09-04
 
-### Fixed
-
-- Rejecting a proposed change now hands the model a reason instead of a bare "no", so the turn continues and the model can acknowledge and offer the next step; the decided proposal stays a card (Done / Rejected) instead of collapsing into a tool chip once the paused list is empty.
-- The prompt's generic rules name the tools as `laravel/mcp` registers them (`show-table`, `draw-chart`); docs and the fixtures follow.
-- An operator panel that switches the Agent access page off no longer resets the page's ability and group for the tenant panel.
-- The "Read" / "Write" ability badges are translated; the AI limits page keeps one casing ("AI limits").
+- Rejecting a proposal gives the model a reason, so the chat carries on
+- The prompt names the tools as laravel/mcp registers them (`show-table`, `draw-chart`)
+- An operator panel without the Agent access page no longer resets it on the tenant panel
+- The Read / Write badges are translated
 
 ## 1.0.0 — 2026-09-03
 
-First public release, under the MIT license.
+First public release of Filament Agents, under the MIT license: one tool list for an in-panel chat and an MCP server.
 
-### Added
+- An "Ask …" button that brings the record you are viewing into the chat
+- Read tools run directly; writes wait for your approval in the chat
+- Live tables and charts in answers
+- MCP over HTTP with Sanctum tokens from an Agent access page
+- Budgets and limits per user and workspace, edited on an AI limits page
+- Tenancy support, and German, Spanish, Romanian and Russian translations
 
-- **One tool list for the chat and the MCP server**: `AgentTool` (a `laravel/mcp` tool with an `$ability`, a `run()` returning data for the model and domain errors mapped to tool errors), `AgentServer` (name, instructions, `$tools`), the `packstub-agents:tool` and `packstub-agents:agent` scaffolds and the `packstub-agents:install` command.
-- **In-panel chat**: a `Chat` page streaming answers over Livewire, an "Ask …" topbar button that carries the record being viewed as page context, recent conversations in the sidebar and a `Chats` page, thumbs up / down feedback on answers, a model picker (Auto / Fast / Deep) remembered per session.
-- **Approve-in-chat writes**: read-only tools run directly; every other tool is wrapped as an `ApprovableTool` so the person sees the proposed call and approves or rejects it before it runs.
-- **Live tables and charts in answers**: `show_table` renders a resource's own Filament table under the answer (`AgentResource` contract, `InteractsWithAgent` defaults, a `Filter` vocabulary shared with the app's search tools through `AgentResources`); `draw_chart` and any tool result with a `chart` key render a chart.
-- **MCP over HTTP**: `POST /mcp` behind `throttle`, `auth:sanctum` and `AuthenticateAgent`; an **Agent access** page mints Sanctum tokens with `read` / `write` abilities, shown once, listed and revocable; a read token cannot run write tools.
-- **Budgets and the operator page**: per-user burst limit, answers per day and tokens per month per workspace, tokens per day and per month per user and a prompt length cap, checked before a turn reaches the provider (`AgentBudget`); config defaults overridden by global, per-workspace and per-user rows edited in the **AI limits** resource (`AgentLimits`, `AgentLimit`).
-- **Tenancy**: an `mcp/{tenant}` path resolves the workspace by the panel's tenant slug, checks membership and the token's `tenant:{slug}` ability and fires Filament's `TenantSet`; `credentialsUsing()` lets a workspace bring its own provider, key and model; `limits_connection` and `run_migrations` for database-per-tenant apps.
-- Prompt assembly with a provider-cached static block (persona, domain, working and answering rules) and a dynamic block (date, workspace, person, role, language, page context); reasoning effort per model for Anthropic and OpenAI.
-- German, Spanish, Romanian and Russian translations.
+**Upgrading from 0.x:** this is a rebuild. Move to `AgentTool`, the panel's own authorization and Sanctum tokens; see the docs.
 
-### Changed
-
-- The 0.x line (governance-only MCP tools with capability grants, pending approvals and an audit trail) was replaced by this rebuild. Its consumers migrate to `AgentTool`, the panel's own authorization and Sanctum tokens; see the docs.
+Docs: https://packstub.dev/docs/filament-agents
