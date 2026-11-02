@@ -28,6 +28,7 @@ Here:
 
 - PHP 8.4+ (not 8.3). Every change needs a test and a `CHANGELOG.md` line.
 - Changelog headings are `## <version> — <date>`; the tag is `v<version>` on `main`.
+- A changelog section is the release's notes, so keep it short and written for people: an optional lead sentence, then at most ~6 one-line bullets in plain words (what a user gets or what changed), no lists of method or class names. Always keep breaking changes (an `**Upgrading:**` line saying what to do), security fixes (say so), new minimum versions and migrations to run. The release workflow appends GitHub's list of merged pull requests below it.
 - UI strings are `__()` keyed by the English text; keep `resources/lang/{de,es,ro,ru}.json` in sync. A string the engine emits belongs in the engine's lang files.
 - Anything that runs without a panel (a tool, a budget rule, a turn change, a migration, a config key) is an engine change: make it in `plugins/agents`, then bump the requirement here if the plugin needs it.
 - Anything domain-specific (record shapes, filter vocabulary, the prompt's domain block) belongs in the consuming app, behind the `AgentResource` hooks and the agent's slots — never in this package.
