@@ -113,10 +113,11 @@ The chat catches up with what people expect from an assistant.
 
 ## 1.9.1 — 2026-09-15
 
+**Security:** a tool run by a queue worker or over MCP could read every workspace's rows through a resource on a shared database; it now stays inside the person's workspace. Update if your panel uses Filament's tenancy.
+
 - A typed "Yes, go ahead." over a proposal decides it, in all five languages
 - Two proposals in one answer can be decided one at a time
 - The table under an answer starts without search and filters (`->embeddedTable(search: true, filters: true)` brings them back)
-- Tool queries run by a queue worker or over MCP now stay inside the workspace
 - Docs: a 60-second demo video, the OpenRouter key and worked `models` examples
 - Requires `packstub/agents` ^1.2.1
 
