@@ -151,6 +151,12 @@
 .fi-chat-streaming::after { content: ''; display: inline-block; width: 0.5rem; height: 1em; margin-inline-start: 0.125rem; vertical-align: text-bottom; background: currentColor; opacity: 0.6; animation: fi-chat-blink 1s steps(2) infinite; }
 @keyframes fi-chat-blink { to { opacity: 0; } }
 
+/* What is new in the transcript fades and rises into place: the question just sent, each tool as it is called, the
+   parts of a stored answer that were not on screen while it streamed (agent-chat.js, enter()). */
+.fi-chat-sending, .fi-chat-timeline-live .fi-chat-timeline-row, .fi-chat-enter { animation: fi-chat-enter 0.32s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+@keyframes fi-chat-enter { from { opacity: 0; transform: translateY(0.5rem); } }
+@media (prefers-reduced-motion: reduce) { .fi-chat-sending, .fi-chat-timeline-live .fi-chat-timeline-row, .fi-chat-enter { animation: none; } }
+
 /* The skip-link target (<main tabindex="-1">) receives focus when a control inside it is disabled mid-request; never outline it. */
 .fi-main:focus, .fi-main:focus-visible, #fi-main-content:focus, #fi-main-content:focus-visible { outline: none; }
 
