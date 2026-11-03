@@ -354,6 +354,49 @@ it('lets an app add controls to the composer row and under it, and keeps the rec
     expect($embedded)->toContain('href="'.e(Chat::getUrl(['embedded' => 1, 'context' => 'widgets/'.$alpha->id])).'"');
 });
 
+it('keeps the composer at the bottom of the window once a conversation has started, and under a new chat\'s header', function () {
+    $user = $this->user();
+    actingAs($user);
+
+    // The stylesheet pins the composer only in a started chat: the column at least as tall as the window, the
+    // composer block (a direct child of it) pushed down by margin-top: auto.
+    $css = file_get_contents(__DIR__.'/../../resources/css/agents.css');
+    expect($css)->toContain('.fi-chat-started { min-height: calc(100dvh - var(--fi-chat-offset)); }')
+        ->toContain('.fi-chat-started > .fi-chat-bottom { margin-top: auto; }');
+
+    $column = function (string $html): array {
+        $dom = new DOMDocument;
+        @$dom->loadHTML($html);
+        $xpath = new DOMXPath($dom);
+        $chat = $xpath->query('//*[contains(concat(" ", normalize-space(@class), " "), " fi-chat ")]')->item(0);
+
+        return [
+            'classes' => explode(' ', (string) $chat?->getAttribute('class')),
+            'effect' => (string) $chat?->getAttribute('x-effect'),
+            'bottom' => $xpath->query('./*[contains(concat(" ", normalize-space(@class), " "), " fi-chat-bottom ")]', $chat)->length,
+        ];
+    };
+
+    // A new chat, on the page and in the slide-over: not started on the server, started by the client once busy.
+    foreach ([Chat::getUrl(), Chat::getUrl(['embedded' => 1])] as $url) {
+        $new = $column(get($url)->assertOk()->content());
+        expect($new['classes'])->not->toContain('fi-chat-started')
+            ->and($new['effect'])->toBe("if (busy) \$el.classList.add('fi-chat-started')")
+            ->and($new['bottom'])->toBe(1);
+    }
+
+    // An existing conversation: started from the first render, on the page and in the slide-over.
+    WidgetAgent::fake(['Two.']);
+    livewire(Chat::class)->call('send', 'How many?');
+    $conversation = Conversation::query()->where('participant_id', $user->id)->firstOrFail();
+
+    foreach ([Chat::getUrl(['conversation' => $conversation->id]), Chat::getUrl(['conversation' => $conversation->id, 'embedded' => 1])] as $url) {
+        $started = $column(get($url)->assertOk()->content());
+        expect($started['classes'])->toContain('fi-chat-started')
+            ->and($started['bottom'])->toBe(1);
+    }
+});
+
 it('lets an app replace one part of the chat page and keeps the rest', function () {
     $user = $this->user();
     actingAs($user);

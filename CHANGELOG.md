@@ -2,6 +2,10 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## Unreleased
+
+- The chat page keeps the composer at the bottom of the window once a conversation has started, with the conversation scrolling above it
+
 ## 1.17.0 — 2026-10-22
 
 - The composer on a page of your own: `<x-packstub-agents::composer standalone method="ask" />` (#88)

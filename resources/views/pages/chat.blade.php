@@ -5,9 +5,13 @@
         $messages = $this->messages();
         $lastQuestionId = $messages->last(fn ($m) => $m['role'] === 'user' && ! $m['continuation'])['id'] ?? null;
         $lastQuestionVersions = $lastQuestionId ? $messages->firstWhere('id', $lastQuestionId)['versions'] : 0;
+        // A conversation on the page (or on its way, busy below): the composer moves to the bottom of the window.
+        $started = $messages->isNotEmpty() || filled($live['active']) || filled($live['queued']);
     @endphp
     <div
-        class="fi-chat mx-auto flex w-full max-w-3xl flex-col gap-6 {{ $embedded ? 'fi-chat-embedded' : '' }}"
+        @class(['fi-chat mx-auto flex w-full max-w-3xl flex-col gap-6', 'fi-chat-embedded' => $embedded, 'fi-chat-started' => $started])
+        {{-- Only ever adds the class: an x-bind:class object would strip the server's fi-chat-started whenever busy is false. --}}
+        x-effect="if (busy) $el.classList.add('fi-chat-started')"
         x-load
         x-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('agent-chat', 'packstub/filament-agents') }}"
         x-data="agentChat()"

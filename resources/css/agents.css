@@ -275,8 +275,17 @@ button.fi-chat-timeline-call:hover, button.fi-chat-timeline-call:focus-visible {
 .fi-chat-header-tool-on { color: var(--primary-600); }
 .dark .fi-chat-header-tool-on { color: var(--primary-400); }
 
+/* Once a conversation has started (fi-chat-started: messages on the page, or the first question on its way) the column
+   is at least as tall as the window, so the composer sits at the bottom of the screen and stays there, sticky, as the
+   answers grow, instead of right under a short exchange. A new chat keeps the composer under its header and starters.
+   The offset is the topbar plus the page's own padding: too low a guess scrolls the page a little (the sticky composer
+   stays in view), too high leaves a gap under the composer (a panel without a topbar, a render hook above the page). */
+.fi-chat { --fi-chat-offset: calc(var(--topbar-height, 4rem) + 4rem); }
+.fi-chat-started { min-height: calc(100dvh - var(--fi-chat-offset)); }
+.fi-chat-started > .fi-chat-bottom { margin-top: auto; }
+
 /* Embedded in the slide-over: the page fills the frame. */
-.fi-chat-embedded { max-width: none; padding: 1rem 1rem 0; }
+.fi-chat-embedded { max-width: none; padding: 1rem 1rem 0; --fi-chat-offset: 4rem; }
 .fi-chat-embedded .fi-chat-header h1 { font-size: 1rem; }
 
 /* The slide-over the "Ask …" button opens over any page: the chat in a frame on the right, the page still visible. */
