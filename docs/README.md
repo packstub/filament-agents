@@ -10,6 +10,8 @@ An in-panel AI assistant and an MCP server for Filament v5 panels, built on lara
 - Support: [GitHub issues](https://github.com/packstub/filament-agents/issues)
 - Demo: [the 90-second video](https://youtu.be/d_lLxKsFfVU) — install in one line, a question answered with the live orders table, a chart, a change approved in one click, and the same tools in Claude Code over MCP
 
+![Ask Acme in a Filament panel: a starter question answered with the live Orders table, then "Confirm the oldest one" proposed as a change, approved in one click and done](https://raw.githubusercontent.com/packstub/art/main/filament-agents/docs/agents.gif)
+
 ## Features
 
 - **[One tool list, two front doors](tools.md)**: the panel's chat and any MCP client (Claude Code, Cursor) call the same tools.
