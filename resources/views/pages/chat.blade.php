@@ -39,7 +39,7 @@
 
         @include('packstub-agents::pages.chat.suggestions')
 
-        <div class="flex flex-col gap-5" x-ref="transcript" role="log" aria-live="polite" aria-relevant="additions text" aria-label="{{ __('Conversation') }}">
+        <div class="fi-chat-transcript flex flex-col gap-5" x-ref="transcript" role="log" aria-live="polite" aria-relevant="additions text" aria-label="{{ __('Conversation') }}">
             @if ($context && $context['source'])
                 <p class="text-xs text-gray-500">
                     {{ __('Continued from') }}

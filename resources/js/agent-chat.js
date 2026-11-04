@@ -21,6 +21,8 @@ export default function agentChat() {
     const reveal = { source: null, total: 0, shown: 0, speed: 0, frame: 0, last: 0, waiters: [] }
     const glide = { frame: 0, last: 0 }
     let pinned = false
+    // The transcript's tallest height and the scroll position that showed it (see hold()).
+    const held = { height: 0, y: 0 }
     let handoff = null
     // The text being typed in, per element (a WeakMap: a Livewire morph strips attributes it did not render).
     const typing = new WeakMap()
@@ -87,8 +89,15 @@ export default function agentChat() {
 
             // Keep the end of the transcript in view while it grows, unless the person scrolled up to read; and give
             // every code block its copy button and colours as it appears.
-            new MutationObserver((mutations) => { this.enter(mutations); this.decorate(); this.pinComposer(); this.follow() }).observe(this.$refs.transcript, { childList: true, subtree: true, characterData: true })
-            window.addEventListener('scroll', () => { if (! glide.frame) this.atBottom = this.nearBottom() }, { passive: true })
+            // A part that changes size without a DOM change (an image loading, a card's transition) is caught by the
+            // ResizeObserver; both run before the frame is painted, so a held height never shows as a jump.
+            const sizes = new ResizeObserver(() => this.hold())
+            const watch = () => { for (const part of this.$refs.transcript.children) sizes.observe(part) }
+            new MutationObserver((mutations) => { watch(); this.enter(mutations); this.decorate(); this.hold(); this.pinComposer(); this.follow() }).observe(this.$refs.transcript, { childList: true, subtree: true, characterData: true })
+            watch()
+            // A chat opened from another one (wire:navigate) starts without the last one's floor.
+            document.documentElement.style.removeProperty('--fi-chat-floor')
+            window.addEventListener('scroll', () => { held.y = window.scrollY; if (! glide.frame) this.atBottom = this.nearBottom() }, { passive: true })
             // Scrolling up to read stops the glide at once (its own scroll events cannot tell a person's apart).
             const away = () => { self.atBottom = false; cancelAnimationFrame(glide.frame); glide.frame = 0 }
             window.addEventListener('wheel', (event) => { if (event.deltaY < 0) away() }, { passive: true })
@@ -117,7 +126,12 @@ export default function agentChat() {
             })
 
             this.pinComposer()
-            window.addEventListener('resize', () => { pinned = false; self.pinComposer() }, { passive: true })
+            window.addEventListener('resize', () => {
+                pinned = false
+                held.height = 0
+                document.documentElement.style.removeProperty('--fi-chat-floor')
+                self.pinComposer()
+            }, { passive: true })
 
             this.decorate()
             this.autosize()
@@ -587,6 +601,23 @@ export default function agentChat() {
             gap >= 8 && gap <= 64 ? root.setProperty('--fi-chat-stick', gap + 'px') : root.removeProperty('--fi-chat-stick')
         },
 
+        // A part that gets shorter under a page following the answer (an approval card folding into its result, the
+        // status line giving way to the text) would make the page shorter: the browser would scroll everything down,
+        // and the next lines would push it back up. While the page follows, the transcript keeps the tallest height it
+        // reached and the position that showed it; what comes next fills the space. Scrolled up to read, it lets go.
+        hold() {
+            // Its own height, measured with the floor lifted (the page is put back before anything is painted).
+            const root = document.documentElement.style
+            root.removeProperty('--fi-chat-floor')
+            const height = self.$refs.transcript.offsetHeight
+            if (height >= held.height || ! self.atBottom) {
+                held.height = height
+                return
+            }
+            root.setProperty('--fi-chat-floor', held.height + 'px')
+            if (window.scrollY < held.y) window.scrollTo({ top: held.y, behavior: 'instant' })
+        },
+
         nearBottom() {
             return window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 160
         },
@@ -610,12 +641,14 @@ export default function agentChat() {
                 glide.last = now
                 const target = document.documentElement.scrollHeight - window.innerHeight
                 const distance = target - window.scrollY
-                if (! self.atBottom || Math.abs(distance) < 1) {
+                // Only ever forward: the page never scrolls back up after a part of the answer.
+                if (! self.atBottom || distance < 1) {
                     glide.frame = 0
                     return
                 }
                 const move = distance * (1 - Math.exp(-dt / 0.1))
-                window.scrollTo({ top: window.scrollY + Math.sign(distance) * Math.max(1, Math.abs(move)), behavior: 'instant' })
+                window.scrollTo({ top: window.scrollY + Math.max(1, move), behavior: 'instant' })
+                held.y = window.scrollY
                 glide.frame = requestAnimationFrame(step)
             }
             glide.frame = requestAnimationFrame(step)

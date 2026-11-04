@@ -291,6 +291,8 @@ button.fi-chat-timeline-call:hover, button.fi-chat-timeline-call:focus-visible {
 .fi-chat-started > .fi-chat-bottom { margin-top: auto; }
 /* Sticks where it sits at the end of the page (--fi-chat-stick, measured by agent-chat.js), so it never shifts while the page follows an answer. */
 .fi-chat-bottom { bottom: var(--fi-chat-stick, 1rem); }
+/* Holds the height the transcript reached while the page follows an answer (--fi-chat-floor, set by agent-chat.js), so a part that gets shorter never scrolls the page. */
+.fi-chat-transcript { min-height: var(--fi-chat-floor, 0px); }
 
 /* Embedded in the slide-over: the page fills the frame. */
 .fi-chat-embedded { max-width: none; padding: 1rem 1rem 0; --fi-chat-offset: 4rem; }
