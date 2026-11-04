@@ -289,6 +289,8 @@ button.fi-chat-timeline-call:hover, button.fi-chat-timeline-call:focus-visible {
 .fi-chat { --fi-chat-offset: calc(var(--topbar-height, 4rem) + 4rem); }
 .fi-chat-started { min-height: calc(100dvh - var(--fi-chat-offset)); }
 .fi-chat-started > .fi-chat-bottom { margin-top: auto; }
+/* Sticks where it sits at the end of the page (--fi-chat-stick, measured by agent-chat.js), so it never shifts while the page follows an answer. */
+.fi-chat-bottom { bottom: var(--fi-chat-stick, 1rem); }
 
 /* Embedded in the slide-over: the page fills the frame. */
 .fi-chat-embedded { max-width: none; padding: 1rem 1rem 0; --fi-chat-offset: 4rem; }

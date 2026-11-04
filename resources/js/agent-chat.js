@@ -20,6 +20,7 @@ export default function agentChat() {
     const calm = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const reveal = { source: null, total: 0, shown: 0, speed: 0, frame: 0, last: 0, waiters: [] }
     const glide = { frame: 0, last: 0 }
+    let pinned = false
     let handoff = null
     // The text being typed in, per element (a WeakMap: a Livewire morph strips attributes it did not render).
     const typing = new WeakMap()
@@ -86,7 +87,7 @@ export default function agentChat() {
 
             // Keep the end of the transcript in view while it grows, unless the person scrolled up to read; and give
             // every code block its copy button and colours as it appears.
-            new MutationObserver((mutations) => { this.enter(mutations); this.decorate(); this.follow() }).observe(this.$refs.transcript, { childList: true, subtree: true, characterData: true })
+            new MutationObserver((mutations) => { this.enter(mutations); this.decorate(); this.pinComposer(); this.follow() }).observe(this.$refs.transcript, { childList: true, subtree: true, characterData: true })
             window.addEventListener('scroll', () => { if (! glide.frame) this.atBottom = this.nearBottom() }, { passive: true })
             // Scrolling up to read stops the glide at once (its own scroll events cannot tell a person's apart).
             const away = () => { self.atBottom = false; cancelAnimationFrame(glide.frame); glide.frame = 0 }
@@ -114,6 +115,9 @@ export default function agentChat() {
                     this.syncTitle()
                 }))
             })
+
+            this.pinComposer()
+            window.addEventListener('resize', () => { pinned = false; self.pinComposer() }, { passive: true })
 
             this.decorate()
             this.autosize()
@@ -564,6 +568,23 @@ export default function agentChat() {
                 return open > close ? m : `<span class="hl-k">${m}</span>`
             })
             code.innerHTML = html
+        },
+
+        // The sticky composer stops as far above the window's edge as it sits above the end of the page (the panel's
+        // own padding, which a theme may change). Otherwise it moves between the two whenever the glide runs a few
+        // pixels behind the growing transcript and then catches up. A gap that is not padding (a footer under the
+        // page) keeps the stylesheet's default. Measured once the page scrolls (a short page fills the window, so the
+        // gap under it is not the padding), then again after a resize.
+        pinComposer() {
+            if (pinned || document.documentElement.scrollHeight <= window.innerHeight) return
+            pinned = true
+            const chat = self.$root
+            if (! chat.querySelector(':scope > .fi-chat-bottom')) return
+            const end = chat.getBoundingClientRect().bottom + window.scrollY - parseFloat(getComputedStyle(chat).paddingBottom)
+            const gap = document.documentElement.scrollHeight - end
+            // On <html>: a Livewire morph strips what it did not render from the chat's own element.
+            const root = document.documentElement.style
+            gap >= 8 && gap <= 64 ? root.setProperty('--fi-chat-stick', gap + 'px') : root.removeProperty('--fi-chat-stick')
         },
 
         nearBottom() {
