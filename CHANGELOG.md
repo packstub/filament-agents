@@ -2,6 +2,11 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## Unreleased
+
+- The chat page keeps the composer at the bottom of the window once a conversation has started, with the conversation scrolling above it
+- Answers flow in on the chat page: text is written out at a steady pace (also from providers that do not stream), new tables and cards fade into place and the page glides along instead of jumping; all instant under reduced motion
+
 ## 1.17.0 — 2026-10-22
 
 - The composer on a page of your own: `<x-packstub-agents::composer standalone method="ask" />` (#88)

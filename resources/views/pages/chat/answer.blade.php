@@ -1,7 +1,7 @@
 {{-- An answer in the transcript: the reasoning, then the parts below (lookups, proposals, the text, embeds, sources,
      the footer). Reads $message. Part of pages/chat.blade.php, included with its variables; publish this file alone to
      change only this part. --}}
-<div class="fi-chat-exchange flex flex-col gap-2 {{ $message['continued'] ? 'fi-chat-continued' : '' }}" wire:key="message-{{ $message['id'] }}">
+<div class="fi-chat-exchange fi-chat-answer flex flex-col gap-2 {{ $message['continued'] ? 'fi-chat-continued' : '' }}" wire:key="message-{{ $message['id'] }}">
     @if ($message['reasoning'] !== '')
         {{-- What the model thought before it answered, when the provider reports it: folded, one line to open it. --}}
         <div class="fi-chat-reasoning" x-data="{ open: false }">

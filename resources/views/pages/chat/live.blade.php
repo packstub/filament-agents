@@ -6,10 +6,10 @@
      turn's event stream (or the poll endpoint) while the job produces them. --}}
 <div wire:ignore class="flex justify-end empty:hidden">
     <template x-if="sending">
-        <div class="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-primary-600 px-4 py-2.5 text-sm text-white shadow-sm" x-text="sending.text"></div>
+        <div class="fi-chat-sending max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-primary-600 px-4 py-2.5 text-sm text-white shadow-sm" x-text="sending.text"></div>
     </template>
 </div>
-<div wire:ignore class="fi-chat-timeline fi-chat-timeline-live" x-show="turn !== null && live.tools.length > 0" x-cloak>
+<div wire:ignore class="fi-chat-timeline fi-chat-timeline-live" x-show="(turn !== null || handing) && live.tools.length > 0" x-cloak>
     <template x-for="(tool, i) in live.tools" :key="i">
         <div class="fi-chat-timeline-row">
             <span class="fi-chat-timeline-call">
@@ -20,8 +20,9 @@
         </div>
     </template>
 </div>
-<div wire:ignore class="fi-chat-md max-w-none text-sm text-gray-800 empty:hidden dark:text-gray-200" :class="{ 'fi-chat-streaming': turn !== null }" x-html="live.html" x-show="live.html !== ''"></div>
-<div wire:ignore class="flex items-center gap-2 text-xs text-gray-500" x-show="turn !== null" x-cloak role="status" aria-live="polite">
+{{-- The streamed answer is written by agent-chat.js (stream()), revealed at a steady pace rather than chunk by chunk. --}}
+<div wire:ignore class="fi-chat-md max-w-none text-sm text-gray-800 empty:hidden dark:text-gray-200" :class="{ 'fi-chat-streaming': turn !== null || handing }" x-ref="answer" x-show="live.html !== ''"></div>
+<div wire:ignore class="flex items-center gap-2 text-xs text-gray-500" x-show="turn !== null || handing" x-cloak role="status" aria-live="polite">
     <x-filament::loading-indicator class="h-4 w-4" />
     <span x-text="live.status || @js(__('Thinking…'))"></span>
 </div>
