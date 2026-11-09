@@ -2,10 +2,15 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
-## Unreleased
+## 1.18.0 — 2026-11-09
 
-- The chat page keeps the composer at the bottom of the window once a conversation has started, with the conversation scrolling above it
-- Answers flow in on the chat page: text is written out at a steady pace (also from providers that do not stream), new tables and cards fade into place and the page glides along instead of jumping; all instant under reduced motion
+A calmer chat page: the composer stays at the bottom and answers flow in instead of jumping.
+
+- The chat page keeps the composer at the bottom of the window once a conversation has started, with the conversation scrolling above it (#93)
+- Answers flow in: text is written out at a steady pace (also from providers that do not stream), new tables and cards fade into place and the page glides along instead of jumping; all instant under reduced motion
+- An approval card folding into its result no longer scrolls the conversation; the page only moves forward with the answer
+
+**Upgrading:** run `php artisan filament:assets`.
 
 ## 1.17.0 — 2026-10-22
 
