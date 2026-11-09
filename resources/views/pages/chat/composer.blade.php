@@ -17,7 +17,7 @@
 </div>
 
 {{-- The composer and what an app adds under it (ChatRenderHook::COMPOSER_AFTER) stick to the bottom together. --}}
-<div class="fi-chat-bottom sticky bottom-4 z-10">
+<div class="fi-chat-bottom sticky z-10">
 <x-packstub-agents::composer method="send" :model="$model" :attachments="$this->attachmentSettings()" :files="$attachments" :mentions="$this->canMention()" class="shadow-lg">
     <x-slot:tools>
         {{ \Filament\Support\Facades\FilamentView::renderHook(\Packstub\Agents\Filament\ChatRenderHook::COMPOSER_TOOLS_BEFORE, scopes: $this->getRenderHookScopes()) }}

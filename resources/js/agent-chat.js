@@ -14,6 +14,38 @@ export default function agentChat() {
     // `this`; it goes through `self`, whose element lives as long as the page.
     let self = null
 
+    // Motion, kept off Alpine's reactivity (it runs every frame). The streamed answer is revealed at a steady pace
+    // rather than in the chunks the server sends, and the page glides after the transcript as it grows instead of
+    // jumping; both are instant under prefers-reduced-motion.
+    const calm = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const reveal = { source: null, total: 0, shown: 0, speed: 0, frame: 0, last: 0, waiters: [] }
+    const glide = { frame: 0, last: 0 }
+    let pinned = false
+    // The transcript's tallest height and the scroll position that showed it (see hold()).
+    const held = { height: 0, y: 0 }
+    let handoff = null
+    // The text being typed in, per element (a WeakMap: a Livewire morph strips attributes it did not render).
+    const typing = new WeakMap()
+
+    // A copy of rendered HTML cut after `length` characters of text, its open tags kept.
+    const cut = (source, length) => {
+        const copy = source.cloneNode(true)
+        let left = Math.max(0, Math.floor(length))
+        const walker = document.createTreeWalker(copy, NodeFilter.SHOW_TEXT)
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+            if (node.data.length < left) {
+                left -= node.data.length
+                continue
+            }
+            const range = document.createRange()
+            range.setStart(node, left)
+            range.setEndAfter(copy.lastChild)
+            range.deleteContents()
+            break
+        }
+        return copy
+    }
+
     return {
         outbox: [],
         sending: null,
@@ -26,6 +58,7 @@ export default function agentChat() {
         turn: null,
         interval: 600,
         live: { status: '', html: '', tools: [] },
+        handing: false,
         version: null,
         editing: false,
         stopping: false,
@@ -56,8 +89,23 @@ export default function agentChat() {
 
             // Keep the end of the transcript in view while it grows, unless the person scrolled up to read; and give
             // every code block its copy button and colours as it appears.
-            new MutationObserver(() => { this.decorate(); this.follow() }).observe(this.$refs.transcript, { childList: true, subtree: true, characterData: true })
-            window.addEventListener('scroll', () => { this.atBottom = this.nearBottom() }, { passive: true })
+            // A part that changes size without a DOM change (an image loading, a card's transition) is caught by the
+            // ResizeObserver; both run before the frame is painted, so a held height never shows as a jump.
+            const sizes = new ResizeObserver(() => this.hold())
+            const watch = () => { for (const part of this.$refs.transcript.children) sizes.observe(part) }
+            new MutationObserver((mutations) => { watch(); this.enter(mutations); this.decorate(); this.hold(); this.pinComposer(); this.follow() }).observe(this.$refs.transcript, { childList: true, subtree: true, characterData: true })
+            watch()
+            // A chat opened from another one (wire:navigate) starts without the last one's floor.
+            document.documentElement.style.removeProperty('--fi-chat-floor')
+            window.addEventListener('scroll', () => { held.y = window.scrollY; if (! glide.frame) this.atBottom = this.nearBottom() }, { passive: true })
+            // Scrolling up to read stops the glide at once (its own scroll events cannot tell a person's apart).
+            const away = () => { self.atBottom = false; cancelAnimationFrame(glide.frame); glide.frame = 0 }
+            window.addEventListener('wheel', (event) => { if (event.deltaY < 0) away() }, { passive: true })
+            window.addEventListener('touchmove', away, { passive: true })
+            window.addEventListener('keydown', (event) => {
+                if (['PageUp', 'ArrowUp', 'Home'].includes(event.key) && ! event.target.closest?.('input, textarea, [contenteditable]')) away()
+            })
+            this.$watch('live.html', (html) => self.stream(html))
             document.addEventListener('visibilitychange', () => { if (! document.hidden) this.schedule(0) })
             window.addEventListener('pagehide', () => this.closeStream())
 
@@ -70,11 +118,20 @@ export default function agentChat() {
                     this.sending = null
                     if (this.clearOnSync) {
                         this.clearOnSync = false
+                        this.handing = false
                         this.live = { status: '', html: '', tools: [] }
                     }
                     this.syncTitle()
                 }))
             })
+
+            this.pinComposer()
+            window.addEventListener('resize', () => {
+                pinned = false
+                held.height = 0
+                document.documentElement.style.removeProperty('--fi-chat-floor')
+                self.pinComposer()
+            }, { passive: true })
 
             this.decorate()
             this.autosize()
@@ -99,7 +156,7 @@ export default function agentChat() {
 
         enqueue(text) {
             this.outbox.push({ id: ++this.sequence, text, mentions: this.takeMentions(text) })
-            this.$nextTick(() => this.scrollToBottom())
+            this.$nextTick(() => this.scrollToBottom(true))
             this.pump()
         },
 
@@ -310,9 +367,15 @@ export default function agentChat() {
             const changed = this.version !== null && this.version !== data.version
             this.version = data.version
             if (changed || (hadTurn && this.turn === null)) {
-                // The stored transcript replaces the streamed answer in the same DOM update (onSync above).
+                // The stored transcript replaces the streamed answer in the same DOM update (onSync above), once the
+                // reveal has caught up; until then the live answer, its tools and its status stay as they are, so
+                // nothing collapses and comes back.
                 this.clearOnSync = true
-                self.$wire.$refresh()
+                if (hadTurn && this.turn === null) {
+                    this.handing = true
+                    handoff = { text: this.live.html !== '', tools: this.live.tools.length > 0 }
+                }
+                self.revealed().then(() => self.$wire.$refresh())
             }
         },
 
@@ -521,17 +584,190 @@ export default function agentChat() {
             code.innerHTML = html
         },
 
+        // The sticky composer stops as far above the window's edge as it sits above the end of the page (the panel's
+        // own padding, which a theme may change). Otherwise it moves between the two whenever the glide runs a few
+        // pixels behind the growing transcript and then catches up. A gap that is not padding (a footer under the
+        // page) keeps the stylesheet's default. Measured once the page scrolls (a short page fills the window, so the
+        // gap under it is not the padding), then again after a resize.
+        pinComposer() {
+            if (pinned || document.documentElement.scrollHeight <= window.innerHeight) return
+            pinned = true
+            const chat = self.$root
+            if (! chat.querySelector(':scope > .fi-chat-bottom')) return
+            const end = chat.getBoundingClientRect().bottom + window.scrollY - parseFloat(getComputedStyle(chat).paddingBottom)
+            const gap = document.documentElement.scrollHeight - end
+            // On <html>: a Livewire morph strips what it did not render from the chat's own element.
+            const root = document.documentElement.style
+            gap >= 8 && gap <= 64 ? root.setProperty('--fi-chat-stick', gap + 'px') : root.removeProperty('--fi-chat-stick')
+        },
+
+        // A part that gets shorter under a page following the answer (an approval card folding into its result, the
+        // status line giving way to the text) would make the page shorter: the browser would scroll everything down,
+        // and the next lines would push it back up. While the page follows, the transcript keeps the tallest height it
+        // reached and the position that showed it; what comes next fills the space. Scrolled up to read, it lets go.
+        hold() {
+            // Its own height, measured with the floor lifted (the page is put back before anything is painted).
+            const root = document.documentElement.style
+            root.removeProperty('--fi-chat-floor')
+            const height = self.$refs.transcript.offsetHeight
+            if (height >= held.height || ! self.atBottom) {
+                held.height = height
+                return
+            }
+            root.setProperty('--fi-chat-floor', held.height + 'px')
+            if (window.scrollY < held.y) window.scrollTo({ top: held.y, behavior: 'instant' })
+        },
+
         nearBottom() {
             return window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 160
         },
 
         follow() {
-            if (this.atBottom) this.scrollToBottom()
+            if (this.atBottom) this.glideToBottom()
         },
 
         scrollToBottom(smooth = false) {
-            window.scrollTo({ top: document.documentElement.scrollHeight, behavior: smooth ? 'smooth' : 'auto' })
             this.atBottom = true
+            smooth ? this.glideToBottom() : window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' })
+        },
+
+        // Ease toward the end of the page, re-aimed every frame: content that keeps growing is followed, not jumped to.
+        glideToBottom() {
+            if (calm()) return window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' })
+            if (glide.frame) return
+            glide.last = performance.now()
+            const step = (now) => {
+                const dt = Math.min(0.05, Math.max(0, now - glide.last) / 1000)
+                glide.last = now
+                const target = document.documentElement.scrollHeight - window.innerHeight
+                const distance = target - window.scrollY
+                // Only ever forward: the page never scrolls back up after a part of the answer.
+                if (! self.atBottom || distance < 1) {
+                    glide.frame = 0
+                    return
+                }
+                const move = distance * (1 - Math.exp(-dt / 0.1))
+                window.scrollTo({ top: window.scrollY + Math.max(1, move), behavior: 'instant' })
+                held.y = window.scrollY
+                glide.frame = requestAnimationFrame(step)
+            }
+            glide.frame = requestAnimationFrame(step)
+        },
+
+        // The streamed answer, revealed at a steady pace: each new chunk sets a speed that shows it in about 0.6 s
+        // (never slower than a quick reader), so text flows in rather than landing a paragraph at a time.
+        stream(html) {
+            const el = this.$refs.answer
+            if (! el) return
+            if (html === '') {
+                Object.assign(reveal, { source: null, total: 0, shown: 0 })
+                el.replaceChildren()
+                return this.settle()
+            }
+            const template = document.createElement('template')
+            template.innerHTML = html
+            reveal.source = template.content
+            reveal.total = template.content.textContent.length
+            reveal.shown = Math.min(reveal.shown, reveal.total)
+            if (calm()) reveal.shown = reveal.total
+            reveal.speed = Math.max(240, (reveal.total - reveal.shown) / 0.6)
+            this.paint()
+            if (reveal.shown >= reveal.total) return this.settle()
+            if (reveal.frame) return
+            reveal.last = performance.now()
+            const step = (now) => {
+                reveal.shown = Math.min(reveal.total, reveal.shown + reveal.speed * Math.min(0.05, Math.max(0, now - reveal.last) / 1000))
+                reveal.last = now
+                self.paint()
+                if (reveal.shown < reveal.total) {
+                    reveal.frame = requestAnimationFrame(step)
+                } else {
+                    reveal.frame = 0
+                    self.settle()
+                }
+            }
+            reveal.frame = requestAnimationFrame(step)
+        },
+
+        // The answer up to the revealed character.
+        paint() {
+            const el = this.$refs.answer
+            if (! reveal.source) return
+            el.setAttribute('aria-busy', reveal.shown < reveal.total ? 'true' : 'false')
+            el.replaceChildren(reveal.shown < reveal.total ? cut(reveal.source, reveal.shown) : reveal.source.cloneNode(true))
+        },
+
+        // A stored answer whose text was never on screen (a provider that does not stream, a fast turn, another tab)
+        // writes itself out the same way; returns how long that takes, so the parts under it can wait their turn.
+        typeIn(el) {
+            const source = document.createDocumentFragment()
+            source.append(...[...el.childNodes].map((node) => node.cloneNode(true)))
+            const total = source.textContent.length
+            const duration = Math.min(1500, Math.max(400, total * 2.5))
+            const start = performance.now()
+            el.setAttribute('aria-busy', 'true')
+            // A morph that re-renders the text meanwhile is overwritten by the next frame; the last one always leaves
+            // the whole text, so typing never ends short.
+            const step = (now) => {
+                if (! el.isConnected || typing.get(el) !== start) return
+                const shown = total * Math.min(1, Math.max(0, now - start) / duration)
+                if (shown >= total) {
+                    el.replaceChildren(source)
+                    el.removeAttribute('aria-busy')
+                    typing.delete(el)
+                    return
+                }
+                el.replaceChildren(cut(source, shown))
+                requestAnimationFrame(step)
+            }
+            typing.set(el, start)
+            el.replaceChildren()
+            requestAnimationFrame(step)
+            return duration
+        },
+
+        revealed() {
+            return reveal.shown >= reveal.total ? Promise.resolve() : new Promise((resolve) => reveal.waiters.push(resolve))
+        },
+
+        settle() {
+            reveal.waiters.splice(0).forEach((resolve) => resolve())
+        },
+
+        // New answers fade and rise into place, a part at a time, and so does a part added to an answer already there
+        // (the rest of an answer resumed after an approval). At the handover from the live answer the parts that were
+        // already on screen (the streamed text, the tools) are left alone: only what is new moves.
+        enter(mutations) {
+            if (calm()) return
+            const groups = []
+            for (const mutation of mutations) {
+                for (const node of mutation.addedNodes) {
+                    if (node.nodeType !== Node.ELEMENT_NODE) continue
+                    if (node.parentElement?.matches('.fi-chat-answer')) {
+                        groups.push([node])
+                        continue
+                    }
+                    const answers = node.matches('.fi-chat-answer') ? [node] : node.querySelectorAll('.fi-chat-answer')
+                    for (const answer of answers) groups.push([...answer.children])
+                }
+            }
+            if (groups.length === 0) return
+            const streamed = handoff
+            handoff = null
+            let delay = 0
+            for (const parts of groups) {
+                for (const part of parts) {
+                    if (part.matches('.fi-chat-md')) {
+                        if (! streamed?.text) delay += this.typeIn(part)
+                        continue
+                    }
+                    if (streamed?.tools && part.matches('.fi-chat-timeline')) continue
+                    part.style.animationDelay = delay + 'ms'
+                    part.classList.add('fi-chat-enter')
+                    part.addEventListener('animationend', () => { part.classList.remove('fi-chat-enter'); part.style.animationDelay = '' }, { once: true })
+                    delay += 70
+                }
+            }
         },
     }
 }
