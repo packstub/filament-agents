@@ -88,9 +88,7 @@ class Chats extends Page implements HasTable
 
     public function table(Table $table): Table
     {
-        $own = fn () => Conversation::query()
-            ->where('participant_type', auth()->user()?->getMorphClass())
-            ->where('participant_id', auth()->id());
+        $own = fn () => AgentConversationStore::conversationsOf(auth()->user());
         $pinned = AgentPinnedConversation::query()->select('conversation_id');
 
         // With classification on (config `classify`), each chat carries what it is about, how the person sounded and

@@ -3,12 +3,13 @@
     use Packstub\Agents\Filament\Pages\Chat;
     use Packstub\Agents\Filament\Pages\Chats;
     use Packstub\Agents\Support\AgentChat;
+    use Packstub\Agents\Support\AgentConversationStore;
     use Packstub\Agents\Support\AgentModels;
     use Laravel\Ai\Models\Conversation;
 
     $show = auth()->check() && Agents::inPanel() && AgentModels::enabled();
     $pinnedIds = $show ? AgentChat::pinnedIds(auth()->user()) : [];
-    $own = fn () => Conversation::query()->where('participant_type', auth()->user()->getMorphClass())->where('participant_id', auth()->id());
+    $own = fn () => AgentConversationStore::conversationsOf(auth()->user());
     $pinned = $show && $pinnedIds !== [] ? $own()->whereIn('id', $pinnedIds)->get()->sortBy(fn (Conversation $c) => array_search($c->id, $pinnedIds))->values() : collect();
     $chats = $show ? $own()->whereNotIn('id', $pinnedIds)->latest('updated_at')->limit(max(3, 8 - $pinned->count()))->get() : collect();
     $current = request()->route('conversation');
