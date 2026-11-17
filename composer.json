@@ -73,7 +73,7 @@
     },
     "minimum-stability": "stable",
     "prefer-stable": true,
-    "homepage": "https://github.com/packstub/filament-agents",
+    "homepage": "https://packstub.dev/plugins/filament-agents",
     "support": {
         "issues": "https://github.com/packstub/filament-agents/issues",
         "source": "https://github.com/packstub/filament-agents",
