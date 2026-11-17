@@ -2,6 +2,10 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## Unreleased
+
+- `composer.json`'s homepage points at the package's page on packstub.dev
+
 ## 1.18.0 — 2026-11-09
 
 A calmer chat page: the composer stays at the bottom and answers flow in instead of jumping.
