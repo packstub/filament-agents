@@ -4,6 +4,7 @@ All notable changes to `packstub/filament-agents` are documented here.
 
 ## Unreleased
 
+- Security: the chats list and the sidebar show only the chats started in the current workspace (needs packstub/agents with the conversation `tenant` column)
 - `composer.json`'s homepage points at the package's page on packstub.dev
 
 ## 1.18.0 — 2026-11-09
