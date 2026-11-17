@@ -4,7 +4,9 @@ All notable changes to `packstub/filament-agents` are documented here.
 
 ## Unreleased
 
-- Runs on PHP 8.3: the plugin now requires PHP 8.3 or newer instead of 8.4 (and Agents for Laravel 1.12, the first release that does), so apps still on 8.3 can install it
+- Runs on PHP 8.3: the plugin now requires PHP 8.3 or newer instead of 8.4, so apps still on 8.3 can install it
+- Security: on a panel with workspaces, the Chats page and the sidebar show only the chats started in the current workspace; requires Agents for Laravel 1.13
+- **Upgrading:** run `php artisan migrate` (Agents for Laravel 1.13 adds `tenant` to `agent_conversations`)
 - `composer.json`'s homepage points at the package's page on packstub.dev
 
 ## 1.18.0 — 2026-11-09
