@@ -4,6 +4,7 @@ All notable changes to `packstub/filament-agents` are documented here.
 
 ## Unreleased
 
+- Runs on PHP 8.3: the plugin now requires PHP 8.3 or newer instead of 8.4 (and Agents for Laravel 1.12, the first release that does), so apps still on 8.3 can install it
 - `composer.json`'s homepage points at the package's page on packstub.dev
 
 ## 1.18.0 — 2026-11-09
