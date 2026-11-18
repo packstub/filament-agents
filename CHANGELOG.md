@@ -2,11 +2,14 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
-## Unreleased
+## 1.19.0 — 2026-11-18
+
+Chats stay in the workspace they were started in, and the panel speaks Hebrew and Arabic.
 
 - Runs on PHP 8.3: the plugin now requires PHP 8.3 or newer instead of 8.4, so apps still on 8.3 can install it
 - Security: on a panel with workspaces, the Chats page and the sidebar show only the chats started in the current workspace; requires Agents for Laravel 1.13
-- **Upgrading:** run `php artisan migrate` (Agents for Laravel 1.13 adds `tenant` to `agent_conversations`)
+- Hebrew and Arabic translations, and the chat reads right to left in them: the drawer, arrows and spacing follow the text direction (#99)
+- **Upgrading:** run `php artisan migrate` (Agents for Laravel 1.13 adds `tenant` to `agent_conversations`) and `php artisan filament:assets`
 - `composer.json`'s homepage points at the package's page on packstub.dev
 
 ## 1.18.0 — 2026-11-09
