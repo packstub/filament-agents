@@ -38,7 +38,7 @@ An in-panel AI assistant and an MCP server for your Filament v5 panel, built on 
 
 | Plugin | Filament | Laravel | PHP | laravel/ai | laravel/mcp |
 | --- | --- | --- | --- | --- | --- |
-| 1.x | 5.x | 13.x | 8.4+ | ^1.0 | ^1.0 |
+| 1.x | 5.x | 13.x | 8.3+ | ^1.0 | ^1.0 |
 
 1.8 and later require [packstub/agents](https://github.com/packstub/agents) ^1.1, which Composer installs with the plugin.
 
