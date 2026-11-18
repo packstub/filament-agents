@@ -21,7 +21,7 @@
                                         <del>{{ \Packstub\Agents\Filament\Pages\Chat::previewValue($row['before']) }}</del>
                                     @endif
                                     @if (array_key_exists('before', $row) && array_key_exists('after', $row))
-                                        <span aria-hidden="true">→</span>
+                                        <span aria-hidden="true" class="fi-chat-flip inline-block">→</span>
                                     @endif
                                     @if (array_key_exists('after', $row))
                                         <ins>{{ \Packstub\Agents\Filament\Pages\Chat::previewValue($row['after']) }}</ins>

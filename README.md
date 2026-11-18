@@ -32,7 +32,7 @@ An in-panel AI assistant and an MCP server for your Filament v5 panel, built on 
 - **[A bounded bill](#budgets-and-the-operator-page)**: answer and token limits per user and per workspace, edited on an operator page.
 - **[Your assistant, your prompt](#the-assistant)**: a scaffolded agent class on Anthropic, OpenAI, Gemini or xAI, with failover.
 - **[Tenancy-aware](#tenancy)**: workspace-bound tokens, tenant databases and per-workspace keys, or no tenancy at all.
-- **Translatable**: German, Spanish, Romanian and Russian included.
+- **Translatable**: German, Spanish, Romanian, Russian, Hebrew and Arabic included.
 
 ## Compatibility
 

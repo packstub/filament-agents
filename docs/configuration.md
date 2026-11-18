@@ -202,4 +202,4 @@ Two panels may register the plugin: the tenant panel with the chat and the token
 
 ## Translations and views
 
-Strings are `__()` calls keyed by the English text, with JSON files for German, Spanish, Romanian and Russian in `resources/lang`. Add your own language by publishing a JSON file with the same keys into your app's `lang/` directory. Views are published with `vendor:publish --tag=packstub-agents-views` and live under the `packstub-agents::` namespace.
+Strings are `__()` calls keyed by the English text, with JSON files for German, Spanish, Romanian, Russian, Hebrew and Arabic in `resources/lang` (Hebrew and Arabic read right to left). Add your own language by publishing a JSON file with the same keys into your app's `lang/` directory. Views are published with `vendor:publish --tag=packstub-agents-views` and live under the `packstub-agents::` namespace.

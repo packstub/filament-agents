@@ -3,7 +3,7 @@
 /* Markdown in chat answers. */
 .fi-chat-md p { margin: 0 0 0.75rem; }
 .fi-chat-md p:last-child { margin-bottom: 0; }
-.fi-chat-md ul, .fi-chat-md ol { margin: 0 0 0.75rem 1.25rem; }
+.fi-chat-md ul, .fi-chat-md ol { margin: 0 0 0.75rem; margin-inline-start: 1.25rem; }
 .fi-chat-md ul { list-style: disc; }
 .fi-chat-md ol { list-style: decimal; }
 .fi-chat-md li { margin: 0.125rem 0; }
@@ -14,7 +14,7 @@
 .fi-chat-md code { font-size: 0.8125rem; background: rgb(0 0 0 / 0.06); border-radius: 0.25rem; padding: 0.1rem 0.3rem; }
 .dark .fi-chat-md code { background: rgb(255 255 255 / 0.1); }
 .fi-chat-md table { width: 100%; border-collapse: collapse; margin: 0.5rem 0 1rem; font-size: 0.8125rem; display: block; overflow-x: auto; }
-.fi-chat-md th, .fi-chat-md td { text-align: left; padding: 0.375rem 0.625rem; border-bottom: 1px solid rgb(0 0 0 / 0.08); vertical-align: top; white-space: nowrap; }
+.fi-chat-md th, .fi-chat-md td { text-align: start; padding: 0.375rem 0.625rem; border-bottom: 1px solid rgb(0 0 0 / 0.08); vertical-align: top; white-space: nowrap; }
 .dark .fi-chat-md th, .dark .fi-chat-md td { border-color: rgb(255 255 255 / 0.1); }
 .fi-chat-md th { font-weight: 600; color: var(--gray-500); }
 .fi-chat-md strong { font-weight: 600; }
@@ -22,14 +22,14 @@
 /* The composer: one row — the field, then the tools (the context ring), Stop while an answer runs, the model and a square
    Send. The field grows with the text up to a few lines (agent-chat.js) and the actions stay on its last line. The card
    highlights on focus, so the textarea must not draw the browser's own outline. */
-.fi-agent-composer-row { display: flex; align-items: flex-end; gap: 0.5rem; padding: 0.375rem 0.375rem 0.375rem 1rem; }
+.fi-agent-composer-row { display: flex; align-items: flex-end; gap: 0.5rem; padding: 0.375rem; padding-inline-start: 1rem; }
 .fi-agent-composer-input { flex: 1; min-width: 0; min-height: 2.5rem; max-height: 12rem; overflow-y: auto; padding: 0.5rem 0; line-height: 1.5rem; }
 .fi-agent-composer-input:focus { outline: none; box-shadow: none; }
 .fi-agent-composer-actions { display: flex; flex: none; align-items: center; gap: 0.25rem; height: 2.5rem; }
 .fi-agent-composer-send { width: 2.25rem; height: 2.25rem; }
 .fi-agent-composer-stop { margin-inline-end: 0.125rem; }
 /* The model: a small text button; the list under it says what each entry runs. */
-.fi-agent-composer-model { display: inline-flex; align-items: center; gap: 0.125rem; max-width: 11rem; height: 2rem; padding: 0 0.25rem 0 0.5rem; border-radius: 0.5rem; font-size: 0.8125rem; font-weight: 500; color: var(--gray-600); cursor: pointer; white-space: nowrap; }
+.fi-agent-composer-model { display: inline-flex; align-items: center; gap: 0.125rem; max-width: 11rem; height: 2rem; padding: 0; padding-inline: 0.5rem 0.25rem; border-radius: 0.5rem; font-size: 0.8125rem; font-weight: 500; color: var(--gray-600); cursor: pointer; white-space: nowrap; }
 .fi-agent-composer-model:hover, .fi-agent-composer-model:focus-visible, .fi-agent-composer-model[aria-expanded="true"] { color: var(--gray-900); background: rgb(0 0 0 / 0.05); outline: none; }
 .dark .fi-agent-composer-model { color: var(--gray-400); }
 .dark .fi-agent-composer-model:hover, .dark .fi-agent-composer-model:focus-visible, .dark .fi-agent-composer-model[aria-expanded="true"] { color: #fff; background: rgb(255 255 255 / 0.08); }
@@ -115,6 +115,8 @@
 .fi-chat-proposal-call code { font-size: 0.75rem; }
 .fi-chat-proposal-chevron { width: 0.875rem; height: 0.875rem; transition: transform 0.15s; }
 .fi-chat-proposal-chevron-open { transform: rotate(90deg); }
+/* A direction arrow points the other way when the page reads right to left; the open chevron points down in both. */
+[dir=rtl] .fi-chat-proposal-chevron:not(.fi-chat-proposal-chevron-open), [dir=rtl] .fi-chat-flip { transform: scaleX(-1); }
 .fi-chat-proposal-decision { flex: none; display: flex; align-items: center; min-height: 1.5rem; }
 .fi-chat-proposal-actions { display: flex; gap: 0.5rem; }
 .fi-chat-proposal-outcome { font-size: 0.75rem; font-weight: 600; color: var(--gray-500); }
@@ -133,7 +135,7 @@
 .dark .fi-chat-proposal-preview ins { color: #fff; }
 .fi-chat-proposal-details { margin-top: 0.625rem; padding-top: 0.625rem; border-top: 1px solid rgb(0 0 0 / 0.08); font-size: 0.8125rem; }
 .dark .fi-chat-proposal-details { border-color: rgb(255 255 255 / 0.1); }
-.fi-chat-reasoning { border-left: 2px solid rgb(0 0 0 / 0.08); padding-left: 0.625rem; }
+.fi-chat-reasoning { border-inline-start: 2px solid rgb(0 0 0 / 0.08); padding-inline-start: 0.625rem; }
 .dark .fi-chat-reasoning { border-color: rgb(255 255 255 / 0.12); }
 .fi-chat-reasoning-text { margin-top: 0.25rem; padding-bottom: 0.25rem; font-size: 0.8125rem; line-height: 1.5; color: var(--gray-500); white-space: pre-wrap; }
 .dark .fi-chat-reasoning-text { color: var(--gray-400); }
@@ -189,7 +191,7 @@
 .fi-chat-md pre { position: relative; margin: 0.5rem 0 1rem; padding: 0.75rem 1rem; border-radius: 0.75rem; background: rgb(0 0 0 / 0.05); border: 1px solid rgb(0 0 0 / 0.06); font-size: 0.8125rem; line-height: 1.5; overflow-x: auto; }
 .dark .fi-chat-md pre { background: rgb(255 255 255 / 0.06); border-color: rgb(255 255 255 / 0.08); }
 .fi-chat-md pre code { display: block; padding: 0; background: transparent; border-radius: 0; font-size: inherit; white-space: pre; }
-.fi-chat-code-copy { position: absolute; top: 0.375rem; right: 0.375rem; padding: 0.125rem 0.5rem; border-radius: 0.375rem; font-size: 0.6875rem; font-weight: 600; color: var(--gray-500); background: rgb(255 255 255 / 0.8); border: 1px solid rgb(0 0 0 / 0.08); opacity: 0; transition: opacity 0.15s; cursor: pointer; }
+.fi-chat-code-copy { position: absolute; top: 0.375rem; inset-inline-end: 0.375rem; padding: 0.125rem 0.5rem; border-radius: 0.375rem; font-size: 0.6875rem; font-weight: 600; color: var(--gray-500); background: rgb(255 255 255 / 0.8); border: 1px solid rgb(0 0 0 / 0.08); opacity: 0; transition: opacity 0.15s; cursor: pointer; }
 .dark .fi-chat-code-copy { color: var(--gray-300); background: rgb(0 0 0 / 0.4); border-color: rgb(255 255 255 / 0.1); }
 .fi-chat-md pre:hover .fi-chat-code-copy, .fi-chat-code-copy:focus-visible, .fi-chat-code-copy.fi-chat-copied { opacity: 1; }
 .fi-chat-code-copy.fi-chat-copied, .fi-chat-answer-tool.fi-chat-copied { color: var(--success-600); }
@@ -201,16 +203,16 @@
 .dark .fi-chat-md .hl-k { color: #c4b5fd; }
 .dark .fi-chat-md .hl-s { color: #5eead4; }
 .dark .fi-chat-md .hl-n { color: #fcd34d; }
-.fi-chat-md blockquote { margin: 0.5rem 0 0.75rem; padding: 0.25rem 0 0.25rem 0.875rem; border-left: 3px solid rgb(0 0 0 / 0.12); color: var(--gray-600); }
+.fi-chat-md blockquote { margin: 0.5rem 0 0.75rem; padding: 0.25rem 0; padding-inline-start: 0.875rem; border-inline-start: 3px solid rgb(0 0 0 / 0.12); color: var(--gray-600); }
 .dark .fi-chat-md blockquote { border-color: rgb(255 255 255 / 0.15); color: var(--gray-400); }
 .fi-chat-md hr { margin: 1rem 0; border: 0; border-top: 1px solid rgb(0 0 0 / 0.08); }
 .dark .fi-chat-md hr { border-color: rgb(255 255 255 / 0.1); }
 
 /* The tool timeline: what the assistant looked up before it answered, one line per call, folded details under each. */
 .fi-chat-timeline { display: flex; flex-direction: column; gap: 0.125rem; }
-.fi-chat-timeline-row { border-left: 2px solid rgb(0 0 0 / 0.08); padding-left: 0.625rem; }
+.fi-chat-timeline-row { border-inline-start: 2px solid rgb(0 0 0 / 0.08); padding-inline-start: 0.625rem; }
 .dark .fi-chat-timeline-row { border-color: rgb(255 255 255 / 0.12); }
-.fi-chat-timeline-call { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.375rem; max-width: 100%; padding: 0.125rem 0.375rem 0.125rem 0; border-radius: 0.375rem; font-size: 0.75rem; color: var(--gray-500); text-align: start; cursor: pointer; }
+.fi-chat-timeline-call { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.375rem; max-width: 100%; padding: 0.125rem; padding-inline: 0 0.375rem; border-radius: 0.375rem; font-size: 0.75rem; color: var(--gray-500); text-align: start; cursor: pointer; }
 button.fi-chat-timeline-call:hover, button.fi-chat-timeline-call:focus-visible { color: var(--gray-800); outline: none; }
 .dark button.fi-chat-timeline-call:hover, .dark button.fi-chat-timeline-call:focus-visible { color: var(--gray-200); }
 .fi-chat-timeline-icon { width: 0.875rem; height: 0.875rem; flex: none; color: var(--gray-400); }
@@ -237,7 +239,7 @@ button.fi-chat-timeline-call:hover, button.fi-chat-timeline-call:focus-visible {
 
 /* The composer: the files picked for the next question, the attach button, the drop highlight. */
 .fi-agent-composer-files { display: flex; flex-wrap: wrap; gap: 0.375rem; padding: 0.625rem 1rem 0; }
-.fi-agent-composer-file { display: inline-flex; align-items: center; gap: 0.375rem; max-width: 14rem; padding: 0.25rem 0.375rem 0.25rem 0.5rem; border-radius: 0.5rem; border: 1px solid rgb(0 0 0 / 0.1); background: rgb(0 0 0 / 0.03); font-size: 0.75rem; color: var(--gray-700); }
+.fi-agent-composer-file { display: inline-flex; align-items: center; gap: 0.375rem; max-width: 14rem; padding: 0.25rem; padding-inline: 0.5rem 0.375rem; border-radius: 0.5rem; border: 1px solid rgb(0 0 0 / 0.1); background: rgb(0 0 0 / 0.03); font-size: 0.75rem; color: var(--gray-700); }
 .dark .fi-agent-composer-file { border-color: rgb(255 255 255 / 0.12); background: rgb(255 255 255 / 0.05); color: var(--gray-300); }
 .fi-agent-composer-file img { width: 1.5rem; height: 1.5rem; object-fit: cover; border-radius: 0.25rem; }
 .fi-agent-composer-file button { display: inline-flex; padding: 0.125rem; border-radius: 9999px; color: var(--gray-400); cursor: pointer; }
@@ -303,7 +305,8 @@ button.fi-chat-timeline-call:hover, button.fi-chat-timeline-call:focus-visible {
 .fi-agent-drawer-backdrop { position: absolute; inset: 0; background: rgb(0 0 0 / 0.3); }
 .fi-agent-drawer-panel { position: relative; display: flex; flex-direction: column; width: min(32rem, 100vw); height: 100%; background: #fff; box-shadow: -10px 0 40px rgb(0 0 0 / 0.2); }
 .dark .fi-agent-drawer-panel { background: var(--gray-950); }
-.fi-agent-drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.625rem 0.75rem 0.625rem 1rem; border-bottom: 1px solid rgb(0 0 0 / 0.08); font-size: 0.875rem; font-weight: 600; color: var(--gray-900); }
+[dir=rtl] .fi-agent-drawer-panel { box-shadow: 10px 0 40px rgb(0 0 0 / 0.2); }
+.fi-agent-drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding-block: 0.625rem; padding-inline: 1rem 0.75rem; border-bottom: 1px solid rgb(0 0 0 / 0.08); font-size: 0.875rem; font-weight: 600; color: var(--gray-900); }
 .dark .fi-agent-drawer-head { border-color: rgb(255 255 255 / 0.1); color: #fff; }
 .fi-agent-drawer-head span { display: inline-flex; align-items: center; gap: 0.375rem; }
 .fi-agent-drawer-head svg { width: 1.125rem; height: 1.125rem; color: var(--primary-600); }
