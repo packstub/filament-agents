@@ -29,9 +29,9 @@
             <x-filament::dropdown placement="bottom-start" width="sm">
                 <x-slot name="trigger">
                     <button type="button" class="fi-chat-versions" x-show="! busy" aria-label="{{ __('Earlier answers') }}">
-                        <x-filament::icon icon="heroicon-m-chevron-left" class="h-3.5 w-3.5" />
+                        <x-filament::icon icon="heroicon-m-chevron-left" class="fi-chat-flip h-3.5 w-3.5" />
                         <span>{{ $lastQuestionVersions + 1 }}/{{ $lastQuestionVersions + 1 }}</span>
-                        <x-filament::icon icon="heroicon-m-chevron-right" class="h-3.5 w-3.5" />
+                        <x-filament::icon icon="heroicon-m-chevron-right" class="fi-chat-flip h-3.5 w-3.5" />
                     </button>
                 </x-slot>
                 <x-filament::dropdown.list>
@@ -49,28 +49,28 @@
                 </x-filament::dropdown.list>
             </x-filament::dropdown>
         @endif
-        <span class="fi-chat-answer-tool ml-1 text-xs">{{ $message['at']?->format('H:i') }}</span>
+        <span class="fi-chat-answer-tool ms-1 text-xs">{{ $message['at']?->format('H:i') }}</span>
         @if ($message['stopped'])
-            <span class="ml-1 text-xs">· {{ __('(stopped)') }}</span>
+            <span class="ms-1 text-xs">· {{ __('(stopped)') }}</span>
         @endif
         @if ($message['posted'])
             {{-- Written by the app as the assistant (a digest, a reminder), not by the model: nothing to produce again. --}}
-            <span class="ml-1 text-xs" title="{{ __('Posted by :name, not written by the model.', ['name' => \Packstub\Agents\Facades\Agents::name()]) }}">· {{ __('(posted)') }}</span>
+            <span class="ms-1 text-xs" title="{{ __('Posted by :name, not written by the model.', ['name' => \Packstub\Agents\Facades\Agents::name()]) }}">· {{ __('(posted)') }}</span>
         @endif
         @if ($message['failed'])
             {{-- The provider gave up midway: what arrived is kept, the error says why; Regenerate produces the answer again. --}}
-            <span class="ml-1 text-xs text-danger-600 dark:text-danger-400" title="{{ $message['error'] }}">· {{ __('(interrupted)') }}</span>
+            <span class="ms-1 text-xs text-danger-600 dark:text-danger-400" title="{{ $message['error'] }}">· {{ __('(interrupted)') }}</span>
         @endif
         @if ($message['cutShort'])
             {{-- The provider ended the answer early; Regenerate (above, on the last answer) produces it again, Continue carries on. --}}
-            <span class="ml-1 text-xs" title="{{ \Packstub\Agents\Support\AgentChat::cutShortText($message['cutShort']) }}">· {{ __('(cut short)') }}</span>
+            <span class="ms-1 text-xs" title="{{ \Packstub\Agents\Support\AgentChat::cutShortText($message['cutShort']) }}">· {{ __('(cut short)') }}</span>
         @endif
         @if ($message['answeredBy'])
             {{-- The first choice refused the turn and a failover provider took it. --}}
-            <span class="ml-1 text-xs" title="{{ __('The usual provider was unavailable; this answer came from :model.', ['model' => $message['answeredBy']['model']]) }}">· {{ __('(answered by :provider)', ['provider' => \Packstub\Agents\Support\AgentModels::providerLabel($message['answeredBy']['provider'])]) }}</span>
+            <span class="ms-1 text-xs" title="{{ __('The usual provider was unavailable; this answer came from :model.', ['model' => $message['answeredBy']['model']]) }}">· {{ __('(answered by :provider)', ['provider' => \Packstub\Agents\Support\AgentModels::providerLabel($message['answeredBy']['provider'])]) }}</span>
         @endif
         @if ($message['ratingNote'])
-            <span class="ml-1 text-xs italic" title="{{ __('Your note') }}">· “{{ \Illuminate\Support\Str::limit($message['ratingNote'], 60) }}”</span>
+            <span class="ms-1 text-xs italic" title="{{ __('Your note') }}">· “{{ \Illuminate\Support\Str::limit($message['ratingNote'], 60) }}”</span>
         @endif
         {{-- A thumbs-down may say what went wrong; the rating is saved with or without the note. --}}
         <form class="fi-chat-note basis-full" x-show="note" x-cloak x-on:submit.prevent="$wire.feedback(@js($message['id']), 'down', $refs.note.value); note = false">

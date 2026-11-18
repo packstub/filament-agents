@@ -41,7 +41,7 @@
         <template x-teleport="body">
             <div class="fi-agent-drawer" x-show="open" x-cloak x-transition.opacity.duration.150ms role="dialog" aria-modal="true" aria-label="{{ Agents::name() }}">
                 <div class="fi-agent-drawer-backdrop" x-on:click="hide()"></div>
-                <div class="fi-agent-drawer-panel" x-show="open" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0">
+                <div class="fi-agent-drawer-panel" x-show="open" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-x-full rtl:-translate-x-full" x-transition:enter-end="translate-x-0">
                     <div class="fi-agent-drawer-head">
                         <span><x-filament::icon icon="heroicon-m-sparkles" /> {{ Agents::name() }}@if ($plugin->getShortcutLabel())<kbd class="fi-agent-drawer-kbd">{{ $plugin->getShortcutLabel() }}</kbd>@endif</span>
                         <span class="fi-agent-drawer-actions">
