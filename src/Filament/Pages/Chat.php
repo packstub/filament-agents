@@ -95,9 +95,12 @@ class Chat extends Page
             app(AgentTurns::class)->startDeferred($conversation, auth()->user());
         }
 
-        if ($prompt = session()->pull('packstub-agents.prompt') ?? request()->query('prompt')) {
+        if ($prompt = session()->pull('packstub-agents.prompt')) {
             $this->prompt = (string) $prompt;
             $this->autoSend = true;
+        } elseif (is_string($prompt = request()->query('prompt')) && $prompt !== '') {
+            // Anyone can craft a link: its question waits in the composer for the person to send.
+            $this->prompt = $prompt;
         }
     }
 

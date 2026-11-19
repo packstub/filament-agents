@@ -48,7 +48,9 @@
             @elseif (($ended['reason'] ?? null) === 'refused')
                 {{ $ended['error'] }}
             @elseif (($ended['status'] ?? null) === \Packstub\Agents\Models\AgentTurn::FAILED)
-                {{ __('The assistant could not answer.') }} {{ $ended['error'] }}
+                {{-- A provider or app exception (`failed`) is the operator's to read in the turn log: its text can name
+                     config keys and is not translated. The engine's own reasons (an interrupted worker) are shown. --}}
+                {{ __('The assistant could not answer.') }} @if (($ended['reason'] ?? null) !== 'failed') {{ $ended['error'] }} @endif
             @else
                 {{ __('The assistant did not answer.') }}
             @endif

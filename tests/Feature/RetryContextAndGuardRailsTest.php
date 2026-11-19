@@ -51,7 +51,8 @@ it('offers Retry under every unanswered question, says why each failed, and answ
 
     $questions = ConversationMessage::query()->where('conversation_id', $conversation->id)->where('role', 'user')->orderBy('id')->get();
     $html = livewire(Chat::class, ['conversation' => $conversation->id])
-        ->assertSee('AI provider [gemini] is overloaded.')
+        ->assertDontSee('AI provider [gemini] is overloaded.')
+        ->assertSee(__('The assistant could not answer.'))
         ->assertSee(__('That question is too long (max :n characters).', ['n' => 30]))
         ->assertSee('Alpha is the cheapest.')
         ->html();

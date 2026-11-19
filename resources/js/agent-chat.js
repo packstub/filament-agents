@@ -137,6 +137,10 @@ export default function agentChat() {
             this.autosize()
             if (state.autoSend && state.prompt.trim() !== '') {
                 this.enqueue(state.prompt.trim())
+            } else if (state.prompt.trim() !== '') {
+                // A ?prompt= link: the question waits in the composer for the person to send.
+                this.$refs.input.value = state.prompt
+                this.autosize()
             } else {
                 this.restoreDraft()
             }

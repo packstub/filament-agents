@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Models\ConversationMessage;
+use Livewire\Livewire;
 use Packstub\Agents\Filament\Pages\Chat;
 use Packstub\Agents\Filament\Pages\Chats;
 use Packstub\Agents\Jobs\RunAgentTurn;
@@ -367,8 +368,11 @@ it('keeps a question the provider could not answer and answers it on retry', fun
     $component = livewire(Chat::class, ['conversation' => $conversation->id])
         ->assertSee('How many widgets are live?')
         ->assertSee(__('The assistant could not answer.'))
-        ->assertSee('AI provider [gemini] is overloaded.')
+        ->assertDontSee('AI provider [gemini] is overloaded.')
         ->assertSee(__('Retry'));
+
+    // The exception's own words stay with the operator, in the turn log.
+    expect(AgentTurn::query()->forConversation($conversation->id)->sole()->error)->toBe('AI provider [gemini] is overloaded.');
 
     expect($component->instance()->messages()->last()['unanswered'])->toBeTrue();
 
@@ -561,4 +565,19 @@ it('lets the app add its own filters and columns to the Chats list', function ()
         ->filterTable('long')
         ->assertCanSeeTableRecords([$long])
         ->assertCanNotSeeTableRecords([$short]);
+});
+
+it('fills the composer from ?prompt= without sending, so a link cannot ask in the person\'s name', function () {
+    actingAs($this->user());
+
+    Livewire::withQueryParams(['prompt' => 'Delete every widget'])->test(Chat::class)
+        ->assertSet('prompt', 'Delete every widget')
+        ->assertSet('autoSend', false);
+
+    $this->withSession(['packstub-agents.prompt' => 'From the app']);
+    livewire(Chat::class)->assertSet('prompt', 'From the app')->assertSet('autoSend', true);
+
+    // The client puts a link's question in the composer instead of the saved draft.
+    expect(file_get_contents(__DIR__.'/../../resources/js/agent-chat.js'))
+        ->toContain("} else if (state.prompt.trim() !== '') {\n                // A ?prompt= link: the question waits in the composer for the person to send.\n                this.\$refs.input.value = state.prompt");
 });
