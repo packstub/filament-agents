@@ -1,14 +1,14 @@
 <?php
 
-namespace Packstub\Agents\Mcp\Tools;
+namespace Packstub\FilamentAgents\Mcp\Tools;
 
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
-use Packstub\Agents\AgentsPlugin;
-use Packstub\Agents\Livewire\AgentTable;
 use Packstub\Agents\Mcp\AgentTool;
 use Packstub\Agents\Support\AgentResources;
+use Packstub\FilamentAgents\AgentsPlugin;
+use Packstub\FilamentAgents\Livewire\AgentTable;
 use RuntimeException;
 
 /**

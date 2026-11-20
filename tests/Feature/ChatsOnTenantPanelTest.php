@@ -2,9 +2,9 @@
 
 use Filament\Facades\Filament;
 use Laravel\Ai\Models\Conversation;
-use Packstub\Agents\Filament\Pages\Chats;
 use Packstub\Agents\Support\AgentConversationStore;
-use Packstub\Agents\Tests\Fixtures\Models\Team;
+use Packstub\FilamentAgents\Pages\Chats;
+use Packstub\FilamentAgents\Tests\Fixtures\Models\Team;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Livewire\livewire;

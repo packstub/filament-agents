@@ -1,6 +1,6 @@
 <?php
 
-namespace Packstub\Agents\Filament\Resources\AgentLimits;
+namespace Packstub\FilamentAgents\Resources\AgentLimits;
 
 use BackedEnum;
 use Filament\Actions\DeleteAction;
@@ -17,9 +17,9 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Packstub\Agents\Facades\Agents;
-use Packstub\Agents\Filament\Resources\AgentLimits\Pages\ManageAgentLimits;
 use Packstub\Agents\Models\AgentLimit;
 use Packstub\Agents\Support\AgentLimits;
+use Packstub\FilamentAgents\Resources\AgentLimits\Pages\ManageAgentLimits;
 
 /**
  * AI limits (the operator panel): the spending guard rails. One global row

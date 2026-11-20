@@ -1,6 +1,6 @@
 <?php
 
-namespace Packstub\Agents\Tests\Fixtures\Tools;
+namespace Packstub\FilamentAgents\Tests\Fixtures\Tools;
 
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;

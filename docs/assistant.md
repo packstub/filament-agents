@@ -73,8 +73,8 @@ Your own controls go in through two render hooks, without publishing the chat vi
 
 ```php
 use Filament\Support\Facades\FilamentView;
-use Packstub\Agents\Filament\ChatRenderHook;
-use Packstub\Agents\Filament\Pages\Chat;
+use Packstub\FilamentAgents\ChatRenderHook;
+use Packstub\FilamentAgents\Pages\Chat;
 
 FilamentView::registerRenderHook(
     ChatRenderHook::COMPOSER_TOOLS_BEFORE,
@@ -94,7 +94,7 @@ The composer is also a Blade component of its own, `<x-packstub-agents::composer
 ```
 
 ```php
-use Packstub\Agents\Filament\Pages\Chat;
+use Packstub\FilamentAgents\Pages\Chat;
 
 public function ask(string $text): void
 {

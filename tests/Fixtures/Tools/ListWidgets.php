@@ -1,6 +1,6 @@
 <?php
 
-namespace Packstub\Agents\Tests\Fixtures\Tools;
+namespace Packstub\FilamentAgents\Tests\Fixtures\Tools;
 
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
@@ -8,8 +8,8 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 use Packstub\Agents\Mcp\AgentTool;
 use Packstub\Agents\Support\AgentResources;
-use Packstub\Agents\Tests\Fixtures\Filament\Resources\Widgets\WidgetResource;
-use Packstub\Agents\Tests\Fixtures\Models\Widget;
+use Packstub\FilamentAgents\Tests\Fixtures\Filament\Resources\Widgets\WidgetResource;
+use Packstub\FilamentAgents\Tests\Fixtures\Models\Widget;
 
 #[IsReadOnly]
 #[Description('Find widgets by name, status and price.')]

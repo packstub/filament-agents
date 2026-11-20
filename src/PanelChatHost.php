@@ -1,6 +1,6 @@
 <?php
 
-namespace Packstub\Agents\Filament;
+namespace Packstub\FilamentAgents;
 
 use Filament\Facades\Filament;
 use Filament\Resources\Resource;
@@ -10,9 +10,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Packstub\Agents\Chat\Hosts\RouteHost;
 use Packstub\Agents\Facades\Agents;
-use Packstub\Agents\Filament\Pages\Chat;
-use Packstub\Agents\Filament\Pages\Chats;
 use Packstub\Agents\Support\AgentResources;
+use Packstub\FilamentAgents\Pages\Chat;
+use Packstub\FilamentAgents\Pages\Chats;
 
 /**
  * The chat inside the panel: its page is the Chat page, its endpoints are

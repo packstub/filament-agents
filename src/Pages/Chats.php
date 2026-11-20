@@ -1,6 +1,6 @@
 <?php
 
-namespace Packstub\Agents\Filament\Pages;
+namespace Packstub\FilamentAgents\Pages;
 
 use BackedEnum;
 use Filament\Actions\Action;
@@ -24,13 +24,13 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Str;
 use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Models\ConversationMessage;
-use Packstub\Agents\AgentsPlugin;
 use Packstub\Agents\Facades\Agents;
 use Packstub\Agents\Models\AgentPinnedConversation;
 use Packstub\Agents\Models\ConversationClassification;
 use Packstub\Agents\Support\AgentChat;
 use Packstub\Agents\Support\AgentConversationStore;
 use Packstub\Agents\Support\AgentModels;
+use Packstub\FilamentAgents\AgentsPlugin;
 
 /**
  * Every conversation the current person had with the assistant in this

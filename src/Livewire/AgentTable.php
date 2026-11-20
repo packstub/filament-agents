@@ -1,6 +1,6 @@
 <?php
 
-namespace Packstub\Agents\Livewire;
+namespace Packstub\FilamentAgents\Livewire;
 
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
@@ -16,9 +16,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
-use Packstub\Agents\AgentsPlugin;
-use Packstub\Agents\Filament\Pages\ResourceTable;
 use Packstub\Agents\Support\AgentResources;
+use Packstub\FilamentAgents\AgentsPlugin;
+use Packstub\FilamentAgents\Pages\ResourceTable;
 
 /**
  * A resource's table for a show-table answer. It IS the resource's table() —

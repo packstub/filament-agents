@@ -1,7 +1,7 @@
 <?php
 
-use Packstub\Agents\Filament\Pages\Chat;
-use Packstub\Agents\Tests\Fixtures\Livewire\AskBox;
+use Packstub\FilamentAgents\Pages\Chat;
+use Packstub\FilamentAgents\Tests\Fixtures\Livewire\AskBox;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Livewire\livewire;

@@ -1,6 +1,6 @@
 <?php
 
-namespace Packstub\Agents\Tests;
+namespace Packstub\FilamentAgents\Tests;
 
 use Packstub\Agents\Chat\ChatView;
 

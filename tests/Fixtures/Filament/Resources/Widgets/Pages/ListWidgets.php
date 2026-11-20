@@ -1,9 +1,9 @@
 <?php
 
-namespace Packstub\Agents\Tests\Fixtures\Filament\Resources\Widgets\Pages;
+namespace Packstub\FilamentAgents\Tests\Fixtures\Filament\Resources\Widgets\Pages;
 
 use Filament\Resources\Pages\ListRecords;
-use Packstub\Agents\Tests\Fixtures\Filament\Resources\Widgets\WidgetResource;
+use Packstub\FilamentAgents\Tests\Fixtures\Filament\Resources\Widgets\WidgetResource;
 
 class ListWidgets extends ListRecords
 {

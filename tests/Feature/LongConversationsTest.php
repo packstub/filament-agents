@@ -8,12 +8,12 @@ use Laravel\Ai\Messages\AssistantMessage;
 use Laravel\Ai\Messages\MessageRole;
 use Laravel\Ai\Messages\ToolResultMessage;
 use Laravel\Ai\Models\Conversation;
-use Packstub\Agents\AgentsPlugin;
-use Packstub\Agents\Filament\Pages\Chat;
 use Packstub\Agents\Models\AgentTurn;
 use Packstub\Agents\Models\ConversationSummary;
 use Packstub\Agents\Support\AgentConversationStore;
-use Packstub\Agents\Tests\Fixtures\WidgetAgent;
+use Packstub\FilamentAgents\AgentsPlugin;
+use Packstub\FilamentAgents\Pages\Chat;
+use Packstub\FilamentAgents\Tests\Fixtures\WidgetAgent;
 
 use function Pest\Laravel\actingAs;
 

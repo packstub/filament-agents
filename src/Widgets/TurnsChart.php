@@ -1,10 +1,10 @@
 <?php
 
-namespace Packstub\Agents\Filament\Widgets;
+namespace Packstub\FilamentAgents\Widgets;
 
 use Filament\Widgets\ChartWidget;
-use Packstub\Agents\Filament\Pages\TurnLog;
 use Packstub\Agents\Models\AgentTurn;
+use Packstub\FilamentAgents\Pages\TurnLog;
 
 /** Turns per day over the last two weeks, done against failed, over the AI turns table. */
 class TurnsChart extends ChartWidget

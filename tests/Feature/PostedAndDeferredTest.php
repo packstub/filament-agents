@@ -2,15 +2,15 @@
 
 use Illuminate\Support\Facades\Queue;
 use Laravel\Ai\Models\ConversationMessage;
-use Packstub\Agents\Filament\Pages\Chat;
-use Packstub\Agents\Filament\Pages\TurnLog;
 use Packstub\Agents\Jobs\RunAgentTurn;
 use Packstub\Agents\Models\AgentLimit;
 use Packstub\Agents\Models\AgentTurn;
 use Packstub\Agents\Support\AgentConversationStore;
 use Packstub\Agents\Support\AgentLimits;
 use Packstub\Agents\Support\AgentTurns;
-use Packstub\Agents\Tests\Fixtures\WidgetAgent;
+use Packstub\FilamentAgents\Pages\Chat;
+use Packstub\FilamentAgents\Pages\TurnLog;
+use Packstub\FilamentAgents\Tests\Fixtures\WidgetAgent;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Livewire\livewire;

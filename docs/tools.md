@@ -120,7 +120,7 @@ namespace App\Mcp\Servers;
 use App\Mcp\Tools;
 use Packstub\Agents\Mcp\AgentServer;
 use Packstub\Agents\Mcp\Tools\DrawChart;
-use Packstub\Agents\Mcp\Tools\ShowTable;
+use Packstub\FilamentAgents\Mcp\Tools\ShowTable;
 
 class AcmeServer extends AgentServer
 {

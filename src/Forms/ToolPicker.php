@@ -1,6 +1,6 @@
 <?php
 
-namespace Packstub\Agents\Filament\Forms;
+namespace Packstub\FilamentAgents\Forms;
 
 use Closure;
 use Filament\Forms\Components\Field;

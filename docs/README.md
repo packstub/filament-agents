@@ -49,7 +49,7 @@ php artisan packstub-agents:tool SearchOrders --ability=orders.view
 ```
 
 ```php
-use Packstub\Agents\AgentsPlugin;
+use Packstub\FilamentAgents\AgentsPlugin;
 
 ->plugin(
     AgentsPlugin::make()

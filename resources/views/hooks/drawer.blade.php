@@ -1,7 +1,7 @@
 @php
-    use Packstub\Agents\AgentsPlugin;
+    use Packstub\FilamentAgents\AgentsPlugin;
     use Packstub\Agents\Facades\Agents;
-    use Packstub\Agents\Filament\Pages\Chat;
+    use Packstub\FilamentAgents\Pages\Chat;
     use Packstub\Agents\Support\AgentModels;
 
     $plugin = AgentsPlugin::current();

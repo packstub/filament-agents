@@ -1,6 +1,6 @@
 <?php
 
-namespace Packstub\Agents\Tests\Fixtures;
+namespace Packstub\FilamentAgents\Tests\Fixtures;
 
 /** The app's authorization, as tests see it: a list of abilities the current person has, plus a role label. */
 class Abilities

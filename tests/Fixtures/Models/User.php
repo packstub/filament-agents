@@ -1,6 +1,6 @@
 <?php
 
-namespace Packstub\Agents\Tests\Fixtures\Models;
+namespace Packstub\FilamentAgents\Tests\Fixtures\Models;
 
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;

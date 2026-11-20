@@ -59,7 +59,7 @@ The install command publishes the config, offers to run the migrations and scaff
 Register the plugin in your panel provider and put a provider key in `.env` (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` or `XAI_API_KEY`, with `AGENT_PROVIDER=anthropic|openai|gemini|xai`):
 
 ```php
-use Packstub\Agents\AgentsPlugin;
+use Packstub\FilamentAgents\AgentsPlugin;
 
 ->plugin(
     AgentsPlugin::make()
@@ -124,7 +124,7 @@ class AcmeServer extends \Packstub\Agents\Mcp\AgentServer
 
     protected array $tools = [
         Tools\SearchOrders::class,
-        \Packstub\Agents\Mcp\Tools\ShowTable::class,
+        \Packstub\FilamentAgents\Mcp\Tools\ShowTable::class,
         \Packstub\Agents\Mcp\Tools\DrawChart::class,
         Tools\ConfirmOrder::class,
     ];

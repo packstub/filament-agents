@@ -1,7 +1,7 @@
 @php
     use Packstub\Agents\Facades\Agents;
-    use Packstub\Agents\Filament\Pages\Chat;
-    use Packstub\Agents\Filament\Pages\Chats;
+    use Packstub\FilamentAgents\Pages\Chat;
+    use Packstub\FilamentAgents\Pages\Chats;
     use Packstub\Agents\Support\AgentChat;
     use Packstub\Agents\Support\AgentConversationStore;
     use Packstub\Agents\Support\AgentModels;
