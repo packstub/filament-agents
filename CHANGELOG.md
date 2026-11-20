@@ -6,6 +6,7 @@ All notable changes to `packstub/filament-agents` are documented here.
 
 - Security: a `?prompt=` link only fills the chat box (the composer shows it); the person sends it. A question an app hands over through the session is still sent on its own
 - A failed answer no longer shows the person the provider's raw error (it can name config keys); operators still read it in the turn log
+- When you lose access to a workspace mid-answer, the chat says so instead of a bare "could not answer" (with `packstub/agents` from the same release)
 
 ## 1.19.0 — 2026-11-18
 

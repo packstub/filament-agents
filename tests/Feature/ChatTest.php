@@ -578,6 +578,7 @@ it('fills the composer from ?prompt= without sending, so a link cannot ask in th
     livewire(Chat::class)->assertSet('prompt', 'From the app')->assertSet('autoSend', true);
 
     // The client puts a link's question in the composer instead of the saved draft.
+    // Matched on the code, not its layout: any indentation, with or without the comment.
     expect(file_get_contents(__DIR__.'/../../resources/js/agent-chat.js'))
-        ->toContain("} else if (state.prompt.trim() !== '') {\n                // A ?prompt= link: the question waits in the composer for the person to send.\n                this.\$refs.input.value = state.prompt");
+        ->toMatch('/else\s+if\s*\(\s*state\.prompt\.trim\(\)\s*!==\s*\'\'\s*\)\s*\{\s*(\/\/[^\n]*\s*)*this\.\$refs\.input\.value\s*=\s*state\.prompt\b/');
 });
