@@ -59,7 +59,7 @@ it('streams a chat into a persisted conversation and records feedback', function
         ->toContain('fi-chat-answer-tool" title="'.__('Not helpful').'"')
         ->not->toContain('fi-chat-answer-tool" title="'.__('Helpful').'"')
         ->toMatch('/fi-chat-answer-tool[^>]*title="'.preg_quote(__('Regenerate'), '/').'"/')
-        ->toMatch('/fi-chat-answer-tool fi-chat-foot-note">\d\d:\d\d</');
+        ->toMatch('/fi-chat-answer-tool fi-chat-foot-note">(<!--.*?-->)?<time datetime="[^"]+" data-agents-time>\d\d:\d\d</');
 
     livewire(Chats::class)->assertCanSeeTableRecords([$conversation]);
 

@@ -74,7 +74,7 @@ $schema = AgentResources::filterSchema($schema, 'orders');   // for the tool's s
 
 ## show-table
 
-Add `Packstub\FilamentAgents\Mcp\Tools\ShowTable` to the tool list. Its description and schema are generated from the resources: the `table` argument is an enum of the agent keys, `filters` is the union of every table's vocabulary (each key described per table), and `title` is an optional caption.
+Add `Packstub\FilamentAgents\Mcp\Tools\ShowTable` to the tool list. Its description and schema are generated from the resources: the `table` argument is an enum of the agent keys, `filters` is the union of every table's vocabulary (each key described per table), `title` is an optional caption, and `limit` is the number of rows when the person asked for one ("the latest 2 orders"): the first rows in the table's own order, with the link to the whole result under them.
 
 When the model calls it, the tool checks `canViewAny()` on the resource, normalizes the filters, counts the rows and returns the total plus a note telling the model that a table is rendered under the answer. The chat then embeds the resource's own `table()`, with the resource's query narrowed by the filters as the base query, so the person gets the same columns, formatting, sorting and row actions their role allows on the list page.
 
@@ -86,6 +86,8 @@ AgentsPlugin::make()
 ```
 
 `search` and `filters` bring the resource's own search box and filter button back into the answer's table (they start hidden: the assistant chose the filters and the answer says what the table shows); `limit` is the cap. The tool tells the model which case it is in, so its sentence under the table can say "the first 25 of 37".
+
+Outside the panel, on a page of your own that renders `<x-agents-chat />`, the Filament table cannot run: the answer shows the same rows read-only instead (the resource's query and the table's default order, the columns of `agentSummary()`, the first one linked to the record), with the link to the full table in the panel.
 
 The generic answering rules tell the model to use `show-table` whenever someone wants to see or work through records ("show me", "list", more than a handful of rows) and to use the search tools when it needs the data itself.
 

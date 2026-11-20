@@ -36,7 +36,7 @@ use Packstub\FilamentAgents\Pages\ResourceTable;
  *
  * What the component shows is decided on the server when it is mounted (the
  * stored tool result, or the ResourceTable page after normalizing the URL),
- * so the four properties are locked: a Livewire request from the browser
+ * so the five properties are locked: a Livewire request from the browser
  * cannot swap the resource, flip the full view, change the caption or send
  * filter values that skipped normalization to the resource's filter closures.
  * The ability is still checked on every request, in table().
@@ -59,6 +59,10 @@ class AgentTable extends Component implements HasActions, HasSchemas, HasTable
 
     #[Locked]
     public string $title = '';
+
+    /** The first rows only, when the person asked for a number of them ("the latest two"); null shows the result up to the cap. */
+    #[Locked]
+    public ?int $limit = null;
 
     /** The whole result with the list page's controls (the ResourceTable page), not the compact table of an answer. */
     #[Locked]
@@ -156,7 +160,9 @@ class AgentTable extends Component implements HasActions, HasSchemas, HasTable
     /** How many rows an answer shows before it links to the full table. */
     public function limit(): int
     {
-        return max(1, AgentsPlugin::current()?->getEmbeddedTableLimit() ?? self::DEFAULT_LIMIT);
+        $cap = max(1, AgentsPlugin::current()?->getEmbeddedTableLimit() ?? self::DEFAULT_LIMIT);
+
+        return $this->limit === null ? $cap : max(1, min($cap, $this->limit));
     }
 
     /** Where the whole result opens, when the answer shows only its first rows; null when they are all here. */

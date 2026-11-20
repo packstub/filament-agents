@@ -113,7 +113,8 @@ class PanelChatHost extends RouteHost
     public function embedView(string $kind): ?string
     {
         if (! $this->inPanel()) {
-            return parent::embedView($kind);
+            // Outside the panel the resource's Filament table cannot run: the same rows, read-only.
+            return $kind === 'table' ? 'packstub-agents::embeds.plain-table' : parent::embedView($kind);
         }
 
         return match ($kind) {
@@ -142,5 +143,11 @@ class PanelChatHost extends RouteHost
     public function notifies(): bool
     {
         return $this->inPanel() ? true : parent::notifies();
+    }
+
+    /** The slide-over's head has the button: it opens the chat that is on screen. */
+    public function linksFullPage(): bool
+    {
+        return $this->inPanel() ? true : parent::linksFullPage();
     }
 }
