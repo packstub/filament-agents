@@ -6,6 +6,7 @@ use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
+use Livewire\Attributes\Locked;
 use Packstub\Agents\Chat\ChatPresenter;
 use Packstub\Agents\Chat\ChatView;
 use Packstub\Agents\Support\AgentModels;
@@ -30,11 +31,14 @@ class Chat extends Page
 
     protected string $view = 'packstub-agents::pages.chat';
 
+    #[Locked]
     public ?string $conversation = null;
 
+    #[Locked]
     public ?string $context = null;
 
     /** The page rendered without the panel's chrome, inside the slide-over. */
+    #[Locked]
     public bool $embedded = false;
 
     /** The chat as it was opened, for the first render. */
