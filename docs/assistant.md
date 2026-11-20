@@ -105,7 +105,7 @@ public function ask(string $text): void
 }
 ```
 
-`?prompt=` on the chat page's URL does the same (`Chat::getUrl(['prompt' => $text])`), and `?context=orders/12` opens it about a record. The model picker (`:models`, on by default) sets the host's `model` property with `$set`, so give the host `public string $model = 'auto'` or turn the picker off. The field is cleared once the host's method has returned, so a question the host refused stays in the box.
+`?prompt=` on the chat page's URL (`Chat::getUrl(['prompt' => $text])`) only fills the composer — anyone can craft a link, so the person sends it — and `?context=orders/12` opens it about a record. The model picker (`:models`, on by default) sets the host's `model` property with `$set`, so give the host `public string $model = 'auto'` or turn the picker off. The field is cleared once the host's method has returned, so a question the host refused stays in the box.
 
 The transcript is a live region for screen readers (new answers are announced), the rating buttons say whether they are pressed, and every icon button has a label.
 

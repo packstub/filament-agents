@@ -2,6 +2,11 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## Unreleased
+
+- Security: a `?prompt=` link only fills the chat box (the composer shows it); the person sends it. A question an app hands over through the session is still sent on its own
+- A failed answer no longer shows the person the provider's raw error (it can name config keys); operators still read it in the turn log
+
 ## 1.19.0 — 2026-11-18
 
 Chats stay in the workspace they were started in, and the panel speaks Hebrew and Arabic.
