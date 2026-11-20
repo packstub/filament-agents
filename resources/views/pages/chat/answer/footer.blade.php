@@ -58,8 +58,9 @@
             <span class="ms-1 text-xs" title="{{ __('Posted by :name, not written by the model.', ['name' => \Packstub\Agents\Facades\Agents::name()]) }}">· {{ __('(posted)') }}</span>
         @endif
         @if ($message['failed'])
-            {{-- The provider gave up midway: what arrived is kept, the error says why; Regenerate produces the answer again. --}}
-            <span class="ms-1 text-xs text-danger-600 dark:text-danger-400" title="{{ $message['error'] }}">· {{ __('(interrupted)') }}</span>
+            {{-- The provider gave up midway: what arrived is kept; Regenerate produces the answer again. The provider's own
+                 error stays with the operator, in the turn log. --}}
+            <span class="ms-1 text-xs text-danger-600 dark:text-danger-400">· {{ __('(interrupted)') }}</span>
         @endif
         @if ($message['cutShort'])
             {{-- The provider ended the answer early; Regenerate (above, on the last answer) produces it again, Continue carries on. --}}
