@@ -10,7 +10,6 @@ use Packstub\Agents\Support\AgentModels;
 use Packstub\Agents\Tests\Fixtures\WidgetAgent;
 
 use function Pest\Laravel\actingAs;
-use function Pest\Livewire\livewire;
 
 it('ships picker entries for Gemini and xAI', function () {
     // The models and efforts are the made-up catalog tests/TestCase.php pins, not the shipped defaults.
@@ -101,7 +100,7 @@ it('offers entries of more than one provider on one picker', function () {
     expect(AgentModels::current())->toBe('flash');
     actingAs($this->user());
     // The model list of the composer: the entries under provider headings, the remembered one ticked.
-    livewire(Chat::class)->assertSee('Gemini Flash')->assertSeeInOrder(['fi-dropdown-header', 'Anthropic', 'fi-dropdown-header', 'Gemini', 'fi-agent-composer-model-picked', 'Gemini Flash'])->assertDontSee('GPT');
+    chat()->assertSee('Gemini Flash')->assertSeeInOrder(['fi-dropdown-header', 'Anthropic', 'fi-dropdown-header', 'Gemini', 'fi-agent-composer-model-picked', 'Gemini Flash'])->assertDontSee('GPT');
 
     // The chat is on as long as some listed entry has a key.
     config(['packstub-agents.enabled' => null, 'ai.providers.anthropic.key' => null]);
@@ -178,7 +177,7 @@ it('names an entry without a label after its model', function () {
     ])->and(AgentModels::groups()['gemini'])->toHaveKeys(['flash', 'best']);
 
     actingAs($this->user());
-    livewire(Chat::class)->assertSee('Claude Opus 5 · Deep')->assertDontSee('>Deep<');
+    chat()->assertSee('Claude Opus 5 · Deep')->assertDontSee('>Deep<');
 });
 
 it('runs any other laravel/ai provider on its smartest and cheapest models', function () {

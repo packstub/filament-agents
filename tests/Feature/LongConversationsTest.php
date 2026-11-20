@@ -16,7 +16,6 @@ use Packstub\Agents\Support\AgentConversationStore;
 use Packstub\Agents\Tests\Fixtures\WidgetAgent;
 
 use function Pest\Laravel\actingAs;
-use function Pest\Livewire\livewire;
 
 /** A conversation of $turns question/answer pairs; every answer called a tool that returned $resultBytes of JSON. */
 function longChat(object $user, int $turns, int $resultBytes = 400): string
@@ -186,7 +185,7 @@ it('shows the context ring from meter_share on, with the breakdown and the turn 
 
     // A short chat in a wide window: the composer is clean.
     config(['packstub-agents.history.max_tokens' => 24000]);
-    $component = livewire(Chat::class, ['conversation' => $id])->assertDontSee('fi-chat-ring');
+    $component = chat(['conversation' => $id])->assertDontSee('fi-chat-ring');
     expect($component->instance()->history()['meter'])->toBeFalse();
 
     // Lower the threshold: the ring shows, with the estimate and what fills the window.
@@ -210,7 +209,7 @@ it('shows the context ring from meter_share on, with the breakdown and the turn 
     $turn(['prompt_tokens' => 2000, 'cache_read_input_tokens' => 500, 'completion_tokens' => 150, 'reasoning_tokens' => 50], ['list_widgets', 'show_table'], 62000);
     AgentTurn::query()->create(['id' => (string) Str::uuid7(), 'conversation_id' => $id, 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id, 'status' => AgentTurn::QUEUED, 'input' => ['prompt' => 'Later']]);
 
-    $component = livewire(Chat::class, ['conversation' => $id])
+    $component = chat(['conversation' => $id])
         ->assertSee('fi-chat-ring')
         ->assertSee(__('History window'))
         ->assertSee(__('This chat so far'))
@@ -236,7 +235,7 @@ it('compresses a chat in place, keeping the last exchanges verbatim', function (
 
     WidgetAgent::fake(['Questions 1 to 4 asked for the live count; answers 1 to 4.']);
 
-    livewire(Chat::class, ['conversation' => $id])->call('compressNow')->assertNotified(__('Older messages were compressed'));
+    chat(['conversation' => $id])->call('compressNow')->assertNotified(__('Older messages were compressed'));
 
     $summary = ConversationSummary::query()->where('conversation_id', $id)->firstOrFail();
     $messages = $store->getLatestConversationMessages($id, 40);
@@ -261,7 +260,7 @@ it('compresses a chat in place, keeping the last exchanges verbatim', function (
     // On the page the failure is a notification, and nothing is compressed while a turn runs.
     WidgetAgent::fake([]);
     AgentTurn::query()->create(['id' => (string) Str::uuid7(), 'conversation_id' => $id, 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id, 'status' => AgentTurn::QUEUED, 'input' => ['prompt' => 'Later']]);
-    livewire(Chat::class, ['conversation' => $id])->call('compressNow')->assertNotNotified();
+    chat(['conversation' => $id])->call('compressNow')->assertNotNotified();
 });
 
 it('mirrors the history settings of the plugin into config', function () {
@@ -285,7 +284,7 @@ it('continues a long chat in a new one that starts from a summary', function () 
 
     WidgetAgent::fake(['Widgets 1 to 6 were live; the person kept asking for the live count.']);
 
-    $component = livewire(Chat::class, ['conversation' => $id])
+    $component = chat(['conversation' => $id])
         ->assertSee('fi-chat-ring-fill-high')
         ->assertSee(__('This chat is getting long — answers stay sharpest in a new one.'))
         ->assertSee(__('Continue in a new chat'));
@@ -302,7 +301,7 @@ it('continues a long chat in a new one that starts from a summary', function () 
         ->and($summary->through_message_id)->toBeNull()
         ->and($summary->content)->toContain('Widgets 1 to 6 were live');
 
-    livewire(Chat::class, ['conversation' => $new->id])
+    chat(['conversation' => $new->id])
         ->assertSee(__('Continued from'))
         ->assertSee('Long one');
 

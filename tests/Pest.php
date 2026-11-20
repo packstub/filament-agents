@@ -1,7 +1,9 @@
 <?php
 
 use Packstub\Agents\Support\AgentConversationStore;
+use Packstub\Agents\Tests\ChatTester;
 use Packstub\Agents\Tests\TestCase;
+use Pest\TestSuite;
 
 pest()->extend(TestCase::class)->in('Feature');
 
@@ -19,4 +21,16 @@ function legacyRow(array $row): array
     unset($row['tool_calls'], $row['tool_results'], $row['approval_state']);
 
     return $row + ['steps' => $steps, 'status' => $status];
+}
+
+/**
+ * The panel's chat, driven over HTTP as the browser drives it (ChatTester): the page is opened, then every action is
+ * a request to the panel's chat endpoints.
+ *
+ * @param  array<string, mixed>  $parameters  the page's route parameters (conversation)
+ * @param  array<string, mixed>  $query  its query string (context, embedded, prompt)
+ */
+function chat(array $parameters = [], array $query = []): ChatTester
+{
+    return new ChatTester(TestSuite::getInstance()->test, $parameters, $query);
 }

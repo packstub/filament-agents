@@ -7,7 +7,6 @@ use Laravel\Mcp\Request;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 use Packstub\Agents\AgentsPlugin;
-use Packstub\Agents\Filament\Pages\Chat;
 use Packstub\Agents\Filament\Pages\ResourceTable;
 use Packstub\Agents\Filters\Filter;
 use Packstub\Agents\Livewire\AgentTable;
@@ -90,7 +89,7 @@ it('embeds a live resource table in the chat with the resource\'s own actions', 
         'tool_results' => [['id' => 'call_t', 'name' => 'show-table', 'result' => json_encode($payload)]],
     ]));
 
-    livewire(Chat::class, ['conversation' => $conversation->id])
+    chat(['conversation' => $conversation->id])
         ->assertSee('Two widgets are live.')
         ->assertSee('Live ones')
         ->assertSee('Alpha')
@@ -248,7 +247,7 @@ it('validates drawn charts and renders a chart from a stored tool result', funct
         'tool_results' => [['id' => 'call_1', 'name' => 'draw-chart', 'result' => json_encode($payload)]],
     ]));
 
-    livewire(Chat::class, ['conversation' => $conversation->id])
+    chat(['conversation' => $conversation->id])
         ->assertSee('Here are the prices.')
         ->assertSeeHtml('x-ref="canvas"')
         ->assertSee('Prices');

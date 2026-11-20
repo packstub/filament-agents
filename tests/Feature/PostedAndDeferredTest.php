@@ -27,14 +27,14 @@ it('starts a deferred first turn when its owner opens the chat, once, on the pan
 
     // Someone else cannot open it; nothing starts.
     actingAs($this->user());
-    livewire(Chat::class, ['conversation' => $conversation])->assertNotFound();
+    chat(['conversation' => $conversation])->assertNotFound();
     expect($deferred->fresh()->status)->toBe(AgentTurn::DEFERRED);
 
     // The owner opens it: the turn goes to the queue as this request — the panel, the guard, the person — and the page
     // attaches to it, the question shown with no Retry.
     actingAs($user);
     Queue::fake();
-    $page = livewire(Chat::class, ['conversation' => $conversation])
+    $page = chat(['conversation' => $conversation])
         ->assertSee('Let us close September.')
         ->assertDontSee(__('Retry'))
         ->assertSee('data-active="'.$deferred->id.'"', escape: false);
@@ -46,14 +46,14 @@ it('starts a deferred first turn when its owner opens the chat, once, on the pan
         && $job->runtime === ['panel' => 'admin', 'guard' => 'web', 'tenant' => null, 'user' => $user->id, 'locale' => 'en']);
 
     // A second tab, or a reload, starts nothing more.
-    livewire(Chat::class, ['conversation' => $conversation]);
+    chat(['conversation' => $conversation]);
     Queue::assertPushed(RunAgentTurn::class, 1);
 
     WidgetAgent::fake(['September is ready to close.']);
     Queue::pushed(RunAgentTurn::class)->first()->handle($turns);
     expect($deferred->fresh()->status)->toBe(AgentTurn::DONE)
         ->and(ConversationMessage::query()->where('conversation_id', $conversation)->orderBy('id')->pluck('role')->all())->toBe(['user', 'assistant']);
-    livewire(Chat::class, ['conversation' => $conversation])->assertSee('September is ready to close.');
+    chat(['conversation' => $conversation])->assertSee('September is ready to close.');
 
     // Another conversation deferred for them, opened when the workspace's answers for the day are used up: the budget is
     // checked now, the turn stays deferred with the reason under the question, and the next open tries again.
@@ -63,7 +63,7 @@ it('starts a deferred first turn when its owner opens the chat, once, on the pan
     AgentLimits::flush();
 
     $refusal = __('This workspace reached today\'s limit of :n answers. It resets at midnight.', ['n' => 1]);
-    $page = livewire(Chat::class, ['conversation' => $other])
+    $page = chat(['conversation' => $other])
         ->assertSee('And October?')
         ->assertSee($refusal)
         ->assertSee(__('It will be answered the next time you open this chat.'))
@@ -84,7 +84,7 @@ it('starts a deferred first turn when its owner opens the chat, once, on the pan
     AgentLimit::query()->delete();
     AgentLimits::flush();
     actingAs($user);
-    livewire(Chat::class, ['conversation' => $other])->assertDontSee($refusal);
+    chat(['conversation' => $other])->assertDontSee($refusal);
     expect($waiting->fresh()->status)->toBe(AgentTurn::PENDING)->and($waiting->fresh()->error)->toBeNull();
     Queue::assertPushed(RunAgentTurn::class, 2);
 });
@@ -97,7 +97,7 @@ it('shows a message the app posted as an answer, marked posted, with nothing to 
     $messageId = $store->storePostedMessage($conversation, $user, "**Two invoices** are due this week.\n\nShall I draft the reminders?");
 
     actingAs($user);
-    $page = livewire(Chat::class, ['conversation' => $conversation])
+    $page = chat(['conversation' => $conversation])
         ->assertSee('Monday digest')
         ->assertSee('Two invoices')
         ->assertSee(__('(posted)'))
@@ -111,7 +111,7 @@ it('shows a message the app posted as an answer, marked posted, with nothing to 
     // The reply reads it: the model's answer follows, and the posted one is still not an answer to produce again.
     WidgetAgent::fake(['Drafting them now.']);
     $page->call('send', 'Yes, please.');
-    $messages = livewire(Chat::class, ['conversation' => $conversation])->assertSee('Drafting them now.')->instance()->messages();
+    $messages = chat(['conversation' => $conversation])->assertSee('Drafting them now.')->instance()->messages();
     expect($messages->pluck('posted')->all())->toBe([true, false, false])
         ->and($messages->last()['regenerable'])->toBeTrue();
 

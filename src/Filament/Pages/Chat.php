@@ -3,48 +3,25 @@
 namespace Packstub\Agents\Filament\Pages;
 
 use BackedEnum;
-use Closure;
-use Filament\Facades\Filament;
-use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
-use InvalidArgumentException;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
-use Livewire\WithFileUploads;
-use Packstub\Agents\Facades\Agents;
-use Packstub\Agents\Filament\FilamentContext;
-use Packstub\Agents\Models\AgentTurn;
-use Packstub\Agents\Support\AgentAttachments;
-use Packstub\Agents\Support\AgentChat;
+use Packstub\Agents\Chat\ChatPresenter;
+use Packstub\Agents\Chat\ChatView;
 use Packstub\Agents\Support\AgentModels;
-use Packstub\Agents\Support\AgentResources;
-use Packstub\Agents\Support\AgentTurns;
-use Symfony\Component\HttpFoundation\StreamedResponse;
-use Throwable;
 
 /**
- * One conversation with the assistant: the panel's surface over the engine's
- * AgentChat. A question becomes a turn on the conversation; the RunAgentTurn
- * job produces the answer while the page listens to the turn's event stream
- * (and polls when it cannot), so the answer keeps coming when the page is
- * reloaded, reopened or open in a second tab, and can be stopped. A proposed
- * change shows up as a card with Approve / Reject, and the decision is a turn
- * of its own. Messages are read back from the database on every render.
- * This class holds what only the panel knows: the URL, the routes, the
- * uploads, the notifications and the redirects. With ?embedded=1 the page
- * renders without the panel's chrome, for the slide-over the "Ask …"
- * button opens over any page.
+ * One conversation with the assistant, in the panel. The chat itself is the
+ * engine's (Packstub\Agents\Chat): views, an Alpine component and HTTP
+ * endpoints the plugin registers on the panel's authenticated routes, with
+ * no Livewire in between. This page is what only the panel knows: the URL,
+ * the title, the layout. It renders the chat once and never again (the chat
+ * keeps itself up to date), so nothing here is a Livewire action. With
+ * ?embedded=1 the page renders without the panel's chrome, for the
+ * slide-over the "Ask …" button opens over any page.
  */
 class Chat extends Page
 {
-    use WithFileUploads;
-
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSparkles;
 
     protected static bool $shouldRegisterNavigation = false;
@@ -55,53 +32,30 @@ class Chat extends Page
 
     public ?string $conversation = null;
 
-    public string $prompt = '';
-
-    public string $model = 'auto';
-
     public ?string $context = null;
-
-    public bool $autoSend = false;
 
     /** The page rendered without the panel's chrome, inside the slide-over. */
     public bool $embedded = false;
 
-    /** @var list<TemporaryUploadedFile> the files picked in the composer, sent with the next question */
-    public array $attachments = [];
-
-    /** The note typed under a thumbs-down, keyed by message id. */
-    public array $feedbackNote = [];
-
-    protected ?AgentChat $chat = null;
+    /** The chat as it was opened, for the first render. */
+    protected ?ChatView $chatView = null;
 
     public static function canAccess(): bool
     {
         return AgentModels::enabled();
     }
 
+    /**
+     * Another person's conversation is not found; a first question the app held back starts now; a question the
+     * app left in the session is sent on load, one from the URL (?prompt=) waits in the composer.
+     */
     public function mount(?string $conversation = null): void
     {
-        $this->model = AgentModels::current();
-        $this->context = request()->query('context');
+        $this->conversation = $conversation;
+        $this->context = is_string($context = request()->query('context')) ? $context : null;
         $this->embedded = (bool) request()->query('embedded');
 
-        if ($conversation) {
-            // Checked on a chat without the conversation: the engine refuses another person's conversation as not found.
-            abort_unless(AgentChat::for(auth()->user())->owns($conversation), 404);
-            $this->conversation = $conversation;
-            $this->chat = null;
-            // A conversation the app opened for this person with its first question held back: the turn starts now,
-            // once, on this panel and under the budget as it stands (a refusal is read under the question).
-            app(AgentTurns::class)->startDeferred($conversation, auth()->user());
-        }
-
-        if ($prompt = session()->pull('packstub-agents.prompt')) {
-            $this->prompt = (string) $prompt;
-            $this->autoSend = true;
-        } elseif (is_string($prompt = request()->query('prompt')) && $prompt !== '') {
-            // Anyone can craft a link: its question waits in the composer for the person to send.
-            $this->prompt = $prompt;
-        }
+        $this->chatView = ChatView::open($conversation, $this->context, $this->embedded, is_string($prompt = request()->query('prompt')) ? $prompt : null);
     }
 
     /** Inside the slide-over the page has no sidebar, topbar or breadcrumbs. */
@@ -110,15 +64,21 @@ class Chat extends Page
         return $this->embedded ? 'filament-panels::components.layout.base' : parent::getLayout();
     }
 
-    /** The engine's chat for this person, conversation, model and context (one per request). */
-    protected function chat(): AgentChat
+    /** The chat for this page. After the first render (a Livewire request of the page's own) it is read again from what the page was opened with. */
+    protected function chatView(): ChatView
     {
-        return $this->chat ??= AgentChat::for(auth()->user(), $this->conversation, $this->model, $this->context);
+        return $this->chatView ??= ChatView::make($this->conversation, null, $this->context, $this->embedded);
+    }
+
+    /** The engine's chat, rendered: see resources/views/pages/chat.blade.php. */
+    public function chatHtml(): string
+    {
+        return $this->chatView()->render();
     }
 
     public function getTitle(): string|Htmlable
     {
-        return $this->conversation ? (string) ($this->chat()->title() ?? __('Chat')) : __('New chat');
+        return $this->chatView()->title();
     }
 
     public function getHeading(): string|Htmlable
@@ -126,478 +86,25 @@ class Chat extends Page
         return '';
     }
 
-    public function contextLabel(): ?string
-    {
-        return $this->chat()->contextLabel();
-    }
-
-    /** The page of the record the chat is about, for the header to link it. */
-    public function contextUrl(): ?string
-    {
-        return $this->chat()->contextUrl();
-    }
-
-    /** @return list<string> */
-    public function suggestions(): array
-    {
-        return $this->chat()->suggestions();
-    }
-
-    /** @return Collection<int, array<string, mixed>> */
-    public function messages(): Collection
-    {
-        return $this->chat()->messages();
-    }
-
-    /** @return array{active: ?array, queued: list<array>, held: array, ended: ?array, deferred: ?array} */
-    public function live(): array
-    {
-        return $this->chat()->live();
-    }
-
-    public function idle(): bool
-    {
-        return $this->chat()->idle();
-    }
-
-    public function pinned(): bool
-    {
-        return $this->chat()->pinned();
-    }
-
-    /** Where the page polls the running turn (null before the first question of a new chat). */
-    public function pollUrl(): ?string
-    {
-        return $this->routeUrl('packstub-agents.turn');
-    }
-
-    /** Where the page listens for the running turn's events (the same state, pushed). */
-    public function streamUrl(): ?string
-    {
-        return $this->routeUrl('packstub-agents.stream');
-    }
-
-    protected function routeUrl(string $name): ?string
-    {
-        if (! $this->conversation || ! ($panel = app(FilamentContext::class)->panel())) {
-            return null;
-        }
-
-        return $panel->route($name, array_filter(['conversation' => $this->conversation, 'tenant' => Filament::getTenant()]));
-    }
-
-    /**
-     * Where New chat goes. In the slide-over it stays about the record the chat is about (the context it was opened
-     * with, or its conversation's), as the slide-over of a record page opens; on the full page it starts afresh.
-     */
-    public function newChatUrl(): string
-    {
-        if (! $this->embedded) {
-            return static::getUrl();
-        }
-
-        $context = $this->context ?? ($this->conversation ? $this->chat()->context() : null);
-
-        return static::getUrl(array_filter(['embedded' => 1, 'context' => $context]));
-    }
-
-    /** The full-page URL of this chat (the slide-over links to it). */
-    public function pageUrl(): string
-    {
-        return static::getUrl(array_filter(['conversation' => $this->conversation, 'context' => $this->conversation ? null : $this->context]));
-    }
-
-    /** @see AgentChat::history() */
-    public function history(): ?array
-    {
-        return $this->chat()->history();
-    }
-
-    /**
-     * What the composer's attach button accepts (null when attachments are off).
-     *
-     * @return array{accept: string, maxKb: int, maxFiles: int}|null
-     */
-    public function attachmentSettings(): ?array
-    {
-        if (! AgentAttachments::enabled()) {
-            return null;
-        }
-
-        return ['accept' => implode(',', AgentAttachments::mimes()), 'maxKb' => AgentAttachments::maxKilobytes(), 'maxFiles' => AgentAttachments::maxPerQuestion()];
-    }
-
-    /** Whether "@" in the composer can offer records: the panel has resources the assistant knows. */
-    public function canMention(): bool
-    {
-        return Agents::resourceClasses() !== [];
-    }
-
-    /**
-     * The records "@…" in the composer offers: every agent resource of the panel searched on its globally searchable
-     * attributes (or its title attribute), a few per resource, as ref ("orders/12"), label and resource name. A record
-     * the resource's canView() denies is left out, so the picker never shows a label of a record the person may not open.
-     *
-     * @return list<array{ref: string, label: string, resource: string}>
-     */
-    public function searchRecords(string $query): array
-    {
-        $query = trim($query);
-        $results = [];
-
-        foreach (AgentResources::all() as $key => $resource) {
-            if (! is_subclass_of($resource, Resource::class) || ! $resource::canViewAny()) {
-                continue;
-            }
-
-            $attributes = array_values(array_filter($resource::getGloballySearchableAttributes() ?: array_filter([$resource::getRecordTitleAttribute()]), fn ($a) => is_string($a) && ! str_contains($a, '.')));
-
-            if ($attributes === []) {
-                continue;
-            }
-
-            $model = $resource::getModel();
-            $limit = $query === '' ? 3 : 5;
-            $records = $resource::getEloquentQuery()
-                ->when($query !== '', fn (Builder $q) => $q->where(function (Builder $q) use ($attributes, $query) {
-                    foreach ($attributes as $attribute) {
-                        $q->orWhereLike($attribute, '%'.str_replace(['%', '_'], ['\\%', '\\_'], $query).'%', caseSensitive: false);
-                    }
-                }))
-                ->orderByDesc((new $model)->getKeyName())
-                ->limit($limit * 2) // a few more than the page, since canView() may drop some
-                ->get()
-                ->filter(fn (Model $record) => $resource::canView($record))
-                ->take($limit);
-
-            foreach ($records as $record) {
-                $results[] = ['ref' => $key.'/'.$record->getKey(), 'label' => $resource::agentContextLabel($record), 'resource' => (string) $resource::getPluralModelLabel()];
-            }
-        }
-
-        return array_slice($results, 0, 12);
-    }
-
-    /** Fold the older part of this chat into its rolling summary now, keeping the last exchanges verbatim. */
-    public function compressNow(): void
-    {
-        if (! $this->conversation || ! AgentModels::enabled() || ! $this->idle()) {
-            return;
-        }
-
-        try {
-            $compressed = $this->chat()->compress();
-        } catch (Throwable $e) {
-            report($e);
-            Notification::make()->title(__('The chat could not be summarized'))->body($e->getMessage())->danger()->send();
-
-            return;
-        }
-
-        Notification::make()
-            ->title($compressed ? __('Older messages were compressed') : __('Nothing older to compress'))
-            ->body($compressed ? __('The assistant reads a summary of them from the next question on.') : __('The last exchanges are always kept as they are.'))
-            ->success()
-            ->send();
-    }
-
-    /** Open a new chat that starts from a summary of this one, and go there. */
-    public function continueInNewChat(): void
-    {
-        if (! $this->conversation || ! AgentModels::enabled()) {
-            return;
-        }
-
-        try {
-            $id = $this->chat()->continueInNew();
-        } catch (Throwable $e) {
-            report($e);
-            Notification::make()->title(__('The chat could not be summarized'))->body($e->getMessage())->danger()->send();
-
-            return;
-        }
-
-        if ($id !== null) {
-            $this->redirect(static::getUrl(['conversation' => $id]));
-        }
-    }
-
-    /**
-     * The composer passes the question along (agent-chat.js) with the records it mentions ("@Order RO-00012" picked
-     * from the list: refs such as "orders/12"); $prompt on the component is the auto-sent one from the URL or session.
-     * The files picked in the composer go with it.
-     *
-     * @param  list<string>  $mentions
-     */
-    public function send(?string $prompt = null, array $mentions = []): ?array
-    {
-        $prompt = trim($prompt ?? $this->prompt);
-        $files = [];
-
-        try {
-            foreach (array_slice($this->attachments, 0, AgentAttachments::maxPerQuestion()) as $upload) {
-                if ($upload instanceof TemporaryUploadedFile) {
-                    $files[] = AgentAttachments::store($upload);
-                }
-            }
-        } catch (InvalidArgumentException $e) {
-            Notification::make()->title($e->getMessage())->warning()->send();
-
-            return null;
-        }
-
-        if ($prompt === '' && $files === []) {
-            return null;
-        }
-
-        $this->prompt = '';
-        $this->autoSend = false;
-        $this->attachments = [];
-
-        return $this->started(fn (AgentChat $chat) => $chat->send($prompt, $files, array_values(array_filter($mentions, 'is_string'))), question: true);
-    }
-
-    /** Take a picked file out of the composer before it is sent. */
-    public function removeAttachment(int $index): void
-    {
-        $this->attachments = array_values(array_filter($this->attachments, fn ($_, int $i) => $i !== $index, ARRAY_FILTER_USE_BOTH));
-    }
-
-    public function decide(string $callId, bool $approve): ?array
-    {
-        return $this->started(fn (AgentChat $chat) => $chat->decide($callId, $approve));
-    }
-
-    /**
-     * Send a question again when it never got an answer: the last one, or an earlier one by its message id (it moves
-     * to the end of the chat, where its answer lands).
-     */
-    public function retry(?string $messageId = null): ?array
-    {
-        return $this->started(fn (AgentChat $chat) => $chat->retry($messageId), question: true);
-    }
-
-    /** Answer the last question again: its answer is kept as a version and the same recorded question is sent once more. */
-    public function regenerate(): ?array
-    {
-        return $this->started(fn (AgentChat $chat) => $chat->regenerate(), question: true);
-    }
-
-    /** Carry on an answer the model's length limit cut short. */
-    public function continueAnswer(): ?array
-    {
-        return $this->started(fn (AgentChat $chat) => $chat->continueAnswer(), question: true);
-    }
-
-    /** Edit the last question and send it again: its answer is kept as a version, the recorded question rewritten. */
-    public function resend(string $prompt): ?array
-    {
-        return $this->started(fn (AgentChat $chat) => $chat->resend($prompt), question: true);
-    }
-
-    /** Stop the running turn; the job stores what it has so far. */
-    public function stop(): void
-    {
-        $this->chat()->stop();
-    }
-
-    /** Take a waiting question out of the line. */
-    public function removeQueued(string $turn): void
-    {
-        $this->chat()->removeQueued($turn);
-    }
-
-    /** Take a waiting question out of the line and hand its text back to the composer. */
-    public function editQueued(string $turn): ?string
-    {
-        return $this->chat()->editQueued($turn);
-    }
-
-    /** Rate an answer; a thumbs-down may carry a note on what went wrong. */
-    public function feedback(string $messageId, string $rating, ?string $note = null): void
-    {
-        $note ??= $this->feedbackNote[$messageId] ?? null;
-        $this->chat()->rate($messageId, $rating, $rating === 'down' ? $note : null);
-        unset($this->feedbackNote[$messageId]);
-    }
-
-    /**
-     * The earlier answers to a question, for the version switcher.
-     *
-     * @return Collection<int, array<string, mixed>>
-     */
-    public function versions(string $questionId): Collection
-    {
-        return $this->chat()->versions($questionId);
-    }
-
-    /** Put an earlier answer to the last question back; the current one becomes a version in turn. */
-    public function showVersion(string $questionId, int $versionId): void
-    {
-        if (! $this->chat()->showVersion($questionId, $versionId)) {
-            Notification::make()->title(__('That answer cannot be shown right now.'))->warning()->send();
-        }
-    }
-
-    /** Give the chat a title of your own. */
-    public function rename(string $title): void
-    {
-        $this->chat()->rename($title);
-    }
-
-    public function togglePin(): void
-    {
-        $this->chat()->pinned() ? $this->chat()->unpin() : $this->chat()->pin();
-    }
-
-    /** The chat as a Markdown file. */
-    public function export(): ?StreamedResponse
-    {
-        if (! $this->conversation) {
-            return null;
-        }
-
-        $transcript = $this->chat()->transcript();
-        $name = Str::slug(Str::limit((string) $this->getTitle(), 60, ''), '-') ?: 'chat';
-
-        return response()->streamDownload(fn () => print $transcript, "{$name}.md", ['Content-Type' => 'text/markdown; charset=UTF-8']);
-    }
-
-    /** A value of a proposal's preview as the person reads it: yes or no, "(empty)" for nothing, a list joined. */
+    /** @deprecated 1.20 the chat's views call ChatPresenter; kept for views published before then. */
     public static function previewValue(mixed $value): string
     {
-        return match (true) {
-            $value === null || $value === '' || $value === [] => __('(empty)'),
-            is_bool($value) => $value ? __('Yes') : __('No'),
-            is_array($value) && array_is_list($value) && array_filter($value, 'is_scalar') === $value => implode(', ', $value),
-            is_scalar($value) || $value instanceof \Stringable => (string) $value,
-            default => (string) json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-        };
+        return ChatPresenter::previewValue($value);
     }
 
     /**
-     * A read tool's call on one line of the timeline: its first scalar arguments ("query: acme · status: live").
+     * @deprecated 1.20 see previewValue()
      *
      * @param  array<string, mixed>  $arguments
      */
     public static function callSummary(array $arguments): ?string
     {
-        $parts = [];
-
-        foreach (self::flatten($arguments) as $key => $value) {
-            $parts[] = $key.': '.Str::limit((string) $value, 40);
-
-            if (count($parts) === 3) {
-                break;
-            }
-        }
-
-        return $parts === [] ? null : implode(' · ', $parts);
+        return ChatPresenter::callSummary($arguments);
     }
 
-    /** A read tool's result on the timeline line: how many it found, or what kind of thing it returned. */
+    /** @deprecated 1.20 see previewValue() */
     public static function resultSummary(mixed $result): ?string
     {
-        $decoded = is_string($result) ? json_decode($result, true) : $result;
-
-        if (! is_array($decoded)) {
-            return is_string($result) && $result !== '' ? Str::limit($result, 60) : null;
-        }
-
-        if (isset($decoded['error']) && is_string($decoded['error'])) {
-            return __('failed');
-        }
-
-        if (isset($decoded['chart'])) {
-            return __('a chart');
-        }
-
-        if (isset($decoded['table'])) {
-            return __('a table');
-        }
-
-        if (isset($decoded['total']) && is_numeric($decoded['total'])) {
-            return trans_choice('{0} nothing found|{1} :count found|[2,*] :count found', (int) $decoded['total']);
-        }
-
-        foreach (['rows', 'items', 'results', 'records', 'data'] as $key) {
-            if (isset($decoded[$key]) && is_array($decoded[$key]) && array_is_list($decoded[$key])) {
-                return trans_choice('{0} nothing found|{1} :count found|[2,*] :count found', count($decoded[$key]));
-            }
-        }
-
-        return null;
-    }
-
-    /** @return array<string, string> */
-    protected static function flatten(array $arguments, string $prefix = ''): array
-    {
-        $flat = [];
-
-        foreach ($arguments as $key => $value) {
-            $name = $prefix === '' ? (string) $key : $prefix.'.'.$key;
-
-            if (is_array($value)) {
-                $flat += array_is_list($value) ? [$name => implode(', ', array_map(fn ($v) => is_scalar($v) ? (string) $v : json_encode($v), $value))] : self::flatten($value, $name);
-            } elseif (is_scalar($value) && (string) $value !== '') {
-                $flat[$name] = is_bool($value) ? ($value ? 'yes' : 'no') : (string) $value;
-            }
-        }
-
-        return $flat;
-    }
-
-    /**
-     * Queue one turn through the engine and tell the page what to poll. A new chat keeps the page (queued
-     * questions would not survive a reload) and takes the conversation's URL. On the sync driver the turn
-     * already ran inside this request: a failure is said now, as the page did before.
-     *
-     * @param  Closure(AgentChat): ?AgentTurn  $start
-     * @return array{turn: string, conversation: string, poll: ?string, stream: ?string, active: bool}|null
-     */
-    protected function started(Closure $start, bool $question = false): ?array
-    {
-        if (! AgentModels::enabled()) {
-            Notification::make()->title(__(':name is not connected to an AI provider yet.', ['name' => Agents::name()]))->warning()->send();
-
-            return null;
-        }
-
-        $chat = $this->chat();
-        $new = $chat->conversation() === null;
-        $turn = $start($chat);
-
-        if (! $turn) {
-            return null;
-        }
-
-        $this->conversation = $chat->conversation();
-
-        if ($new && ! $this->embedded) {
-            $this->js('window.history.replaceState({}, "", '.json_encode(static::getUrl(['conversation' => $this->conversation])).')');
-        }
-
-        if ($turn->status === AgentTurn::FAILED) {
-            $kept = $question ? ' '.__('Your question is kept — use Retry to send it again.') : '';
-
-            if ($turn->finish_reason === 'refused') {
-                Notification::make()->title($turn->error)->body(trim($kept) ?: null)->warning()->send();
-            } else {
-                Notification::make()
-                    ->title(__('The assistant could not answer'))
-                    ->body($turn->error.$kept)
-                    ->danger()
-                    ->persistent()
-                    ->send();
-            }
-        }
-
-        return [
-            'turn' => $turn->id,
-            'conversation' => $this->conversation,
-            'poll' => $this->pollUrl(),
-            'stream' => $this->streamUrl(),
-            'active' => $turn->isActive(),
-        ];
+        return ChatPresenter::resultSummary($result);
     }
 }

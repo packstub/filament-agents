@@ -31,7 +31,7 @@ use function Pest\Livewire\livewire;
 /** Queue a question from the chat page and hand back the turn and the job a worker would pick up. */
 function queuedTurnFor(string $prompt): array
 {
-    livewire(Chat::class)->call('send', $prompt);
+    chat()->call('send', $prompt);
 
     $turn = AgentTurn::query()->latest('id')->firstOrFail();
     $job = Queue::pushed(RunAgentTurn::class, fn (RunAgentTurn $job) => $job->turnId === $turn->id)->first();
@@ -76,7 +76,7 @@ it('falls back to the next provider when the first refuses the turn, and says wh
         ->and($turn->model_name)->toBe($resolved['providers']['gemini'])
         ->and($turn->text)->toBe('Two are live.');
 
-    livewire(Chat::class, ['conversation' => $turn->conversation_id])
+    chat(['conversation' => $turn->conversation_id])
         ->assertSee('Two are live.')
         ->assertSee(__('(answered by :provider)', ['provider' => 'Gemini']))
         ->assertSee(__('The usual provider was unavailable; this answer came from :model.', ['model' => $resolved['providers']['gemini']]));
@@ -87,7 +87,7 @@ it('falls back to the next provider when the first refuses the turn, and says wh
     $job->handle(app(AgentTurns::class));
 
     expect($turn->fresh()->provider)->toBe($resolved['provider']);
-    livewire(Chat::class, ['conversation' => $turn->conversation_id])
+    chat(['conversation' => $turn->conversation_id])
         ->assertSee('One is retired.')
         ->assertDontSee('(answered by Gemini)');
 });

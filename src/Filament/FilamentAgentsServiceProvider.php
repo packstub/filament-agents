@@ -8,6 +8,7 @@ use Filament\Support\Assets\Css;
 use Filament\Support\Facades\FilamentAsset;
 use Illuminate\Support\Facades\Blade;
 use Livewire\Livewire;
+use Packstub\Agents\Chat\ChatAssets;
 use Packstub\Agents\Filament\Widgets\TurnsChart;
 use Packstub\Agents\Filament\Widgets\TurnStats;
 use Packstub\Agents\Livewire\AgentTable;
@@ -56,9 +57,13 @@ class FilamentAgentsServiceProvider extends PackageServiceProvider
 
         Blade::anonymousComponentPath(__DIR__.'/../../resources/views/components', 'packstub-agents');
 
+        // The chat's stylesheet and script are the engine's built files (packstub/agents, resources/dist); the plugin
+        // adds the styles of what only a panel has (tables in answers, the slide-over, the tool picker) and the script
+        // of the standalone composer. `php artisan filament:assets` publishes them all.
         FilamentAsset::register([
+            Css::make('packstub-agents-chat', ChatAssets::path('agents-chat.css')),
             Css::make('packstub-agents', __DIR__.'/../../resources/css/agents.css'),
-            AlpineComponent::make('agent-chat', __DIR__.'/../../resources/js/agent-chat.js'),
+            AlpineComponent::make('agent-chat', ChatAssets::path('agent-chat.js')),
             AlpineComponent::make('agent-composer', __DIR__.'/../../resources/js/agent-composer.js'),
         ], 'packstub/filament-agents');
     }

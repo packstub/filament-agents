@@ -4,8 +4,9 @@ namespace Packstub\Agents\Filament;
 
 /**
  * Where an app adds its own controls to the chat page, without publishing the view: register them with
- * FilamentView::registerRenderHook(ChatRenderHook::…, fn () => …, scopes: Chat::class). Rendered inside the page's
- * Livewire component, so the markup may call the page's actions (wire:click) and read its Alpine state.
+ * FilamentView::registerRenderHook(ChatRenderHook::…, fn () => …, scopes: Chat::class). Rendered inside the
+ * chat's Alpine component (the engine's agent-chat.js), so the markup may read its state (busy, turn) and call its
+ * methods (enqueue). The chat page has no Livewire actions.
  */
 final class ChatRenderHook
 {
