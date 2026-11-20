@@ -563,3 +563,10 @@ it('fills the composer from ?prompt= without sending, so a link cannot ask in th
     $this->withSession(['packstub-agents.prompt' => 'From the app']);
     chat()->assertSet('prompt', 'From the app')->assertSet('autoSend', true);
 });
+
+it('names the page for a tool that reads its title with nobody signed in', function () {
+    // Filament Shield's shield:generate resolves every page of the panel from the console and asks for its title.
+    auth()->logout();
+
+    expect((string) app(Chat::class)->getTitle())->toBe('New chat');
+});
