@@ -2,6 +2,7 @@
 
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Route;
 use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Models\ConversationMessage;
 use Laravel\Ai\Responses\Data\FinishReason;
@@ -421,4 +422,12 @@ it('takes the turn driver from the plugin', function () {
     $plugin->register(Filament::getPanel('admin'));
 
     expect(config('packstub-agents.chat.driver'))->toBe('sync');
+});
+
+it("leaves the engine's plain chat routes out when a panel has the chat, so every call runs under the panel's middleware", function () {
+    $names = collect(Route::getRoutes()->getRoutes())->map->getName()->filter();
+
+    expect($names)->toContain('filament.admin.packstub-agents.act')
+        ->not->toContain('packstub-agents.act')
+        ->not->toContain('packstub-agents.turn');
 });
