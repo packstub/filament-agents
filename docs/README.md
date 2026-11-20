@@ -38,6 +38,7 @@ An in-panel AI assistant and an MCP server for Filament v5 panels, built on lara
 | [Configuration](configuration.md) | Every config key and environment variable, the fluent `AgentsPlugin` API |
 | [Security](security.md) | The threat model: trust boundaries, prompt injection, the prompt guard, redaction, what the package enforces and what stays yours |
 | [Testing](testing.md) | Faking the model, driving tools, testing the MCP endpoint in your app |
+| [Upgrading](upgrading.md) | From 1.19 to 1.20: the plugin's own namespace, published chat views, tests that drove the chat page |
 
 ## At a glance
 
