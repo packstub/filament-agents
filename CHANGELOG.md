@@ -12,7 +12,8 @@ The chat page now runs on the chat that ships with Agents for Laravel: same look
 - **Upgrading:** published chat views move: a file under `resources/views/vendor/packstub-agents/pages/chat/` now goes under `resources/views/vendor/packstub-agents-chat/` (`header`, `answer/footer` …), reads the chat's variables instead of `$this`, and uses the classes of the chat's stylesheet instead of Tailwind utilities ([Changing one part](https://packstub.dev/docs/filament-agents/assistant#changing-one-part-of-the-chat-page))
 - **Upgrading:** the Chat page has no Livewire actions any more. A test that called `livewire(Chat::class)->call('send')` posts to the panel's `packstub-agents.act` route instead ([Testing](https://packstub.dev/docs/filament-agents/testing)); render hook markup that used `wire:click` on the page calls the chat's Alpine methods
 - Security: a `?prompt=` link only fills the chat box (the composer shows it); the person sends it. A question an app hands over through the session is still sent on its own
-- A failed answer no longer shows the person the provider's raw error (it can name config keys); operators still read it in the turn log
+- A failed answer no longer shows the person the provider's raw error (it can name config keys); operators still read it in the turn log. The same goes for a decision that could not be applied and an answer the provider interrupted
+- When you lose access to a workspace mid-answer, the chat says so instead of a bare "could not answer" (with `packstub/agents` from the same release)
 
 ## 1.19.0 — 2026-11-18
 

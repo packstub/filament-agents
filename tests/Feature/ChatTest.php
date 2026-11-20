@@ -303,7 +303,7 @@ it('folds the model\'s reasoning above an answer and marks one the provider gave
 
     chat(['conversation' => $conversation->id])
         ->assertSeeInOrder([__('Reasoning'), 'I should count the live ones first.', 'Two.', 'And drafts?', __('(interrupted)')])
-        ->assertSeeHtml('title="The provider is overloaded."')
+        ->assertDontSee('The provider is overloaded.') // the operator reads it in the turn log
         ->assertSeeHtml('aria-label="'.__('Regenerate').'"')
         ->assertDontSee(__('Retry'))
         ->assertDontSee(__('The assistant could not answer.'));
@@ -330,7 +330,8 @@ it('reports a decision turn that failed on the proposal row, with the buttons ba
     app(AgentTurns::class)->finish($turn, AgentTurn::FAILED, 'Approval decisions do not match the pending tool calls.');
 
     chat(['conversation' => $conversation->id])
-        ->assertSeeInOrder(['Approve', 'Reject', __('The decision could not be applied.'), 'Approval decisions do not match the pending tool calls.'])
+        ->assertSeeInOrder(['Approve', 'Reject', __('The decision could not be applied.')])
+        ->assertDontSee('Approval decisions do not match the pending tool calls.') // the exception's words stay in the turn log
         ->assertDontSee(__('The assistant could not answer.'))
         ->assertDontSee(__('Retry'));
 
