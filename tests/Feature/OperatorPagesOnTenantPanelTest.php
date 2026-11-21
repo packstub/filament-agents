@@ -6,13 +6,13 @@ use Filament\Actions\Exceptions\ActionNotResolvableException;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Support\Str;
-use Packstub\Agents\Filament\Pages\TurnLog;
-use Packstub\Agents\Filament\Resources\AgentLimits\AgentLimitResource;
-use Packstub\Agents\Filament\Resources\AgentLimits\Pages\ManageAgentLimits;
-use Packstub\Agents\Filament\Widgets\TurnStats;
 use Packstub\Agents\Models\AgentLimit;
 use Packstub\Agents\Models\AgentTurn;
-use Packstub\Agents\Tests\Fixtures\Models\Team;
+use Packstub\FilamentAgents\Pages\TurnLog;
+use Packstub\FilamentAgents\Resources\AgentLimits\AgentLimitResource;
+use Packstub\FilamentAgents\Resources\AgentLimits\Pages\ManageAgentLimits;
+use Packstub\FilamentAgents\Tests\Fixtures\Models\Team;
+use Packstub\FilamentAgents\Widgets\TurnStats;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Livewire\livewire;

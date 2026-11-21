@@ -69,12 +69,12 @@ Two guard rails of the engine show in the chat when they are on. The [prompt gua
 
 The "Ask …" button opens the chat as a slide-over on the right of the page you are on — the record in view as context, the page still visible — with a link to the full page; `AgentsPlugin::make()->slideOver(false)` makes it a link to the chat page again. `Ctrl/⌘ J` opens it from any page (`->shortcut('mod+shift+a')` for another combination, `->shortcut(null)` for none). The chat page itself renders without the panel's chrome inside the slide-over (`?embedded=1`).
 
-Your own controls go in through two render hooks, without publishing the chat view: `ChatRenderHook::COMPOSER_TOOLS_BEFORE` adds to the composer's row (a toggle, a mode), `ChatRenderHook::COMPOSER_AFTER` adds a row under the composer that sticks to the bottom with it. Scope them to the chat page; the markup is rendered inside the page's Livewire component, so it can call its actions:
+Your own controls go in through two render hooks, without publishing the chat view: `ChatRenderHook::COMPOSER_TOOLS_BEFORE` adds to the composer's row (a toggle, a mode), `ChatRenderHook::COMPOSER_AFTER` adds a row under the composer that sticks to the bottom with it. Scope them to the chat page. The markup sits inside the chat's Alpine component, so it can read its state (`busy`, `turn`) and call its methods (`enqueue('…')` sends a question):
 
 ```php
 use Filament\Support\Facades\FilamentView;
-use Packstub\Agents\Filament\ChatRenderHook;
-use Packstub\Agents\Filament\Pages\Chat;
+use Packstub\FilamentAgents\ChatRenderHook;
+use Packstub\FilamentAgents\Pages\Chat;
 
 FilamentView::registerRenderHook(
     ChatRenderHook::COMPOSER_TOOLS_BEFORE,
@@ -87,14 +87,14 @@ In the slide-over, New chat starts a chat about the same record.
 
 ### The composer on a page of your own
 
-The composer is a Blade component, `<x-packstub-agents::composer>`, and on the chat page it is driven by the page's own Alpine scope. On a page of your own — a dashboard's home, a widget — render it `standalone`: it brings its own scope (`agent-composer.js`), and Send calls the host Livewire component's `method` with the text. Enter sends, Shift+Enter breaks the line, Esc clears, and the paper clip, dropping and pasting work when the host renders them (`:attachments`, an `attachments` property); the record picker, the queue and the drafts stay on the chat page.
+The composer is also a Blade component of its own, `<x-packstub-agents::composer>`, for a Livewire page of yours. On a page of your own — a dashboard's home, a widget — render it `standalone`: it brings its own scope (`agent-composer.js`), and Send calls the host Livewire component's `method` with the text. Enter sends, Shift+Enter breaks the line, Esc clears, and the paper clip, dropping and pasting work when the host renders them (`:attachments`, an `attachments` property); the record picker, the queue and the drafts stay on the chat page.
 
 ```blade
 <x-packstub-agents::composer standalone method="ask" :placeholder="__('Ask anything…')" :rows="3" :models="false" autofocus />
 ```
 
 ```php
-use Packstub\Agents\Filament\Pages\Chat;
+use Packstub\FilamentAgents\Pages\Chat;
 
 public function ask(string $text): void
 {
@@ -111,22 +111,22 @@ The transcript is a live region for screen readers (new answers are announced), 
 
 ### Changing one part of the chat page
 
-The chat page is assembled from parts, so an app can publish and change one of them and keep the package's version of the rest (and its fixes):
+The chat's views belong to the engine ([The chat](https://packstub.dev/docs/agents/chat#changing-a-part)), and the panel renders the same ones with Filament's buttons, menus and icons. They are assembled from parts, so an app can publish and change one of them and keep the package's version of the rest (and its fixes):
 
 | View | What it renders |
 |---|---|
-| `pages/chat/header` | the title (rename), what the chat is about, pin, export and New chat |
-| `pages/chat/suggestions` | a new chat's starter questions |
-| `pages/chat/question` | a question, its files and mentions, Edit, and how an unanswered one ended |
-| `pages/chat/answer` | an answer: the reasoning and the text, around the parts below |
-| `pages/chat/answer/lookups` | what the assistant looked up (its read-only tool calls) |
-| `pages/chat/answer/proposals` | the changes it proposed, each a card with the decision |
-| `pages/chat/answer/embeds` | the record tables and charts its tools returned |
-| `pages/chat/answer/footer` | the row under an answer: copy, rating, regenerate, versions, the notes |
-| `pages/chat/live` | the question being sent, the running turn, the questions waiting |
-| `pages/chat/composer` | Jump to latest and the composer with the context ring |
+| `header` | the title (rename), what the chat is about, pin, export and New chat |
+| `suggestions` | a new chat's starter questions |
+| `question` | a question, its files and mentions, Edit, and how an unanswered one ended |
+| `answer` | an answer: the reasoning and the text, around the parts below |
+| `answer/lookups` | what the assistant looked up (its read-only tool calls) |
+| `answer/proposals` | the changes it proposed, each a card with the decision |
+| `answer/embeds` | the record tables and charts its tools returned |
+| `answer/footer` | the row under an answer: copy, rating, regenerate, versions, the notes |
+| `live` | the question being sent, the running turn, the questions waiting |
+| `composer` | Jump to latest and the composer with the context ring |
 
-Publish the views (`php artisan vendor:publish --tag=packstub-agents-views`) and keep only the file you change under `resources/views/vendor/packstub-agents/pages/chat/`, so the rest keeps coming from the package. A part reads the page's variables (each file names the ones it uses) and the page itself as `$this`; the composer's own markup is the `packstub-agents::composer` component, published the same way.
+Publish the views (`php artisan vendor:publish --tag=packstub-agents-chat-views`) and keep only the file you change under `resources/views/vendor/packstub-agents-chat/`, so the rest keeps coming from the package. A part reads the chat's variables (each file names the ones it uses); `$ui` is the component set that draws buttons and icons, `filament` in a panel. The standalone composer's markup is the `packstub-agents::composer` component, published with `--tag=packstub-agents-views`.
 
 ### How a turn runs
 

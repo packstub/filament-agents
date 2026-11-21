@@ -9,9 +9,6 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Models\ConversationMessage;
-use Livewire\Livewire;
-use Packstub\Agents\Filament\Pages\Chat;
-use Packstub\Agents\Filament\Pages\Chats;
 use Packstub\Agents\Jobs\RunAgentTurn;
 use Packstub\Agents\Models\AgentLimit;
 use Packstub\Agents\Models\AgentMessageFeedback;
@@ -22,9 +19,11 @@ use Packstub\Agents\Support\AgentLimits;
 use Packstub\Agents\Support\AgentModels;
 use Packstub\Agents\Support\AgentTurns;
 use Packstub\Agents\Support\PageContext;
-use Packstub\Agents\Tests\Fixtures\Filament\Resources\Widgets\WidgetResource;
-use Packstub\Agents\Tests\Fixtures\Tools\RetireWidget;
-use Packstub\Agents\Tests\Fixtures\WidgetAgent;
+use Packstub\FilamentAgents\Pages\Chat;
+use Packstub\FilamentAgents\Pages\Chats;
+use Packstub\FilamentAgents\Tests\Fixtures\Filament\Resources\Widgets\WidgetResource;
+use Packstub\FilamentAgents\Tests\Fixtures\Tools\RetireWidget;
+use Packstub\FilamentAgents\Tests\Fixtures\WidgetAgent;
 use RuntimeException;
 
 use function Pest\Laravel\actingAs;
@@ -37,7 +36,7 @@ it('streams a chat into a persisted conversation and records feedback', function
 
     WidgetAgent::fake(['Two widgets are live.']);
 
-    livewire(Chat::class)
+    chat()
         ->set('prompt', 'How many widgets are live?')
         ->call('send');
 
@@ -48,25 +47,25 @@ it('streams a chat into a persisted conversation and records feedback', function
         ->and($messages[0]->role)->toBe('user')
         ->and($messages[1]->content)->toContain('Two widgets are live');
 
-    livewire(Chat::class, ['conversation' => $conversation->id])
+    chat(['conversation' => $conversation->id])
         ->assertSee('Two widgets are live')
         ->call('feedback', $messages[1]->id, 'up');
 
     expect(AgentMessageFeedback::query()->where('message_id', $messages[1]->id)->value('rating'))->toBe('up');
 
     // Under the answer the thumbs, Regenerate and the time show on hover; the rating that was given stays visible.
-    $html = livewire(Chat::class, ['conversation' => $conversation->id])->html();
-    expect($html)->toContain('fi-chat-rated text-success-600')
+    $html = chat(['conversation' => $conversation->id])->html();
+    expect($html)->toContain('fi-chat-tool-up fi-chat-rated')
         ->toContain('fi-chat-answer-tool" title="'.__('Not helpful').'"')
         ->not->toContain('fi-chat-answer-tool" title="'.__('Helpful').'"')
         ->toMatch('/fi-chat-answer-tool[^>]*title="'.preg_quote(__('Regenerate'), '/').'"/')
-        ->toMatch('/fi-chat-answer-tool ms-1 text-xs">\d\d:\d\d</');
+        ->toMatch('/fi-chat-answer-tool fi-chat-foot-note">(<!--.*?-->)?<time datetime="[^"]+" data-agents-time>\d\d:\d\d</');
 
     livewire(Chats::class)->assertCanSeeTableRecords([$conversation]);
 
     // Another person never sees this conversation.
     actingAs($this->user());
-    livewire(Chat::class, ['conversation' => $conversation->id])->assertNotFound();
+    chat(['conversation' => $conversation->id])->assertNotFound();
 });
 
 it('hides the chat when no provider is configured or the workspace is switched off', function () {
@@ -112,13 +111,13 @@ it('stops a turn before the provider when the budget is spent', function () {
 
     // The question is recorded and the refusal read under it, with a Retry, like any other turn that got no answer.
     WidgetAgent::fake(['Should never be produced.']);
-    $component = livewire(Chat::class)->set('prompt', 'hi')->call('send')->assertNotified();
+    $component = chat()->set('prompt', 'hi')->call('send')->assertNotified();
     $refused = Conversation::query()->where('participant_id', $user->id)->where('title', 'hi')->firstOrFail();
     expect(ConversationMessage::query()->where('content', 'Should never be produced.')->exists())->toBeFalse()
         ->and(ConversationMessage::query()->where('conversation_id', $refused->id)->pluck('content')->all())->toBe(['hi'])
         ->and(AgentTurn::query()->where('conversation_id', $refused->id)->value('finish_reason'))->toBe('refused');
 
-    livewire(Chat::class, ['conversation' => $refused->id])
+    chat(['conversation' => $refused->id])
         ->assertSee('hi')
         ->assertSee("today's limit")
         ->assertDontSee(__('The assistant could not answer.'))
@@ -127,7 +126,7 @@ it('stops a turn before the provider when the budget is spent', function () {
     // Retry answers it once the limit allows.
     config(['packstub-agents.limits.turns_per_day' => 100]);
     AgentLimits::flush();
-    livewire(Chat::class, ['conversation' => $refused->id])->call('retry')->assertNotNotified();
+    chat(['conversation' => $refused->id])->call('retry')->assertNotNotified();
     expect(ConversationMessage::query()->where('conversation_id', $refused->id)->orderBy('id')->pluck('content')->all())->toBe(['hi', 'Should never be produced.']);
     ConversationMessage::query()->where('conversation_id', $refused->id)->delete();
 
@@ -166,7 +165,7 @@ it('carries the record being viewed into the chat as page context', function () 
         ->assertSee('Ask Widgets')
         ->assertSee('context=widgets%2F'.$alpha->id, escape: false);
 
-    livewire(Chat::class)->assertSee('New chat');
+    chat()->assertSee('New chat');
 
     $this->get(Chat::getUrl(['context' => 'widgets/'.$alpha->id]))->assertOk()
         ->assertSee('About <a href="'.e(WidgetResource::getUrl('edit', ['record' => $alpha])).'" target="_top">Widget Alpha</a>', escape: false);
@@ -215,7 +214,7 @@ it('keeps a decided proposal as a card and lets the model carry on after a rejec
 
     // Each proposal is one question with its decision: the tool's own sentence, the outcome in place once decided,
     // Approve / Reject while it waits; the exact call (tool name, arguments, the result) folds under the question.
-    $page = livewire(Chat::class, ['conversation' => $conversation->id])
+    $page = chat(['conversation' => $conversation->id])
         ->assertSeeInOrder([
             "Rename widget #{$alpha->id} to Alpha II?", 'Rejected',
             "Rename widget #{$alpha->id} to Alpha III?", 'Approved', 'Result', '"renamed": true',
@@ -236,7 +235,7 @@ it('keeps a decided proposal as a card and lets the model carry on after a rejec
 
     // Rejecting hands the model a reason instead of a bare "no", so the turn continues and the model can answer.
     WidgetAgent::fake(['Understood, I left the name as it is.']);
-    livewire(Chat::class, ['conversation' => $conversation->id])->call('decide', 'c3', false);
+    chat(['conversation' => $conversation->id])->call('decide', 'c3', false);
 
     WidgetAgent::assertPrompted(function ($prompt) {
         $decision = $prompt->approvalDecisions?->get('c3');
@@ -262,19 +261,19 @@ it('decides two proposals of one answer one at a time, the first waiting on its 
     ], 'tool_results' => [], 'approval_state' => ['pending' => ['c1' => 'Rename Alpha?', 'c2' => 'Rename Beta?']], 'created_at' => now()->subMinutes(5)->addSeconds(6)]));
 
     // Approve on Alpha: held (laravel/ai applies the decisions of one pause together), said on its row; Beta keeps its buttons.
-    livewire(Chat::class, ['conversation' => $conversation->id])->call('decide', 'c1', true);
+    chat(['conversation' => $conversation->id])->call('decide', 'c1', true);
     Queue::assertNothingPushed();
     $turn = AgentTurn::query()->forConversation($conversation->id)->sole();
     expect($turn->status)->toBe(AgentTurn::QUEUED)->and($turn->decisions())->toBe(['c1' => true]);
 
-    $html = livewire(Chat::class, ['conversation' => $conversation->id])
+    $html = chat(['conversation' => $conversation->id])
         ->assertSee(__('Approved, once the other proposal is decided'))
         ->html();
     expect($html)->toContain('decide(&#039;c2&#039;, true)')->not->toContain('decide(&#039;c1&#039;, true)')
         ->and($html)->toContain('data-turns="[]"'); // a held decision is not a queued question
 
     // Reject on Beta: the waiting turn takes it and starts with both.
-    livewire(Chat::class, ['conversation' => $conversation->id])->call('decide', 'c2', false);
+    chat(['conversation' => $conversation->id])->call('decide', 'c2', false);
     expect(AgentTurn::query()->forConversation($conversation->id)->count())->toBe(1)
         ->and($turn->fresh()->status)->toBe(AgentTurn::PENDING)
         ->and($turn->fresh()->decisions())->toBe(['c1' => true, 'c2' => false]);
@@ -302,7 +301,7 @@ it('folds the model\'s reasoning above an answer and marks one the provider gave
         ['content' => '', 'reasoning' => '', 'replay_blocks' => [], 'provider_tool_calls' => [], 'tool_calls' => [['id' => 'r2', 'name' => 'list-widgets', 'arguments' => ['status' => 'draft'], 'result_id' => null, 'result' => '[]']]],
     ], 'created_at' => now()->subMinutes(2)]);
 
-    livewire(Chat::class, ['conversation' => $conversation->id])
+    chat(['conversation' => $conversation->id])
         ->assertSeeInOrder([__('Reasoning'), 'I should count the live ones first.', 'Two.', 'And drafts?', __('(interrupted)')])
         ->assertDontSee('The provider is overloaded.') // the operator reads it in the turn log
         ->assertSeeHtml('aria-label="'.__('Regenerate').'"')
@@ -325,12 +324,12 @@ it('reports a decision turn that failed on the proposal row, with the buttons ba
 
     // The decision is queued as a turn; the worker fails it (a history the loop could not match, a dead worker…),
     // so the call is still pending and the buttons return — with the reason, where the person is looking.
-    livewire(Chat::class, ['conversation' => $conversation->id])->call('decide', 'c1', true);
+    chat(['conversation' => $conversation->id])->call('decide', 'c1', true);
     $turn = AgentTurn::query()->forConversation($conversation->id)->sole();
     expect($turn->decisions())->toBe(['c1' => true]);
     app(AgentTurns::class)->finish($turn, AgentTurn::FAILED, 'Approval decisions do not match the pending tool calls.');
 
-    livewire(Chat::class, ['conversation' => $conversation->id])
+    chat(['conversation' => $conversation->id])
         ->assertSeeInOrder(['Approve', 'Reject', __('The decision could not be applied.')])
         ->assertDontSee('Approval decisions do not match the pending tool calls.') // the exception's words stay in the turn log
         ->assertDontSee(__('The assistant could not answer.'))
@@ -341,7 +340,7 @@ it('reports a decision turn that failed on the proposal row, with the buttons ba
     ConversationMessage::query()->create(legacyRow($row + ['id' => (string) Str::uuid7(), 'role' => 'user', 'content' => 'And Beta?', 'tool_calls' => [], 'tool_results' => [], 'created_at' => now()->addSeconds(2)]));
     AgentTurn::query()->whereKey($turn->id)->update(['input' => json_encode(['prompt' => 'And Beta?'])]);
 
-    livewire(Chat::class, ['conversation' => $conversation->id])
+    chat(['conversation' => $conversation->id])
         ->assertSee(__('The assistant could not answer.'))
         ->assertDontSee(__('The decision could not be applied.'));
 });
@@ -352,7 +351,7 @@ it('keeps a question the provider could not answer and answers it on retry', fun
 
     WidgetAgent::fake([fn () => throw new RuntimeException('AI provider [gemini] is overloaded.')]);
 
-    $component = livewire(Chat::class)
+    $component = chat()
         ->call('send', 'How many widgets are live?')
         ->assertNotified()
         ->assertNoRedirect();
@@ -366,7 +365,7 @@ it('keeps a question the provider could not answer and answers it on retry', fun
         ->and($messages[0]->content)->toBe('How many widgets are live?')
         ->and($conversation->title)->toBe('How many widgets are live?');
 
-    $component = livewire(Chat::class, ['conversation' => $conversation->id])
+    $component = chat(['conversation' => $conversation->id])
         ->assertSee('How many widgets are live?')
         ->assertSee(__('The assistant could not answer.'))
         ->assertDontSee('AI provider [gemini] is overloaded.')
@@ -388,12 +387,12 @@ it('keeps a question the provider could not answer and answers it on retry', fun
         ->and($messages[1]->role)->toBe('assistant')
         ->and($messages[1]->content)->toContain('Two widgets are live');
 
-    livewire(Chat::class, ['conversation' => $conversation->id])
+    chat(['conversation' => $conversation->id])
         ->assertSee('Two widgets are live')
         ->assertDontSee(__('The assistant could not answer.'));
 
     // Nothing to retry once the question is answered.
-    livewire(Chat::class, ['conversation' => $conversation->id])->call('retry');
+    chat(['conversation' => $conversation->id])->call('retry');
     expect(ConversationMessage::query()->where('conversation_id', $conversation->id)->count())->toBe(2);
 });
 
@@ -411,7 +410,7 @@ it('records the question before the provider answers, without storing it twice',
         },
     ]);
 
-    livewire(Chat::class)->call('send', 'Which statuses exist?')->assertNoRedirect();
+    chat()->call('send', 'Which statuses exist?')->assertNoRedirect();
 
     $conversation = Conversation::query()->where('participant_id', $user->id)->firstOrFail();
     $roles = ConversationMessage::query()->where('conversation_id', $conversation->id)->orderBy('id')->pluck('role')->all();
@@ -421,7 +420,7 @@ it('records the question before the provider answers, without storing it twice',
 
     // A follow-up in the same conversation: one user row, one assistant row again.
     WidgetAgent::fake(['Three of them.']);
-    livewire(Chat::class, ['conversation' => $conversation->id])->set('prompt', 'How many?')->call('send');
+    chat(['conversation' => $conversation->id])->set('prompt', 'How many?')->call('send');
 
     expect(ConversationMessage::query()->where('conversation_id', $conversation->id)->orderBy('id')->pluck('role')->all())
         ->toBe(['user', 'assistant', 'user', 'assistant']);
@@ -434,7 +433,7 @@ it('sends the question the composer passes along and keeps the page for a new ch
     WidgetAgent::fake(['Hello!']);
 
     // The composer sends the text as an argument; a question from the URL is sent from the component's prompt.
-    $component = livewire(Chat::class)
+    $component = chat()
         ->set('prompt', 'stale draft')
         ->call('send', 'Hi there')
         ->assertNoRedirect()
@@ -445,22 +444,8 @@ it('sends the question the composer passes along and keeps the page for a new ch
 
     expect(ConversationMessage::query()->where('conversation_id', $conversation->id)->where('role', 'user')->value('content'))->toBe('Hi there');
 
-    livewire(Chat::class)->call('send', '   ');
+    chat()->call('send', '   ');
     expect(Conversation::query()->where('participant_id', $user->id)->count())->toBe(1);
-});
-
-it('keeps the chat script off a click handler context for deferred work', function () {
-    // Alpine evaluates a click handler with `this` bound to the clicked element, and Livewire's $wire follows that
-    // element: once the morph has removed it (Retry, Regenerate, Approve, a queued question's Edit) $wire is a silent
-    // no-op. So timers, the pump and continuations after an await must go through the root context (`self`).
-    $script = file_get_contents(__DIR__.'/../../resources/js/agent-chat.js');
-
-    expect($script)
-        ->toContain('self = this')
-        ->not->toMatch('/setTimeout\(\(\) => this\./')
-        ->not->toContain('this.$wire.$refresh()')
-        ->toContain('self.$wire.$refresh()')
-        ->toContain('self.timer = setTimeout(() => self.poll(), delay)');
 });
 
 it('opens a new chat on starter questions and drops them once the conversation exists', function () {
@@ -468,7 +453,7 @@ it('opens a new chat on starter questions and drops them once the conversation e
     [$alpha] = $this->widgets();
 
     // The engine's defaults: what needs attention, the latest records of the agent resources, what the assistant can do.
-    $html = livewire(Chat::class)
+    $html = chat()
         ->assertSee('Ask Widgets')
         ->assertSee(__('Ask anything about your workspace, or start with one of these.'))
         ->assertSeeInOrder(['What needs attention today?', 'Show me the latest widgets.', 'What can you help me with?'])
@@ -483,7 +468,7 @@ it('opens a new chat on starter questions and drops them once the conversation e
         ->assertSee('What is the next step for Widget Alpha?');
 
     WidgetAgent::fake(['Nothing urgent.']);
-    livewire(Chat::class)
+    chat()
         ->call('send', 'What needs attention today?')
         ->assertSee('Nothing urgent.')
         ->assertDontSee('or start with one of these');
@@ -492,7 +477,7 @@ it('opens a new chat on starter questions and drops them once the conversation e
 it('shows a one-row composer with the assistant\'s name as placeholder and the models as a list', function () {
     actingAs($this->user());
 
-    $html = livewire(Chat::class)->html();
+    $html = chat()->html();
 
     expect($html)
         ->toContain('placeholder="Ask Widgets…"')
@@ -501,7 +486,7 @@ it('shows a one-row composer with the assistant\'s name as placeholder and the m
         ->not->toContain('<select')
         // The list: the picked entry ticked, each entry with what it runs under it.
         ->toContain('fi-agent-composer-model-picked')
-        ->toContain('wire:click="$set(\'model\', \'fast\')"')
+        ->toContain('setModel(&#039;fast&#039;)')
         ->toContain('Test Claude Fast');
 
     expect(AgentChat::modelMenu())->toHaveKey('anthropic')
@@ -571,15 +556,17 @@ it('lets the app add its own filters and columns to the Chats list', function ()
 it('fills the composer from ?prompt= without sending, so a link cannot ask in the person\'s name', function () {
     actingAs($this->user());
 
-    Livewire::withQueryParams(['prompt' => 'Delete every widget'])->test(Chat::class)
+    chat(query: ['prompt' => 'Delete every widget'])
         ->assertSet('prompt', 'Delete every widget')
         ->assertSet('autoSend', false);
 
     $this->withSession(['packstub-agents.prompt' => 'From the app']);
-    livewire(Chat::class)->assertSet('prompt', 'From the app')->assertSet('autoSend', true);
+    chat()->assertSet('prompt', 'From the app')->assertSet('autoSend', true);
+});
 
-    // The client puts a link's question in the composer instead of the saved draft.
-    // Matched on the code, not its layout: any indentation, with or without the comment.
-    expect(file_get_contents(__DIR__.'/../../resources/js/agent-chat.js'))
-        ->toMatch('/else\s+if\s*\(\s*state\.prompt\.trim\(\)\s*!==\s*\'\'\s*\)\s*\{\s*(\/\/[^\n]*\s*)*this\.\$refs\.input\.value\s*=\s*state\.prompt\b/');
+it('names the page for a tool that reads its title with nobody signed in', function () {
+    // Filament Shield's shield:generate resolves every page of the panel from the console and asks for its title.
+    auth()->logout();
+
+    expect((string) app(Chat::class)->getTitle())->toBe('New chat');
 });

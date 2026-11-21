@@ -1,0 +1,29 @@
+<?php
+
+namespace Packstub\FilamentAgents\Resources\AgentLimits\Pages;
+
+use Filament\Actions\CreateAction;
+use Filament\Resources\Pages\ManageRecords;
+use Illuminate\Contracts\Support\Htmlable;
+use Packstub\Agents\Support\AgentLimits;
+use Packstub\FilamentAgents\Resources\AgentLimits\AgentLimitResource;
+
+class ManageAgentLimits extends ManageRecords
+{
+    protected static string $resource = AgentLimitResource::class;
+
+    /** Filament title-cases the plural label ("AI Limits"); keep the sidebar's sentence case everywhere. */
+    public function getTitle(): string|Htmlable
+    {
+        return __('AI limits');
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()->label(__('Add limit'))->modalHeading(__('Add limit'))
+                ->mutateDataUsing(fn (array $data) => AgentLimitResource::forceScope($data))
+                ->after(fn () => AgentLimits::flush()),
+        ];
+    }
+}

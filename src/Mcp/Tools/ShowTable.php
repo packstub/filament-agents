@@ -1,14 +1,14 @@
 <?php
 
-namespace Packstub\Agents\Mcp\Tools;
+namespace Packstub\FilamentAgents\Mcp\Tools;
 
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
-use Packstub\Agents\AgentsPlugin;
-use Packstub\Agents\Livewire\AgentTable;
 use Packstub\Agents\Mcp\AgentTool;
 use Packstub\Agents\Support\AgentResources;
+use Packstub\FilamentAgents\AgentsPlugin;
+use Packstub\FilamentAgents\Livewire\AgentTable;
 use RuntimeException;
 
 /**
@@ -39,18 +39,21 @@ class ShowTable extends AgentTool
 
         $filters = AgentResources::normalizeFilters($key, (array) ($request->get('filters') ?? []));
         $total = AgentResources::apply($key, $resource::getEloquentQuery(), $filters)->count();
-        $shown = AgentsPlugin::current()?->getEmbeddedTableLimit() ?? AgentTable::DEFAULT_LIMIT;
+        $shown = max(1, AgentsPlugin::current()?->getEmbeddedTableLimit() ?? AgentTable::DEFAULT_LIMIT);
+        // "The latest two": the first rows of the table's own order, never more than an answer shows anyway.
+        $limit = is_numeric($request->get('limit')) ? max(1, min($shown, (int) $request->get('limit'))) : null;
+        $shown = $limit ?? $shown;
 
         return [
             'table' => [
                 'resource' => $key,
                 'filters' => $filters,
                 'title' => (string) ($request->get('title') ?: ''),
-            ],
+            ] + ($limit === null ? [] : ['limit' => $limit]),
             'total' => $total,
             'note' => ($total > $shown
-                ? 'A table with the first '.$shown.' of these '.$total.' rows is rendered for the user under your answer (sortable, with row actions), with a link that opens all of them with search, filters and pagination.'
-                : 'A table with these '.$total.' rows is rendered for the user under your answer (sortable, with row actions).').' Do not list the rows; one sentence on what the table shows is enough.',
+                ? 'A table with the first '.$shown.' of these '.$total.' rows is rendered for the user under your answer, with a link that opens all of them.'
+                : 'A table with these '.$total.' rows is rendered for the user under your answer.').' Do not list the rows; one sentence on what the table shows is enough.',
         ];
     }
 
@@ -60,6 +63,7 @@ class ShowTable extends AgentTool
             'table' => $schema->string()->enum(array_keys(AgentResources::all()) ?: ['none'])->required(),
             'title' => $schema->string()->description('Short caption, e.g. "Orders waiting for a phone call".'),
             'filters' => $schema->object(AgentResources::filterSchema($schema))->description('Only the keys that apply to the chosen table.'),
+            'limit' => $schema->integer()->min(1)->description('Only when the person asks for a number of rows ("the latest 2", "the first 5"): show that many, the first ones in the table\'s own order. Leave it out to show the whole result.'),
         ];
     }
 }

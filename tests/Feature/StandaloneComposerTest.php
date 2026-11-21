@@ -1,7 +1,7 @@
 <?php
 
-use Packstub\Agents\Filament\Pages\Chat;
-use Packstub\Agents\Tests\Fixtures\Livewire\AskBox;
+use Packstub\FilamentAgents\Pages\Chat;
+use Packstub\FilamentAgents\Tests\Fixtures\Livewire\AskBox;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Livewire\livewire;
@@ -26,7 +26,7 @@ it('renders the composer standalone on a page of the app\'s own, with its own sc
     livewire(AskBox::class, ['models' => false])->assertDontSee('fi-agent-composer-model', escape: false);
 
     // The chat page keeps its own scope.
-    livewire(Chat::class)->assertDontSee('agentComposer', escape: false);
+    chat()->assertDontSee('agentComposer', escape: false);
 
     // The scope defines every binding the composer's markup reads.
     $script = file_get_contents(__DIR__.'/../../resources/js/agent-composer.js');

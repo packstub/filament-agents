@@ -1,6 +1,6 @@
 <?php
 
-namespace Packstub\Agents;
+namespace Packstub\FilamentAgents;
 
 use Closure;
 use Filament\Contracts\Plugin;
@@ -9,22 +9,21 @@ use Filament\Panel;
 use Filament\Support\Facades\FilamentView;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Route;
 use Laravel\Mcp\Server\Tool;
+use Packstub\Agents\AgentsManager;
 use Packstub\Agents\Ai\Agent;
+use Packstub\Agents\Chat\ChatHost;
+use Packstub\Agents\Chat\ChatRoutes;
 use Packstub\Agents\Contracts\AgentContext;
 use Packstub\Agents\Contracts\AgentResource;
-use Packstub\Agents\Filament\FilamentContext;
-use Packstub\Agents\Filament\Pages\AgentAccess;
-use Packstub\Agents\Filament\Pages\Chat;
-use Packstub\Agents\Filament\Pages\Chats;
-use Packstub\Agents\Filament\Pages\ResourceTable;
-use Packstub\Agents\Filament\Pages\TurnLog;
-use Packstub\Agents\Filament\Resources\AgentLimits\AgentLimitResource;
-use Packstub\Agents\Http\Controllers\TurnController;
-use Packstub\Agents\Http\Controllers\TurnStreamController;
-use Packstub\Agents\Livewire\AgentTable;
-use Packstub\Agents\Mcp\Tools\ShowTable;
+use Packstub\FilamentAgents\Livewire\AgentTable;
+use Packstub\FilamentAgents\Mcp\Tools\ShowTable;
+use Packstub\FilamentAgents\Pages\AgentAccess;
+use Packstub\FilamentAgents\Pages\Chat;
+use Packstub\FilamentAgents\Pages\Chats;
+use Packstub\FilamentAgents\Pages\ResourceTable;
+use Packstub\FilamentAgents\Pages\TurnLog;
+use Packstub\FilamentAgents\Resources\AgentLimits\AgentLimitResource;
 
 /**
  * Registers the assistant in a panel:
@@ -490,6 +489,8 @@ class AgentsPlugin implements Plugin
 
         // Who is acting and where now comes from the panel: its guard, its tenant (TenantSet keeps firing), its resources.
         app()->singleton(AgentContext::class, FilamentContext::class);
+        // Where the chat is rendered: the panel's page, routes and components (the plain host outside the panel).
+        app()->singleton(ChatHost::class, PanelChatHost::class);
 
         // The base server's list gets show-table once the panel has resources the assistant may show (read when asked).
         $manager->addTools(fn (): array => $manager->resourceClasses() !== [] ? [ShowTable::class] : []);
@@ -579,11 +580,9 @@ class AgentsPlugin implements Plugin
             $pages[] = Chats::class;
             $pages[] = ResourceTable::class;
 
-            // The chat page listens to this (or polls it) while an answer is produced; both run under the panel's auth and tenant middleware.
-            $panel->authenticatedTenantRoutes(function (): void {
-                Route::get('packstub-agents/chat/{conversation}/turn', TurnController::class)->name('packstub-agents.turn');
-                Route::get('packstub-agents/chat/{conversation}/stream', TurnStreamController::class)->name('packstub-agents.stream');
-            });
+            // What the chat calls: the turn's poll and event stream, the actions, the refresh, the record search and
+            // the export, all under the panel's auth and tenant middleware.
+            $panel->authenticatedTenantRoutes(fn () => ChatRoutes::endpoints('packstub-agents'));
         }
 
         if ($this->agentAccess) {

@@ -1,24 +1,26 @@
 <?php
 
+use Filament\Facades\Filament;
 use Illuminate\Support\Str;
 use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Models\ConversationMessage;
 use Laravel\Mcp\Request;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
-use Packstub\Agents\AgentsPlugin;
-use Packstub\Agents\Filament\Pages\Chat;
-use Packstub\Agents\Filament\Pages\ResourceTable;
+use Packstub\Agents\Chat\ChatHost;
 use Packstub\Agents\Filters\Filter;
-use Packstub\Agents\Livewire\AgentTable;
 use Packstub\Agents\Mcp\Tools\DrawChart;
-use Packstub\Agents\Mcp\Tools\ShowTable;
 use Packstub\Agents\Support\AgentChat;
 use Packstub\Agents\Support\AgentResources;
-use Packstub\Agents\Tests\Fixtures\Abilities;
-use Packstub\Agents\Tests\Fixtures\Filament\Resources\Widgets\WidgetResource;
-use Packstub\Agents\Tests\Fixtures\Models\Widget;
-use Packstub\Agents\Tests\Fixtures\WidgetAgent;
+use Packstub\FilamentAgents\AgentsPlugin;
+use Packstub\FilamentAgents\Livewire\AgentTable;
+use Packstub\FilamentAgents\Mcp\Tools\ShowTable;
+use Packstub\FilamentAgents\Pages\ResourceTable;
+use Packstub\FilamentAgents\Support\PlainTable;
+use Packstub\FilamentAgents\Tests\Fixtures\Abilities;
+use Packstub\FilamentAgents\Tests\Fixtures\Filament\Resources\Widgets\WidgetResource;
+use Packstub\FilamentAgents\Tests\Fixtures\Models\Widget;
+use Packstub\FilamentAgents\Tests\Fixtures\WidgetAgent;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
@@ -90,7 +92,7 @@ it('embeds a live resource table in the chat with the resource\'s own actions', 
         'tool_results' => [['id' => 'call_t', 'name' => 'show-table', 'result' => json_encode($payload)]],
     ]));
 
-    livewire(Chat::class, ['conversation' => $conversation->id])
+    chat(['conversation' => $conversation->id])
         ->assertSee('Two widgets are live.')
         ->assertSee('Live ones')
         ->assertSee('Alpha')
@@ -202,6 +204,62 @@ it('shows the first rows of a long result with a link to the full table, where t
     get(ResourceTable::getUrl(['resource' => 'widgets']))->assertForbidden();
 });
 
+it('shows only the first rows when the person asked for a number of them', function () {
+    actingAs($this->user());
+    $widgets = collect(range(1, 8))->map(fn (int $n) => Widget::query()->create(['name' => 'Widget 0'.$n, 'status' => 'live', 'price' => $n]));
+
+    // "Show me the first 2 widgets": the tool keeps the number, and says which rows the table has.
+    $payload = json_decode((string) app(ShowTable::class)->handle(new Request(['table' => 'widgets', 'title' => 'First 2', 'limit' => 2]))->content(), true);
+    expect($payload['table'])->toBe(['resource' => 'widgets', 'filters' => [], 'title' => 'First 2', 'limit' => 2])
+        ->and($payload['total'])->toBe(8)
+        ->and($payload['note'])->toContain('the first 2 of these 8 rows')
+        ->and(app(ShowTable::class)->toArray()['inputSchema']['properties'])->toHaveKey('limit');
+
+    $table = livewire(AgentTable::class, AgentChat::tableFromResult($payload))
+        ->loadTable()
+        ->assertCanSeeTableRecords($widgets->take(2))
+        ->assertCanNotSeeTableRecords($widgets->skip(2))
+        ->assertSee('The first 2 of 8')
+        ->assertSee('Open all 8 in a full table');
+
+    expect($table->instance()->getTableRecords())->toHaveCount(2);
+    expect(fn () => $table->set('limit', 50))->toThrow(CannotUpdateLockedPropertyException::class, 'limit');
+
+    // Never more than an answer shows anyway, and a result without a number is whole.
+    expect(json_decode((string) app(ShowTable::class)->handle(new Request(['table' => 'widgets', 'limit' => 500]))->content(), true)['table']['limit'])->toBe(AgentTable::DEFAULT_LIMIT)
+        ->and(json_decode((string) app(ShowTable::class)->handle(new Request(['table' => 'widgets']))->content(), true)['table'])->not->toHaveKey('limit');
+    livewire(AgentTable::class, ['resource' => 'widgets', 'limit' => 500])->loadTable()->assertCanSeeTableRecords($widgets)->assertSee('8 rows');
+});
+
+it('shows the same rows read-only on a page outside the panel, where the Filament table cannot run', function () {
+    $user = $this->user();
+    actingAs($user);
+    $widgets = collect(range(1, 4))->map(fn (int $n) => Widget::query()->create(['name' => 'Widget 0'.$n, 'status' => $n === 4 ? 'draft' : 'live', 'price' => $n]));
+
+    // A page of the app's own: no panel is current, the chat is on the plain host.
+    Filament::setCurrentPanel(null);
+    $host = app(ChatHost::class);
+    expect($host->embedView('table'))->toBe('packstub-agents::embeds.plain-table');
+
+    $rows = PlainTable::for(['resource' => 'widgets', 'filters' => ['live_only' => true], 'title' => 'Live ones', 'limit' => 2]);
+    expect($rows['title'])->toBe('Live ones')
+        ->and($rows['note'])->toBe('The first 2 of 3')
+        ->and($rows['columns'])->toBe(['Name', 'Status', 'Price'])
+        ->and(array_column(array_column($rows['rows'], 0), 'text'))->toBe(['Widget 01', 'Widget 02'])
+        ->and($rows['rows'][0][0]['url'])->toContain('/widgets')
+        ->and($rows['more']['label'])->toBe('Open all 3 in a full table')
+        ->and($rows['more']['url'])->toContain('/agent-table/widgets')
+        ->and(Filament::getCurrentPanel())->toBeNull(); // the panel was entered for the query only
+
+    $html = view('packstub-agents::embeds.plain-table', ['table' => ['resource' => 'widgets', 'filters' => [], 'title' => '']])->render();
+    expect($html)->toContain('fi-chat-rows')->toContain('Widget 04')->toContain('4 rows')->not->toContain('Open all')->not->toContain('wire:');
+
+    // What the person may not see in the panel is not shown here either.
+    Abilities::$allowed = ['nothing'];
+    expect(PlainTable::for(['resource' => 'widgets']))->toBeNull()
+        ->and(trim(view('packstub-agents::embeds.plain-table', ['table' => ['resource' => 'widgets']])->render()))->toBe('');
+});
+
 it('refuses a Livewire request that changes what the embedded table shows: the resource, the filters, the caption and the full view are locked', function () {
     actingAs($this->user());
     [$alpha] = $this->widgets();
@@ -248,7 +306,7 @@ it('validates drawn charts and renders a chart from a stored tool result', funct
         'tool_results' => [['id' => 'call_1', 'name' => 'draw-chart', 'result' => json_encode($payload)]],
     ]));
 
-    livewire(Chat::class, ['conversation' => $conversation->id])
+    chat(['conversation' => $conversation->id])
         ->assertSee('Here are the prices.')
         ->assertSeeHtml('x-ref="canvas"')
         ->assertSee('Prices');

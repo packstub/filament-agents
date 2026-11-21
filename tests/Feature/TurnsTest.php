@@ -2,14 +2,13 @@
 
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Route;
 use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Models\ConversationMessage;
 use Laravel\Ai\Responses\Data\FinishReason;
 use Laravel\Ai\Responses\Data\TextUsage;
 use Laravel\Ai\Streaming\Events\StreamEnd;
-use Packstub\Agents\AgentsPlugin;
 use Packstub\Agents\Ai\Side\TitleAgent;
-use Packstub\Agents\Filament\Pages\Chat;
 use Packstub\Agents\Jobs\RunAgentTurn;
 use Packstub\Agents\Models\AgentMessageFeedback;
 use Packstub\Agents\Models\AgentTurn;
@@ -18,11 +17,12 @@ use Packstub\Agents\Support\AgentConversationStore;
 use Packstub\Agents\Support\AgentLimits;
 use Packstub\Agents\Support\AgentRuntime;
 use Packstub\Agents\Support\AgentTurns;
-use Packstub\Agents\Tests\Fixtures\WidgetAgent;
+use Packstub\FilamentAgents\AgentsPlugin;
+use Packstub\FilamentAgents\Pages\Chat;
+use Packstub\FilamentAgents\Tests\Fixtures\WidgetAgent;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
-use function Pest\Livewire\livewire;
 
 /** The job the chat pushed for a turn, as a worker would pick it up. */
 function pushedJob(string $turnId): RunAgentTurn
@@ -35,7 +35,7 @@ it('runs the turn in a queued job and streams it to the page from the turn row',
     actingAs($user);
     Queue::fake();
 
-    livewire(Chat::class)->call('send', 'How many widgets are live?');
+    chat()->call('send', 'How many widgets are live?');
 
     $conversation = Conversation::query()->where('participant_id', $user->id)->firstOrFail();
     $turn = AgentTurn::query()->forConversation($conversation->id)->sole();
@@ -52,7 +52,7 @@ it('runs the turn in a queued job and streams it to the page from the turn row',
         && $job->tries === 1);
 
     // Reopened while the job waits: the page attaches to the turn — no Retry, the question is being answered.
-    $page = livewire(Chat::class, ['conversation' => $conversation->id])
+    $page = chat(['conversation' => $conversation->id])
         ->assertSee('How many widgets are live?')
         ->assertDontSee(__('Retry'))
         ->assertSee('data-active="'.$turn->id.'"', escape: false);
@@ -88,7 +88,7 @@ it('runs the turn in a queued job and streams it to the page from the turn row',
     $done = get($url)->assertOk()->assertJsonPath('active', null)->json();
     expect($done['version'])->not->toBe($waiting['version']);
 
-    livewire(Chat::class, ['conversation' => $conversation->id])->assertSee('Two widgets are live')->assertSee('data-active=""', escape: false);
+    chat(['conversation' => $conversation->id])->assertSee('Two widgets are live')->assertSee('data-active=""', escape: false);
 
     // Another person never sees it.
     actingAs($this->user());
@@ -100,7 +100,7 @@ it('fails a queued turn with the line when the person was suspended from the pan
     actingAs($user);
     Queue::fake();
 
-    livewire(Chat::class)->call('send', 'How many widgets are live?');
+    chat()->call('send', 'How many widgets are live?');
     $conversation = Conversation::query()->where('participant_id', $user->id)->firstOrFail();
     $turn = AgentTurn::query()->forConversation($conversation->id)->sole();
 
@@ -122,7 +122,7 @@ it('stops a running turn and keeps what it had written, with a marker', function
     actingAs($user);
     Queue::fake();
 
-    $component = livewire(Chat::class)->call('send', 'Tell me about widgets');
+    $component = chat()->call('send', 'Tell me about widgets');
     $conversation = Conversation::query()->where('participant_id', $user->id)->firstOrFail();
     $turn = AgentTurn::query()->forConversation($conversation->id)->sole();
 
@@ -136,7 +136,7 @@ it('stops a running turn and keeps what it had written, with a marker', function
     expect($turn->fresh()->status)->toBe(AgentTurn::STOPPED)
         ->and(ConversationMessage::query()->where('conversation_id', $conversation->id)->pluck('role')->all())->toBe(['user']);
 
-    $page = livewire(Chat::class, ['conversation' => $conversation->id])
+    $page = chat(['conversation' => $conversation->id])
         ->assertSee(__('Stopped before an answer.'))
         ->assertSee(__('Retry'));
     expect($page->instance()->messages()->last()['unanswered'])->toBeTrue();
@@ -169,7 +169,7 @@ it('stops a running turn and keeps what it had written, with a marker', function
         ->and($messages[1]->content)->not->toContain('never arrives')
         ->and($messages[1]->meta)->toMatchArray(['stopped' => true]);
 
-    $page = livewire(Chat::class, ['conversation' => $conversation->id])
+    $page = chat(['conversation' => $conversation->id])
         ->assertSee('First line about widgets')
         ->assertSee(__('(stopped)'))
         ->assertDontSee(__('Retry'));
@@ -181,7 +181,7 @@ it('keeps the follow-ups per conversation, in order, editable until they start',
     actingAs($user);
     Queue::fake();
 
-    $component = livewire(Chat::class)->call('send', 'First');
+    $component = chat()->call('send', 'First');
     $conversation = Conversation::query()->where('participant_id', $user->id)->firstOrFail();
 
     $component->call('send', 'Second')->call('send', 'Third')
@@ -199,7 +199,7 @@ it('keeps the follow-ups per conversation, in order, editable until they start',
     Queue::assertPushedTimes(RunAgentTurn::class, 1);
 
     // A second tab sees the same line; nothing else can start while a turn runs.
-    livewire(Chat::class, ['conversation' => $conversation->id])->assertSee('Third')->assertSee(__('Queued'))
+    chat(['conversation' => $conversation->id])->assertSee('Third')->assertSee(__('Queued'))
         ->call('regenerate')->assertReturned(null)
         ->call('retry')->assertReturned(null);
 
@@ -229,16 +229,16 @@ it('names a missing worker on the status line once a turn has waited for one', f
     actingAs($user);
     Queue::fake();
 
-    livewire(Chat::class)->call('send', 'Anyone there?');
+    chat()->call('send', 'Anyone there?');
     $conversation = Conversation::query()->where('participant_id', $user->id)->firstOrFail();
     $hint = __('No queue worker has taken this turn yet. Run php artisan queue:work, or set AGENT_TURN_DRIVER=sync to answer inside the request.');
     $url = Filament::getPanel('admin')->route('packstub-agents.turn', ['conversation' => $conversation->id]);
 
-    expect(livewire(Chat::class, ['conversation' => $conversation->id])->instance()->live()['active']['statusText'])->toBe(__('Thinking…'));
+    expect(chat(['conversation' => $conversation->id])->instance()->live()['active']['statusText'])->toBe(__('Thinking…'));
     get($url)->assertOk()->assertJsonPath('active.statusText', __('Thinking…'));
 
     $this->travel(AgentTurns::workerWait() + 1)->seconds();
-    expect(livewire(Chat::class, ['conversation' => $conversation->id])->instance()->live()['active']['statusText'])->toBe($hint);
+    expect(chat(['conversation' => $conversation->id])->instance()->live()['active']['statusText'])->toBe($hint);
     get($url)->assertOk()->assertJsonPath('active.statusText', $hint);
 });
 
@@ -247,13 +247,13 @@ it('shows a turn whose worker went quiet as failed, with a retry', function () {
     actingAs($user);
     Queue::fake();
 
-    livewire(Chat::class)->call('send', 'Anyone there?');
+    chat()->call('send', 'Anyone there?');
     $conversation = Conversation::query()->where('participant_id', $user->id)->firstOrFail();
     $turn = AgentTurn::query()->forConversation($conversation->id)->sole();
 
     AgentTurn::query()->whereKey($turn->id)->update(['updated_at' => now()->subSeconds(AgentTurns::jobTimeout() + 120)]);
 
-    $page = livewire(Chat::class, ['conversation' => $conversation->id])
+    $page = chat(['conversation' => $conversation->id])
         ->assertSee(__('The assistant could not answer.'))
         ->assertSee('interrupted')
         ->assertSee(__('Retry'));
@@ -279,13 +279,13 @@ it('regenerates the last answer and resends an edited question', function () {
     actingAs($user);
 
     WidgetAgent::fake(['Two widgets are live.']);
-    $component = livewire(Chat::class)->call('send', 'How many?');
+    $component = chat()->call('send', 'How many?');
 
     $conversation = Conversation::query()->where('participant_id', $user->id)->firstOrFail();
     $messages = ConversationMessage::query()->where('conversation_id', $conversation->id)->orderBy('id')->get();
     $component->call('feedback', $messages[1]->id, 'up');
 
-    $component = livewire(Chat::class, ['conversation' => $conversation->id])
+    $component = chat(['conversation' => $conversation->id])
         ->assertSee(__('Regenerate'))
         ->assertSee(__('Edit and send again'));
     expect($component->instance()->messages()->first()['editable'])->toBeTrue()
@@ -318,7 +318,7 @@ it('regenerates the last answer and resends an edited question', function () {
     $component->call('resend', 'far too long')->assertNotified();
     expect(ConversationMessage::query()->where('conversation_id', $conversation->id)->orderBy('id')->pluck('content')->all())
         ->toBe(['far too long']);
-    livewire(Chat::class, ['conversation' => $conversation->id])->assertSee('too long')->assertSee(__('Retry'));
+    chat(['conversation' => $conversation->id])->assertSee('too long')->assertSee(__('Retry'));
 });
 
 it('puts a worker into the shape of the panel request and cleans up after', function () {
@@ -358,7 +358,7 @@ it('marks an answer the provider ended early so it can be produced again', funct
         ->and(AgentTurns::cutShortReason($end(FinishReason::Stop)))->toBeNull()
         ->and(AgentTurns::cutShortReason($end(FinishReason::ToolCalls)))->toBeNull();
 
-    livewire(Chat::class)->call('send', 'How many widgets are live?');
+    chat()->call('send', 'How many widgets are live?');
     $conversation = Conversation::query()->where('participant_id', $user->id)->firstOrFail();
     $turn = AgentTurn::query()->forConversation($conversation->id)->sole();
 
@@ -377,7 +377,7 @@ it('marks an answer the provider ended early so it can be produced again', funct
         ->and(AgentChat::cutShortText('length'))->toBe(__('The answer hit the model\'s length limit.'))
         ->and(AgentChat::cutShortText('dropped'))->toBe(__('The provider closed the stream before the answer was complete.'));
 
-    $page = livewire(Chat::class, ['conversation' => $conversation->id])
+    $page = chat(['conversation' => $conversation->id])
         ->assertSee('Two widgets are')
         ->assertSee(__('(cut short)'))
         ->assertSee(__('The answer hit the model\'s length limit.'))
@@ -396,7 +396,7 @@ it('runs the turn inside the request on the sync driver, whatever the queue is',
     WidgetAgent::fake(['Two widgets are live.']);
     TitleAgent::fake([['title' => 'Live widgets']]);
 
-    livewire(Chat::class)->call('send', 'How many widgets are live?');
+    chat()->call('send', 'How many widgets are live?');
 
     $conversation = Conversation::query()->where('participant_id', $user->id)->firstOrFail();
     $turn = AgentTurn::query()->forConversation($conversation->id)->sole();
@@ -405,14 +405,16 @@ it('runs the turn inside the request on the sync driver, whatever the queue is',
     expect($turn->status)->toBe(AgentTurn::DONE)
         ->and(ConversationMessage::query()->where('conversation_id', $conversation->id)->pluck('role')->all())->toBe(['user', 'assistant']);
 
-    livewire(Chat::class, ['conversation' => $conversation->id])->assertSee('Two widgets are live');
+    chat(['conversation' => $conversation->id])->assertSee('Two widgets are live');
 });
 
 it('refuses a turn driver it does not know', function () {
     actingAs($this->user());
     config()->set('packstub-agents.chat.driver', 'thread');
 
-    livewire(Chat::class)->call('send', 'How many widgets are live?');
+    $this->withoutExceptionHandling();
+
+    chat()->call('send', 'How many widgets are live?');
 })->throws(InvalidArgumentException::class, 'Unknown agent turn driver [thread]');
 
 it('takes the turn driver from the plugin', function () {
@@ -420,4 +422,12 @@ it('takes the turn driver from the plugin', function () {
     $plugin->register(Filament::getPanel('admin'));
 
     expect(config('packstub-agents.chat.driver'))->toBe('sync');
+});
+
+it("leaves the engine's plain chat routes out when a panel has the chat, so every call runs under the panel's middleware", function () {
+    $names = collect(Route::getRoutes()->getRoutes())->map->getName()->filter();
+
+    expect($names)->toContain('filament.admin.packstub-agents.act')
+        ->not->toContain('packstub-agents.act')
+        ->not->toContain('packstub-agents.turn');
 });

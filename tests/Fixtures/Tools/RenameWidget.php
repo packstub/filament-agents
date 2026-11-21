@@ -1,13 +1,13 @@
 <?php
 
-namespace Packstub\Agents\Tests\Fixtures\Tools;
+namespace Packstub\FilamentAgents\Tests\Fixtures\Tools;
 
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Server\Attributes\Description;
 use Packstub\Agents\Mcp\AgentTool;
-use Packstub\Agents\Tests\Fixtures\Filament\Resources\Widgets\WidgetResource;
-use Packstub\Agents\Tests\Fixtures\Models\Widget;
+use Packstub\FilamentAgents\Tests\Fixtures\Filament\Resources\Widgets\WidgetResource;
+use Packstub\FilamentAgents\Tests\Fixtures\Models\Widget;
 use RuntimeException;
 
 #[Description('Rename a widget.')]

@@ -6,30 +6,31 @@ Never call a provider from tests. laravel/ai fakes the model, laravel/mcp drives
 
 ```php
 use App\Ai\Agents\Assistant;
-use Packstub\Agents\Filament\Pages\Chat;
-
-use function Pest\Livewire\livewire;
+use Filament\Facades\Filament;
+use Packstub\FilamentAgents\Pages\Chat;
 
 it('answers in the chat', function () {
     actingAs($user);
     Assistant::fake(['Two orders are waiting for a call.']);
 
-    livewire(Chat::class)
-        ->set('prompt', 'What needs attention?')
-        ->call('send');
+    $send = Filament::getPanel('admin')->route('packstub-agents.act', ['action' => 'send']);
 
-    $conversation = Conversation::query()->where('participant_id', $user->id)->sole();
+    $conversation = postJson($send, ['prompt' => 'What needs attention?'])
+        ->assertOk()
+        ->json('turn.conversation');
 
-    livewire(Chat::class, ['conversation' => $conversation->id])
+    get(Chat::getUrl(['conversation' => $conversation], panel: 'admin'))
         ->assertSee('Two orders are waiting for a call');
 });
 ```
+
+The chat is the engine's: an Alpine component that calls the panel's own routes, with no Livewire actions on the page. A test sends a question the way the browser does, with a POST to the `packstub-agents.act` route of your panel (`send`, `retry`, `decide`, `stop` and the [other actions](https://packstub.dev/docs/agents/chat#what-the-page-calls)), then reads the chat page. On a panel with tenancy, add the tenant to both URLs (`['action' => 'send', 'tenant' => $team]`).
 
 `Assistant::fake([...])` comes from laravel/ai's `Promptable` trait: each entry is one answer, in order.
 
 The side agents next to the assistant — the chat's title, the rolling summary, the classification, the prompt guard — are faked the same way, each with the fields it answers with (`TitleAgent::fake([['title' => 'Orders waiting for a call']])`, `GuardAgent::fake([['category' => 'injection', 'reason' => '…']])`); with the assistant faked and a side agent not, the title, the classification and the guard are skipped, so a new chat keeps its first question as the title. See [Faking the model](https://packstub.dev/docs/agents/testing#faking-the-model) in the engine's docs.
 
-A turn runs in a queued job. On the `sync` queue driver (the default in a test environment), or with `chat.driver` set to `sync`, it runs inside `call('send')`, so the answer is stored when the call returns, as above. To test what happens while the job waits — the page attaching to a running turn, Stop, the follow-ups waiting per conversation — fake the queue and run the pushed job yourself:
+A turn runs in a queued job. On the `sync` queue driver (the default in a test environment), or with `chat.driver` set to `sync`, it runs inside the request that sent the question, so the answer is stored when it returns, as above. To test what happens while the job waits — the page attaching to a running turn, Stop, the follow-ups waiting per conversation — fake the queue and run the pushed job yourself:
 
 ```php
 use Illuminate\Support\Facades\Queue;
@@ -37,7 +38,7 @@ use Packstub\Agents\Jobs\RunAgentTurn;
 use Packstub\Agents\Support\AgentTurns;
 
 Queue::fake();
-livewire(Chat::class)->call('send', 'What needs attention?');
+postJson($send, ['prompt' => 'What needs attention?']);
 
 Assistant::fake(['Two orders are waiting for a call.']);
 Queue::pushed(RunAgentTurn::class)->first()->handle(app(AgentTurns::class));

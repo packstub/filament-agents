@@ -4,6 +4,18 @@ All notable changes to `packstub/filament-agents` are documented here.
 
 ## Unreleased
 
+The chat page now runs on the chat that ships with Agents for Laravel: same look, no Livewire round trips.
+
+- The chat's actions are plain HTTP requests, and a long chat refreshes faster because the page asks only for the parts that changed
+- Files travel with the question, so attaching one no longer uploads it first
+- Message times show in your own timezone, and the conversation fades out under the composer
+- The slide-over has one "Open full page" button, in its head, and it opens the chat you are in
+- On a page of your own with `<x-agents-chat />`, an answer with a table shows its rows read-only, with a link to the full table in the panel
+- "Show me the latest 2 orders" shows two rows: `show-table` takes a number of rows, with a link to the whole result under them (with `packstub/agents` from the same release)
+- **Upgrading:** every step is in the [upgrade guide](https://packstub.dev/docs/filament-agents/upgrading). The plugin's classes have a namespace of their own, `Packstub\FilamentAgents`. In your panel provider `Packstub\Agents\AgentsPlugin` becomes `Packstub\FilamentAgents\AgentsPlugin`; anything under `Packstub\Agents\Filament\…` drops the `Filament` segment (`Packstub\FilamentAgents\Pages\Chat`, `…\ChatRenderHook`); `Packstub\Agents\Livewire\AgentTable` and `Packstub\Agents\Mcp\Tools\ShowTable` become `Packstub\FilamentAgents\Livewire\AgentTable` and `…\Mcp\Tools\ShowTable`. The engine's classes (`Packstub\Agents\Facades\Agents`, `…\Mcp\AgentTool`, `…\Ai\Agent` …) keep their names
+- **Upgrading:** requires `packstub/agents` ^1.14; run `php artisan filament:assets` after updating (most apps already do, through `filament:upgrade`)
+- **Upgrading:** published chat views move: a file under `resources/views/vendor/packstub-agents/pages/chat/` now goes under `resources/views/vendor/packstub-agents-chat/` (`header`, `answer/footer` …), reads the chat's variables instead of `$this`, and uses the classes of the chat's stylesheet instead of Tailwind utilities ([Changing one part](https://packstub.dev/docs/filament-agents/assistant#changing-one-part-of-the-chat-page))
+- **Upgrading:** the Chat page has no Livewire actions any more. A test that called `livewire(Chat::class)->call('send')` posts to the panel's `packstub-agents.act` route instead ([Testing](https://packstub.dev/docs/filament-agents/testing)); render hook markup that used `wire:click` on the page calls the chat's Alpine methods
 - Security: a `?prompt=` link only fills the chat box (the composer shows it); the person sends it. A question an app hands over through the session is still sent on its own
 - A failed answer no longer shows the person the provider's raw error (it can name config keys); operators still read it in the turn log. The same goes for a decision that could not be applied and an answer the provider interrupted
 - When you lose access to a workspace mid-answer, the chat says so instead of a bare "could not answer" (with `packstub/agents` from the same release)

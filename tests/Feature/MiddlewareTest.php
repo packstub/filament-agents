@@ -11,28 +11,27 @@ use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Models\ConversationMessage;
 use Laravel\Ai\PendingStep;
 use Laravel\Ai\Responses\Data\ToolResult;
-use Packstub\Agents\AgentsPlugin;
 use Packstub\Agents\Ai\Middleware\AttachContext;
 use Packstub\Agents\Ai\Middleware\EnforceBudget;
 use Packstub\Agents\Exceptions\TurnRefused;
 use Packstub\Agents\Facades\Agents;
-use Packstub\Agents\Filament\Pages\Chat;
 use Packstub\Agents\Jobs\RunAgentTurn;
 use Packstub\Agents\Models\AgentTurn;
 use Packstub\Agents\Support\AgentLimits;
 use Packstub\Agents\Support\AgentTurns;
-use Packstub\Agents\Tests\Fixtures\Middleware\RecordsTurns;
-use Packstub\Agents\Tests\Fixtures\WidgetAgent;
+use Packstub\FilamentAgents\AgentsPlugin;
+use Packstub\FilamentAgents\Pages\Chat;
+use Packstub\FilamentAgents\Tests\Fixtures\Middleware\RecordsTurns;
+use Packstub\FilamentAgents\Tests\Fixtures\WidgetAgent;
 
 use function Pest\Laravel\actingAs;
-use function Pest\Livewire\livewire;
 
 beforeEach(fn () => RecordsTurns::reset());
 
 /** Queue a question from the chat page and hand back the job a worker would pick up. */
 function queuedTurn(string $prompt): array
 {
-    livewire(Chat::class)->call('send', $prompt);
+    chat()->call('send', $prompt);
 
     $turn = AgentTurn::query()->latest('id')->firstOrFail();
     $job = Queue::pushed(RunAgentTurn::class, fn (RunAgentTurn $job) => $job->turnId === $turn->id)->first();
@@ -109,7 +108,7 @@ it('lets a middleware refuse a turn: the question keeps a Retry, nothing is stor
         ->and($turn->fresh()->error)->toBe('Not during the audit.')
         ->and(ConversationMessage::query()->where('role', 'assistant')->exists())->toBeFalse();
 
-    livewire(Chat::class, ['conversation' => $turn->conversation_id])
+    chat(['conversation' => $turn->conversation_id])
         ->assertSee('Not during the audit.')
         ->assertSee(__('Retry'));
 });

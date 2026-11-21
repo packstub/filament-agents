@@ -1,7 +1,7 @@
 <?php
 
 use Filament\Facades\Filament;
-use Packstub\Agents\Tests\Fixtures\Models\Team;
+use Packstub\FilamentAgents\Tests\Fixtures\Models\Team;
 
 use function Pest\Laravel\postJson;
 

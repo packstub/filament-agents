@@ -1,11 +1,11 @@
 <?php
 
-use Packstub\Agents\Filament\Pages\AgentAccess;
-use Packstub\Agents\Filament\Resources\AgentLimits\AgentLimitResource;
 use Packstub\Agents\Models\AgentLimit;
 use Packstub\Agents\Support\AgentLimits;
-use Packstub\Agents\Tests\Fixtures\Abilities;
-use Packstub\Agents\Tests\Fixtures\Filament\Resources\Widgets\WidgetResource;
+use Packstub\FilamentAgents\Pages\AgentAccess;
+use Packstub\FilamentAgents\Resources\AgentLimits\AgentLimitResource;
+use Packstub\FilamentAgents\Tests\Fixtures\Abilities;
+use Packstub\FilamentAgents\Tests\Fixtures\Filament\Resources\Widgets\WidgetResource;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Livewire\livewire;

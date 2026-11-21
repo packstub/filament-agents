@@ -140,7 +140,7 @@ OLLAMA_API_KEY=local
 ## AgentsPlugin
 
 ```php
-use Packstub\Agents\AgentsPlugin;
+use Packstub\FilamentAgents\AgentsPlugin;
 
 AgentsPlugin::make()
     ->name('Ask Acme')

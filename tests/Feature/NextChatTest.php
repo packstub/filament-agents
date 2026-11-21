@@ -8,21 +8,22 @@ use Illuminate\Support\Facades\View;
 use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Models\ConversationMessage;
 use Laravel\Ai\Responses\Data\ToolCall;
-use Packstub\Agents\AgentsPlugin;
-use Packstub\Agents\Filament\ChatRenderHook;
-use Packstub\Agents\Filament\Pages\Chat;
-use Packstub\Agents\Filament\Pages\Chats;
-use Packstub\Agents\Filament\Pages\TurnLog;
-use Packstub\Agents\Filament\Widgets\TurnsChart;
-use Packstub\Agents\Filament\Widgets\TurnStats;
+use Packstub\Agents\Chat\ChatAssets;
 use Packstub\Agents\Models\AgentMessageFeedback;
 use Packstub\Agents\Models\AgentTurn;
 use Packstub\Agents\Support\AgentChat;
 use Packstub\Agents\Support\AgentConversationStore;
-use Packstub\Agents\Tests\Fixtures\Abilities;
-use Packstub\Agents\Tests\Fixtures\Filament\Resources\Widgets\WidgetResource;
-use Packstub\Agents\Tests\Fixtures\Models\Widget;
-use Packstub\Agents\Tests\Fixtures\WidgetAgent;
+use Packstub\FilamentAgents\AgentsPlugin;
+use Packstub\FilamentAgents\ChatRenderHook;
+use Packstub\FilamentAgents\Pages\Chat;
+use Packstub\FilamentAgents\Pages\Chats;
+use Packstub\FilamentAgents\Pages\TurnLog;
+use Packstub\FilamentAgents\Tests\Fixtures\Abilities;
+use Packstub\FilamentAgents\Tests\Fixtures\Filament\Resources\Widgets\WidgetResource;
+use Packstub\FilamentAgents\Tests\Fixtures\Models\Widget;
+use Packstub\FilamentAgents\Tests\Fixtures\WidgetAgent;
+use Packstub\FilamentAgents\Widgets\TurnsChart;
+use Packstub\FilamentAgents\Widgets\TurnStats;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
@@ -32,10 +33,10 @@ it('streams the running turn to the page over the panel\'s event stream route, n
     $user = $this->user();
     actingAs($user);
     WidgetAgent::fake(['Two.']);
-    livewire(Chat::class)->call('send', 'How many?');
+    chat()->call('send', 'How many?');
     $conversation = Conversation::query()->where('participant_id', $user->id)->firstOrFail();
 
-    $page = livewire(Chat::class, ['conversation' => $conversation->id]);
+    $page = chat(['conversation' => $conversation->id]);
     $stream = Filament::getPanel('admin')->route('packstub-agents.stream', ['conversation' => $conversation->id]);
     $page->assertSee('data-stream="'.$stream.'"', escape: false)
         ->assertSee('data-poll="'.Filament::getPanel('admin')->route('packstub-agents.turn', ['conversation' => $conversation->id]).'"', escape: false);
@@ -46,17 +47,6 @@ it('streams the running turn to the page over the panel\'s event stream route, n
 
     actingAs($this->user());
     get($stream)->assertNotFound();
-
-    // The client: an EventSource while a turn runs, the poll when it cannot be held open, and the deferred-work rule.
-    $script = file_get_contents(__DIR__.'/../../resources/js/agent-chat.js');
-    expect($script)
-        ->toContain('new EventSource(this.streamUrl')
-        ->toContain("source.addEventListener('turn'")
-        ->toContain("source.addEventListener('end'")
-        ->toContain('self.streamFailures++')
-        ->toContain('self.timer = setTimeout(() => self.poll(), delay)')
-        ->toContain('self.$wire.$refresh()')
-        ->not->toMatch('/setTimeout\(\(\) => this\./');
 });
 
 it('renders code blocks with a copy button and colours, a copy button under every answer, and the tools as a timeline', function () {
@@ -65,7 +55,7 @@ it('renders code blocks with a copy button and colours, a copy button under ever
     $this->widgets();
     WidgetAgent::fake([new ToolCall('c1', 'list-widgets', ['filters' => ['status' => ['live']], 'limit' => 5]), "Here you go:\n\n```php\n\$live = Widget::live()->count();\n```"]);
 
-    $html = livewire(Chat::class)->call('send', 'Show me the code')->html();
+    $html = chat()->call('send', 'Show me the code')->html();
 
     expect($html)
         ->toContain('<pre><code class="language-php">')
@@ -88,20 +78,17 @@ it('renders code blocks with a copy button and colours, a copy button under ever
         ->and(Chat::resultSummary('{"error":"nope"}'))->toBe('failed')
         ->and(Chat::resultSummary('{"renamed":true}'))->toBeNull()
         ->and(Chat::resultSummary(null))->toBeNull();
-
-    $script = file_get_contents(__DIR__.'/../../resources/js/agent-chat.js');
-    expect($script)->toContain("querySelectorAll('.fi-chat-md pre:not([data-decorated])')")->toContain('navigator.clipboard.writeText');
 });
 
 it('renames, pins, exports and continues a chat from the page, and rates with a note', function () {
     $user = $this->user();
     actingAs($user);
     WidgetAgent::fake(['Two widgets are live.']);
-    $page = livewire(Chat::class)->call('send', 'How many widgets are live?');
+    $page = chat()->call('send', 'How many widgets are live?');
     $conversation = Conversation::query()->where('participant_id', $user->id)->firstOrFail();
     $answer = ConversationMessage::query()->where('conversation_id', $conversation->id)->where('role', 'assistant')->sole();
 
-    $page = livewire(Chat::class, ['conversation' => $conversation->id])
+    $page = chat(['conversation' => $conversation->id])
         ->assertSee('aria-label="'.__('Rename').'"', escape: false)
         ->assertSee('aria-pressed="false"', escape: false)
         ->call('rename', 'Live widgets')
@@ -110,23 +97,23 @@ it('renames, pins, exports and continues a chat from the page, and rates with a 
 
     expect(AgentChat::for($user, $conversation->id)->pinned())->toBeTrue()
         ->and($conversation->fresh()->title)->toBe('Live widgets');
-    livewire(Chat::class, ['conversation' => $conversation->id])->assertSee('title="'.__('Unpin').'"', escape: false)->call('togglePin');
+    chat(['conversation' => $conversation->id])->assertSee('title="'.__('Unpin').'"', escape: false)->call('togglePin');
     expect(AgentChat::for($user, $conversation->id)->pinned())->toBeFalse();
 
     // Export: the transcript as a Markdown download.
-    livewire(Chat::class, ['conversation' => $conversation->id])->call('export')->assertFileDownloaded('live-widgets.md');
+    chat(['conversation' => $conversation->id])->call('export')->assertFileDownloaded('live-widgets.md');
 
     // A thumbs-down with a note.
-    livewire(Chat::class, ['conversation' => $conversation->id])->call('feedback', $answer->id, 'down', 'Beta is retired');
+    chat(['conversation' => $conversation->id])->call('feedback', $answer->id, 'down', 'Beta is retired');
     $feedback = AgentMessageFeedback::query()->where('message_id', $answer->id)->sole();
     expect($feedback->rating)->toBe('down')->and($feedback->note)->toBe('Beta is retired')->and($feedback->turn_id)->not->toBeNull();
-    livewire(Chat::class, ['conversation' => $conversation->id])->assertSee('aria-pressed="true"', escape: false)->assertSee('Beta is retired');
+    chat(['conversation' => $conversation->id])->assertSee('aria-pressed="true"', escape: false)->assertSee('Beta is retired');
 
     // Continue: offered only on an answer the length limit cut short; the continuation question stays hidden.
-    livewire(Chat::class, ['conversation' => $conversation->id])->assertDontSee(__('Continue'));
+    chat(['conversation' => $conversation->id])->assertDontSee(__('Continue'));
     app(AgentConversationStore::class)->markCutShort($conversation->id, 'length');
     WidgetAgent::fake(['and Beta is a draft.']);
-    livewire(Chat::class, ['conversation' => $conversation->id])
+    chat(['conversation' => $conversation->id])
         ->assertSee(__('Continue'))
         ->call('continueAnswer')
         ->assertSee('and Beta is a draft.')
@@ -138,14 +125,14 @@ it('pages through the earlier answers of the last question', function () {
     $user = $this->user();
     actingAs($user);
     WidgetAgent::fake(['Two.']);
-    livewire(Chat::class)->call('send', 'How many?');
+    chat()->call('send', 'How many?');
     $conversation = Conversation::query()->where('participant_id', $user->id)->firstOrFail();
     $question = ConversationMessage::query()->where('conversation_id', $conversation->id)->where('role', 'user')->sole();
 
-    livewire(Chat::class, ['conversation' => $conversation->id])->assertDontSee('fi-chat-versions', escape: false);
+    chat(['conversation' => $conversation->id])->assertDontSee('fi-chat-versions', escape: false);
 
     WidgetAgent::fake(['Two of them.']);
-    $page = livewire(Chat::class, ['conversation' => $conversation->id])->call('regenerate')
+    $page = chat(['conversation' => $conversation->id])->call('regenerate')
         ->assertSee('Two of them.')
         ->assertSee('fi-chat-versions', escape: false)
         ->assertSee('2/2')
@@ -158,7 +145,7 @@ it('pages through the earlier answers of the last question', function () {
     expect(ConversationMessage::query()->where('conversation_id', $conversation->id)->orderBy('id')->pluck('content')->all())->toBe(['How many?', 'Two.'])
         ->and(AgentChat::for($user, $conversation->id)->versions($question->id)->pluck('text')->all())->toBe(['Two of them.']);
 
-    livewire(Chat::class, ['conversation' => $conversation->id])->call('showVersion', $question->id, 999)->assertNotified();
+    chat(['conversation' => $conversation->id])->call('showVersion', $question->id, 999)->assertNotified();
 });
 
 it('sends the files picked in the composer with the question and shows them on the bubble', function () {
@@ -167,13 +154,12 @@ it('sends the files picked in the composer with the question and shows them on t
     $user = $this->user();
     actingAs($user);
 
-    $page = livewire(Chat::class);
+    $page = chat();
     expect($page->instance()->attachmentSettings())->toMatchArray(['maxFiles' => 5]);
     $page->assertSee('fi-agent-composer-attach', escape: false);
 
     WidgetAgent::fake(['An invoice for 12 widgets.']);
     $page->set('attachments', [UploadedFile::fake()->image('invoice.png')])
-        ->assertSee('invoice.png')
         ->call('send', 'What is this?')
         ->assertSee('An invoice for 12 widgets.')
         ->assertSee('fi-chat-attachment-image', escape: false)
@@ -183,11 +169,11 @@ it('sends the files picked in the composer with the question and shows them on t
     WidgetAgent::assertPrompted(fn ($prompt) => $prompt->attachments->count() === 1);
 
     // A file of a type the chat does not accept is refused with a notification, the question kept in the composer.
-    livewire(Chat::class)->set('attachments', [UploadedFile::fake()->create('a.zip', 10, 'application/zip')])->call('send', 'Zip?')->assertNotified();
+    chat()->set('attachments', [UploadedFile::fake()->create('a.zip', 10, 'application/zip')])->call('send', 'Zip?')->assertNotified();
 
     config()->set('packstub-agents.chat.attachments.enabled', false);
-    expect(livewire(Chat::class)->instance()->attachmentSettings())->toBeNull();
-    livewire(Chat::class)->assertDontSee('fi-agent-composer-attach', escape: false);
+    expect(chat()->instance()->attachmentSettings())->toBeNull();
+    chat()->assertDontSee('fi-agent-composer-attach', escape: false);
 });
 
 it('offers the panel\'s records for "@" and sends the mentioned ones with the question', function () {
@@ -195,22 +181,22 @@ it('offers the panel\'s records for "@" and sends the mentioned ones with the qu
     actingAs($user);
     [$alpha, $beta] = $this->widgets();
 
-    $page = livewire(Chat::class);
+    $page = chat();
     expect($page->instance()->canMention())->toBeTrue()
         ->and($page->instance()->searchRecords('alp'))->toBe([['ref' => "widgets/{$alpha->id}", 'label' => 'Widget Alpha', 'resource' => 'widgets']])
         ->and(collect($page->instance()->searchRecords(''))->pluck('label')->all())->toBe(['Widget Gamma', 'Widget Beta', 'Widget Alpha'])
         ->and($page->instance()->searchRecords('zzz'))->toBe([]);
-    $page->assertSee('data-mentions="1"', escape: false)->assertSee(__('Type / for these questions, @ to mention a record.'));
+    $page->assertSee('data-search="'.e(Filament::getPanel('admin')->route('packstub-agents.mentions')).'"', escape: false)->assertSee(__('Type / for these questions, @ to mention a record.'));
 
     WidgetAgent::fake(['Alpha is live.']);
-    livewire(Chat::class)->call('send', 'Is @Widget Alpha live?', ["widgets/{$alpha->id}"])
+    chat()->call('send', 'Is @Widget Alpha live?', ["widgets/{$alpha->id}"])
         ->assertSee('Is @Widget Alpha live?')
         ->assertSee('fi-chat-mention', escape: false)
         ->assertSee('@ Widget Alpha');
     WidgetAgent::assertPrompted(fn ($prompt) => str_contains($prompt->prompt, 'Records the person mentioned') && str_contains($prompt->prompt, "widgets/{$alpha->id}"));
 
-    $script = file_get_contents(__DIR__.'/../../resources/js/agent-chat.js');
-    expect($script)->toContain('self.$wire.searchRecords(query)')->toContain('/(?:^|\\s)@([^\\s@]*)$/')->toContain('packstub-agents:draft:');
+    // The picker asks the panel's own endpoint, as the script does.
+    expect(get(Filament::getPanel('admin')->route('packstub-agents.mentions', ['q' => 'alp']))->assertOk()->json())->toBe([['ref' => "widgets/{$alpha->id}", 'label' => 'Widget Alpha', 'resource' => 'widgets']]);
 });
 
 it('leaves a record the resource\'s canView() denies out of the "@" picker', function () {
@@ -218,7 +204,7 @@ it('leaves a record the resource\'s canView() denies out of the "@" picker', fun
     [$alpha, $beta, $gamma] = $this->widgets();
     Abilities::$hiddenWidgets = [$beta->id];
 
-    $page = livewire(Chat::class);
+    $page = chat();
     expect(collect($page->instance()->searchRecords(''))->pluck('ref')->all())->toBe(["widgets/{$gamma->id}", "widgets/{$alpha->id}"])
         ->and($page->instance()->searchRecords('bet'))->toBe([])
         ->and(collect($page->instance()->searchRecords('a'))->pluck('label')->all())->toBe(['Widget Gamma', 'Widget Alpha']);
@@ -248,13 +234,18 @@ it('opens the chat as a slide-over from the Ask button and the shortcut, and emb
         ->toContain('context=widgets%2F'.$alpha->id)
         ->toContain('fi-agent-drawer')
         ->toContain('x-on:open-agent-drawer.window')
-        ->toContain('embedded=1');
+        ->toContain('embedded=1')
+        // One way to the full page, in the slide-over's head: it opens the chat on screen, read from the frame.
+        ->toContain('window.location.href = page()')->toContain('[data-agents-chat] [data-page]');
 
     // The chat page itself has no drawer, and embedded it has no sidebar.
     $full = get(Chat::getUrl())->assertOk()->content();
     expect($full)->not->toContain('fi-agent-drawer')->toContain('fi-sidebar');
     $embedded = get(Chat::getUrl(['embedded' => 1, 'context' => 'widgets/'.$alpha->id]))->assertOk()->content();
-    expect($embedded)->not->toContain('fi-sidebar')->toContain('fi-chat-embedded')->toContain(__('Open full page'))->toContain('fi-chat-about')->toContain('target="_top">Widget Alpha</a>'); // the record links over the frame, not inside it
+    expect($embedded)->not->toContain('fi-sidebar')->toContain('fi-chat-embedded')
+        ->not->toContain(__('Open full page')) // the slide-over's head has the button
+        ->toContain('data-page="'.e(Chat::getUrl(['context' => 'widgets/'.$alpha->id])).'"')
+        ->toContain('fi-chat-about')->toContain('target="_top">Widget Alpha</a>'); // the record links over the frame, not inside it
 
     // Switched off: the button is a plain link and no drawer is rendered.
     $plugin->slideOver(false)->shortcut(null);
@@ -268,9 +259,9 @@ it('lists chats pinned first, searches inside the messages, and renames, pins, e
     $user = $this->user();
     actingAs($user);
     WidgetAgent::fake(['Alpha and Beta are the widgets.']);
-    livewire(Chat::class)->call('send', 'Which widgets?');
+    chat()->call('send', 'Which widgets?');
     WidgetAgent::fake(['Nothing urgent.']);
-    livewire(Chat::class)->call('send', 'Anything urgent?');
+    chat()->call('send', 'Anything urgent?');
     [$older, $newer] = Conversation::query()->where('participant_id', $user->id)->orderBy('updated_at')->get();
 
     livewire(Chats::class)
@@ -304,10 +295,10 @@ it('shows the week\'s numbers, a chart and the ratings on the AI turns page', fu
     actingAs($user);
     config()->set('packstub-agents.pricing.models', ['test-claude' => ['in' => 3, 'out' => 15]]);
     WidgetAgent::fake(['Two.']);
-    livewire(Chat::class)->call('send', 'How many?');
+    chat()->call('send', 'How many?');
     $conversation = Conversation::query()->where('participant_id', $user->id)->firstOrFail();
     $answer = ConversationMessage::query()->where('conversation_id', $conversation->id)->where('role', 'assistant')->sole();
-    livewire(Chat::class, ['conversation' => $conversation->id])->call('feedback', $answer->id, 'down', 'Wrong count');
+    chat(['conversation' => $conversation->id])->call('feedback', $answer->id, 'down', 'Wrong count');
     $turn = AgentTurn::query()->forConversation($conversation->id)->sole();
 
     $page = livewire(TurnLog::class)
@@ -360,7 +351,7 @@ it('keeps the composer at the bottom of the window once a conversation has start
 
     // The stylesheet pins the composer only in a started chat: the column at least as tall as the window, the
     // composer block (a direct child of it) pushed down by margin-top: auto.
-    $css = file_get_contents(__DIR__.'/../../resources/css/agents.css');
+    $css = file_get_contents(ChatAssets::path('../css/agents-chat.css'));
     expect($css)->toContain('.fi-chat-started { min-height: calc(100dvh - var(--fi-chat-offset)); }')
         ->toContain('.fi-chat-started > .fi-chat-bottom { margin-top: auto; }');
 
@@ -387,7 +378,7 @@ it('keeps the composer at the bottom of the window once a conversation has start
 
     // An existing conversation: started from the first render, on the page and in the slide-over.
     WidgetAgent::fake(['Two.']);
-    livewire(Chat::class)->call('send', 'How many?');
+    chat()->call('send', 'How many?');
     $conversation = Conversation::query()->where('participant_id', $user->id)->firstOrFail();
 
     foreach ([Chat::getUrl(['conversation' => $conversation->id]), Chat::getUrl(['conversation' => $conversation->id, 'embedded' => 1])] as $url) {
@@ -401,24 +392,22 @@ it('lets an app replace one part of the chat page and keeps the rest', function 
     $user = $this->user();
     actingAs($user);
 
-    // An app publishes only pages/chat/header.blade.php (resources/views/vendor/packstub-agents/…); here, a path ahead of the package's.
+    // An app publishes only header.blade.php (resources/views/vendor/packstub-agents-chat/…); here, a path ahead of the package's.
     $views = sys_get_temp_dir().'/packstub-agents-views-'.uniqid();
-    mkdir($views.'/pages/chat', recursive: true);
-    file_put_contents($views.'/pages/chat/header.blade.php', '<div class="app-chat-header">{{ $this->getTitle() }} · {{ $embedded ? \'embedded\' : \'page\' }}</div>');
-    View::prependNamespace('packstub-agents', $views);
+    mkdir($views, recursive: true);
+    file_put_contents($views.'/header.blade.php', '<div class="app-chat-header">{{ $title }} · {{ $embedded ? \'embedded\' : \'page\' }}</div>');
+    View::prependNamespace('packstub-agents-chat', $views);
 
     try {
         $html = get(Chat::getUrl())->assertOk()->content();
 
-        // The part is the app's (with the page's variables and $this), the rest is the package's.
+        // The part is the app's (with the chat's variables), the rest is the package's.
         expect($html)->toContain('<div class="app-chat-header">'.e(__('New chat')).' · page</div>')
             ->not->toContain('fi-chat-header')
             ->toContain('x-ref="transcript"')
             ->toContain('fi-agent-composer');
     } finally {
-        unlink($views.'/pages/chat/header.blade.php');
-        rmdir($views.'/pages/chat');
-        rmdir($views.'/pages');
+        unlink($views.'/header.blade.php');
         rmdir($views);
     }
 });
