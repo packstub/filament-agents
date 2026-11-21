@@ -1,6 +1,6 @@
 <?php
 
-namespace Packstub\Agents\Filament;
+namespace Packstub\FilamentAgents;
 
 use Filament\Facades\Filament;
 use Filament\Resources\Resource;
@@ -10,9 +10,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Packstub\Agents\Chat\Hosts\RouteHost;
 use Packstub\Agents\Facades\Agents;
-use Packstub\Agents\Filament\Pages\Chat;
-use Packstub\Agents\Filament\Pages\Chats;
 use Packstub\Agents\Support\AgentResources;
+use Packstub\FilamentAgents\Pages\Chat;
+use Packstub\FilamentAgents\Pages\Chats;
 
 /**
  * The chat inside the panel: its page is the Chat page, its endpoints are
@@ -113,7 +113,8 @@ class PanelChatHost extends RouteHost
     public function embedView(string $kind): ?string
     {
         if (! $this->inPanel()) {
-            return parent::embedView($kind);
+            // Outside the panel the resource's Filament table cannot run: the same rows, read-only.
+            return $kind === 'table' ? 'packstub-agents::embeds.plain-table' : parent::embedView($kind);
         }
 
         return match ($kind) {
@@ -142,5 +143,11 @@ class PanelChatHost extends RouteHost
     public function notifies(): bool
     {
         return $this->inPanel() ? true : parent::notifies();
+    }
+
+    /** The slide-over's head has the button: it opens the chat that is on screen. */
+    public function linksFullPage(): bool
+    {
+        return $this->inPanel() ? true : parent::linksFullPage();
     }
 }

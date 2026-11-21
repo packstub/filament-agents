@@ -1,6 +1,6 @@
 <?php
 
-namespace Packstub\Agents\Filament;
+namespace Packstub\FilamentAgents;
 
 /**
  * Where an app adds its own controls to the chat page, without publishing the view: register them with

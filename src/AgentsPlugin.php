@@ -1,6 +1,6 @@
 <?php
 
-namespace Packstub\Agents;
+namespace Packstub\FilamentAgents;
 
 use Closure;
 use Filament\Contracts\Plugin;
@@ -10,21 +10,20 @@ use Filament\Support\Facades\FilamentView;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Database\Eloquent\Model;
 use Laravel\Mcp\Server\Tool;
+use Packstub\Agents\AgentsManager;
 use Packstub\Agents\Ai\Agent;
 use Packstub\Agents\Chat\ChatHost;
 use Packstub\Agents\Chat\ChatRoutes;
 use Packstub\Agents\Contracts\AgentContext;
 use Packstub\Agents\Contracts\AgentResource;
-use Packstub\Agents\Filament\FilamentContext;
-use Packstub\Agents\Filament\Pages\AgentAccess;
-use Packstub\Agents\Filament\Pages\Chat;
-use Packstub\Agents\Filament\Pages\Chats;
-use Packstub\Agents\Filament\Pages\ResourceTable;
-use Packstub\Agents\Filament\Pages\TurnLog;
-use Packstub\Agents\Filament\PanelChatHost;
-use Packstub\Agents\Filament\Resources\AgentLimits\AgentLimitResource;
-use Packstub\Agents\Livewire\AgentTable;
-use Packstub\Agents\Mcp\Tools\ShowTable;
+use Packstub\FilamentAgents\Livewire\AgentTable;
+use Packstub\FilamentAgents\Mcp\Tools\ShowTable;
+use Packstub\FilamentAgents\Pages\AgentAccess;
+use Packstub\FilamentAgents\Pages\Chat;
+use Packstub\FilamentAgents\Pages\Chats;
+use Packstub\FilamentAgents\Pages\ResourceTable;
+use Packstub\FilamentAgents\Pages\TurnLog;
+use Packstub\FilamentAgents\Resources\AgentLimits\AgentLimitResource;
 
 /**
  * Registers the assistant in a panel:

@@ -8,22 +8,22 @@ use Illuminate\Support\Facades\View;
 use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Models\ConversationMessage;
 use Laravel\Ai\Responses\Data\ToolCall;
-use Packstub\Agents\AgentsPlugin;
 use Packstub\Agents\Chat\ChatAssets;
-use Packstub\Agents\Filament\ChatRenderHook;
-use Packstub\Agents\Filament\Pages\Chat;
-use Packstub\Agents\Filament\Pages\Chats;
-use Packstub\Agents\Filament\Pages\TurnLog;
-use Packstub\Agents\Filament\Widgets\TurnsChart;
-use Packstub\Agents\Filament\Widgets\TurnStats;
 use Packstub\Agents\Models\AgentMessageFeedback;
 use Packstub\Agents\Models\AgentTurn;
 use Packstub\Agents\Support\AgentChat;
 use Packstub\Agents\Support\AgentConversationStore;
-use Packstub\Agents\Tests\Fixtures\Abilities;
-use Packstub\Agents\Tests\Fixtures\Filament\Resources\Widgets\WidgetResource;
-use Packstub\Agents\Tests\Fixtures\Models\Widget;
-use Packstub\Agents\Tests\Fixtures\WidgetAgent;
+use Packstub\FilamentAgents\AgentsPlugin;
+use Packstub\FilamentAgents\ChatRenderHook;
+use Packstub\FilamentAgents\Pages\Chat;
+use Packstub\FilamentAgents\Pages\Chats;
+use Packstub\FilamentAgents\Pages\TurnLog;
+use Packstub\FilamentAgents\Tests\Fixtures\Abilities;
+use Packstub\FilamentAgents\Tests\Fixtures\Filament\Resources\Widgets\WidgetResource;
+use Packstub\FilamentAgents\Tests\Fixtures\Models\Widget;
+use Packstub\FilamentAgents\Tests\Fixtures\WidgetAgent;
+use Packstub\FilamentAgents\Widgets\TurnsChart;
+use Packstub\FilamentAgents\Widgets\TurnStats;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
@@ -234,13 +234,18 @@ it('opens the chat as a slide-over from the Ask button and the shortcut, and emb
         ->toContain('context=widgets%2F'.$alpha->id)
         ->toContain('fi-agent-drawer')
         ->toContain('x-on:open-agent-drawer.window')
-        ->toContain('embedded=1');
+        ->toContain('embedded=1')
+        // One way to the full page, in the slide-over's head: it opens the chat on screen, read from the frame.
+        ->toContain('window.location.href = page()')->toContain('[data-agents-chat] [data-page]');
 
     // The chat page itself has no drawer, and embedded it has no sidebar.
     $full = get(Chat::getUrl())->assertOk()->content();
     expect($full)->not->toContain('fi-agent-drawer')->toContain('fi-sidebar');
     $embedded = get(Chat::getUrl(['embedded' => 1, 'context' => 'widgets/'.$alpha->id]))->assertOk()->content();
-    expect($embedded)->not->toContain('fi-sidebar')->toContain('fi-chat-embedded')->toContain(__('Open full page'))->toContain('fi-chat-about')->toContain('target="_top">Widget Alpha</a>'); // the record links over the frame, not inside it
+    expect($embedded)->not->toContain('fi-sidebar')->toContain('fi-chat-embedded')
+        ->not->toContain(__('Open full page')) // the slide-over's head has the button
+        ->toContain('data-page="'.e(Chat::getUrl(['context' => 'widgets/'.$alpha->id])).'"')
+        ->toContain('fi-chat-about')->toContain('target="_top">Widget Alpha</a>'); // the record links over the frame, not inside it
 
     // Switched off: the button is a plain link and no drawer is rendered.
     $plugin->slideOver(false)->shortcut(null);

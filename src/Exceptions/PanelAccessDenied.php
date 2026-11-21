@@ -1,6 +1,6 @@
 <?php
 
-namespace Packstub\Agents\Filament\Exceptions;
+namespace Packstub\FilamentAgents\Exceptions;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

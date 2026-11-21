@@ -1,6 +1,6 @@
 <?php
 
-namespace Packstub\Agents\Tests\Fixtures\Filament\Resources\Widgets;
+namespace Packstub\FilamentAgents\Tests\Fixtures\Filament\Resources\Widgets;
 
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
@@ -15,11 +15,11 @@ use Illuminate\Database\Eloquent\Model;
 use Packstub\Agents\Concerns\InteractsWithAgent;
 use Packstub\Agents\Contracts\AgentResource;
 use Packstub\Agents\Filters\Filter;
-use Packstub\Agents\Tests\Fixtures\Abilities;
-use Packstub\Agents\Tests\Fixtures\Filament\Resources\Widgets\Pages\EditWidget;
-use Packstub\Agents\Tests\Fixtures\Filament\Resources\Widgets\Pages\ListWidgets;
-use Packstub\Agents\Tests\Fixtures\Models\Widget;
-use Packstub\Agents\Tests\Fixtures\Models\WidgetStatus;
+use Packstub\FilamentAgents\Tests\Fixtures\Abilities;
+use Packstub\FilamentAgents\Tests\Fixtures\Filament\Resources\Widgets\Pages\EditWidget;
+use Packstub\FilamentAgents\Tests\Fixtures\Filament\Resources\Widgets\Pages\ListWidgets;
+use Packstub\FilamentAgents\Tests\Fixtures\Models\Widget;
+use Packstub\FilamentAgents\Tests\Fixtures\Models\WidgetStatus;
 
 class WidgetResource extends Resource implements AgentResource
 {

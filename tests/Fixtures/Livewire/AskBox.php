@@ -1,6 +1,6 @@
 <?php
 
-namespace Packstub\Agents\Tests\Fixtures\Livewire;
+namespace Packstub\FilamentAgents\Tests\Fixtures\Livewire;
 
 use Illuminate\Contracts\View\View;
 use Livewire\Component;

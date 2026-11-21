@@ -1,12 +1,12 @@
 <?php
 
-namespace Packstub\Agents\Filament\Resources\AgentLimits\Pages;
+namespace Packstub\FilamentAgents\Resources\AgentLimits\Pages;
 
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ManageRecords;
 use Illuminate\Contracts\Support\Htmlable;
-use Packstub\Agents\Filament\Resources\AgentLimits\AgentLimitResource;
 use Packstub\Agents\Support\AgentLimits;
+use Packstub\FilamentAgents\Resources\AgentLimits\AgentLimitResource;
 
 class ManageAgentLimits extends ManageRecords
 {

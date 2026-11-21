@@ -1,12 +1,12 @@
 <?php
 
-namespace Packstub\Agents\Tests\Fixtures;
+namespace Packstub\FilamentAgents\Tests\Fixtures;
 
 use Packstub\Agents\Mcp\AgentServer;
 use Packstub\Agents\Mcp\Tools\DrawChart;
-use Packstub\Agents\Mcp\Tools\ShowTable;
-use Packstub\Agents\Tests\Fixtures\Tools\ListWidgets;
-use Packstub\Agents\Tests\Fixtures\Tools\RenameWidget;
+use Packstub\FilamentAgents\Mcp\Tools\ShowTable;
+use Packstub\FilamentAgents\Tests\Fixtures\Tools\ListWidgets;
+use Packstub\FilamentAgents\Tests\Fixtures\Tools\RenameWidget;
 
 class WidgetServer extends AgentServer
 {

@@ -1,6 +1,6 @@
 <?php
 
-namespace Packstub\Agents\Filament\Pages;
+namespace Packstub\FilamentAgents\Pages;
 
 use Filament\Actions\Action;
 use Filament\Pages\Page;

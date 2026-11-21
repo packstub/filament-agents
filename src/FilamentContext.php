@@ -1,6 +1,6 @@
 <?php
 
-namespace Packstub\Agents\Filament;
+namespace Packstub\FilamentAgents;
 
 use Closure;
 use Filament\Facades\Filament;
@@ -14,7 +14,7 @@ use Packstub\Agents\Contracts\AgentResource;
 use Packstub\Agents\Exceptions\WorkspaceAccessDenied;
 use Packstub\Agents\Exceptions\WorkspaceNotFound;
 use Packstub\Agents\Facades\Agents;
-use Packstub\Agents\Filament\Exceptions\PanelAccessDenied;
+use Packstub\FilamentAgents\Exceptions\PanelAccessDenied;
 
 /**
  * The context of a Filament panel: the panel the assistant lives in, its

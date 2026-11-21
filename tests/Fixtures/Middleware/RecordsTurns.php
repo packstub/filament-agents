@@ -1,6 +1,6 @@
 <?php
 
-namespace Packstub\Agents\Tests\Fixtures\Middleware;
+namespace Packstub\FilamentAgents\Tests\Fixtures\Middleware;
 
 use Closure;
 use Laravel\Ai\Gateway\StepResponse;

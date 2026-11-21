@@ -1,6 +1,6 @@
 <?php
 
-namespace Packstub\Agents\Filament\Pages;
+namespace Packstub\FilamentAgents\Pages;
 
 use BackedEnum;
 use Filament\Actions\Action;
@@ -20,9 +20,9 @@ use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
 use Laravel\Sanctum\Sanctum;
 use Packstub\Agents\Facades\Agents;
-use Packstub\Agents\Filament\Forms\ToolPicker;
 use Packstub\Agents\Mcp\AgentTool;
 use Packstub\Agents\Support\AgentTokens;
+use Packstub\FilamentAgents\Forms\ToolPicker;
 
 /**
  * Agent access: mint a token so Claude Code, Claude Desktop or any MCP

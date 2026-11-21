@@ -1,6 +1,6 @@
 <?php
 
-namespace Packstub\Agents\Filament\Pages;
+namespace Packstub\FilamentAgents\Pages;
 
 use BackedEnum;
 use Filament\Pages\Page;
@@ -82,6 +82,12 @@ class Chat extends Page
 
     public function getTitle(): string|Htmlable
     {
+        // A page nobody opened has no chat to ask, and may have nobody signed in: a tool that lists the panel's pages
+        // reads the title of a bare instance (Filament Shield's shield:generate does, from the console).
+        if ($this->chatView === null && $this->conversation === null) {
+            return __('New chat');
+        }
+
         return $this->chatView()->title();
     }
 

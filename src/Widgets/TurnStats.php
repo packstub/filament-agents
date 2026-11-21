@@ -1,14 +1,14 @@
 <?php
 
-namespace Packstub\Agents\Filament\Widgets;
+namespace Packstub\FilamentAgents\Widgets;
 
 use Filament\Facades\Filament;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Packstub\Agents\Filament\Pages\TurnLog;
 use Packstub\Agents\Models\AgentMessageFeedback;
 use Packstub\Agents\Models\AgentTurn;
 use Packstub\Agents\Support\AgentPricing;
+use Packstub\FilamentAgents\Pages\TurnLog;
 
 /**
  * The numbers over the AI turns table: turns today and this week, tokens

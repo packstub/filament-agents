@@ -47,12 +47,12 @@
     },
     "autoload": {
         "psr-4": {
-            "Packstub\\Agents\\": "src/"
+            "Packstub\\FilamentAgents\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Packstub\\Agents\\Tests\\": "tests/"
+            "Packstub\\FilamentAgents\\Tests\\": "tests/"
         }
     },
     "scripts": {
@@ -64,7 +64,7 @@
     "extra": {
         "laravel": {
             "providers": [
-                "Packstub\\Agents\\Filament\\FilamentAgentsServiceProvider"
+                "Packstub\\FilamentAgents\\FilamentAgentsServiceProvider"
             ]
         },
         "branch-alias": {

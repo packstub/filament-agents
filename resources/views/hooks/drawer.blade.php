@@ -1,7 +1,7 @@
 @php
-    use Packstub\Agents\AgentsPlugin;
+    use Packstub\FilamentAgents\AgentsPlugin;
     use Packstub\Agents\Facades\Agents;
-    use Packstub\Agents\Filament\Pages\Chat;
+    use Packstub\FilamentAgents\Pages\Chat;
     use Packstub\Agents\Support\AgentModels;
 
     $plugin = AgentsPlugin::current();
@@ -19,6 +19,12 @@
                 this.src = url + (url.includes('?') ? '&' : '?') + 'embedded=1'
                 this.open = true
                 document.body.style.overflow = 'hidden'
+            },
+            // The chat on screen, as a page: the frame says where (a chat started in it has an address by now).
+            page() {
+                let url = null
+                try { url = document.querySelector('.fi-agent-drawer-frame')?.contentDocument?.querySelector('[data-agents-chat] [data-page]')?.dataset.page } catch {}
+                return url || this.src.replace(/([?&])embedded=1&?/, '$1').replace(/[?&]$/, '')
             },
             hide() {
                 this.open = false
@@ -45,7 +51,7 @@
                     <div class="fi-agent-drawer-head">
                         <span><x-filament::icon icon="heroicon-m-sparkles" /> {{ Agents::name() }}@if ($plugin->getShortcutLabel())<kbd class="fi-agent-drawer-kbd">{{ $plugin->getShortcutLabel() }}</kbd>@endif</span>
                         <span class="fi-agent-drawer-actions">
-                            <x-filament::icon-button icon="heroicon-m-arrow-top-right-on-square" color="gray" size="sm" :label="__('Open full page')" :tooltip="__('Open full page')" x-on:click="window.location.href = src.replace(/[?&]embedded=1/, '')" />
+                            <x-filament::icon-button icon="heroicon-m-arrow-top-right-on-square" color="gray" size="sm" :label="__('Open full page')" :tooltip="__('Open full page')" x-on:click="window.location.href = page()" />
                             <x-filament::icon-button icon="heroicon-m-x-mark" color="gray" size="sm" :label="__('Close')" :tooltip="__('Close')" x-on:click="hide()" />
                         </span>
                     </div>

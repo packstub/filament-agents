@@ -1,6 +1,6 @@
 <?php
 
-namespace Packstub\Agents\Filament;
+namespace Packstub\FilamentAgents;
 
 use Filament\Facades\Filament;
 use Filament\Support\Assets\AlpineComponent;
@@ -9,9 +9,9 @@ use Filament\Support\Facades\FilamentAsset;
 use Illuminate\Support\Facades\Blade;
 use Livewire\Livewire;
 use Packstub\Agents\Chat\ChatAssets;
-use Packstub\Agents\Filament\Widgets\TurnsChart;
-use Packstub\Agents\Filament\Widgets\TurnStats;
-use Packstub\Agents\Livewire\AgentTable;
+use Packstub\FilamentAgents\Livewire\AgentTable;
+use Packstub\FilamentAgents\Widgets\TurnsChart;
+use Packstub\FilamentAgents\Widgets\TurnStats;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -31,12 +31,6 @@ class FilamentAgentsServiceProvider extends PackageServiceProvider
             ->hasViews('packstub-agents');
     }
 
-    /** The provider sits one level below src/, so the package root is derived from here, not from the file's directory. */
-    protected function getPackageBaseDir(): string
-    {
-        return dirname(__DIR__);
-    }
-
     public function packageRegistered(): void
     {
         // Resolving the panels runs every plugin's register(): the context becomes the panel's and the server class is
@@ -53,18 +47,18 @@ class FilamentAgentsServiceProvider extends PackageServiceProvider
 
     public function packageBooted(): void
     {
-        $this->loadJsonTranslationsFrom(__DIR__.'/../../resources/lang');
+        $this->loadJsonTranslationsFrom(__DIR__.'/../resources/lang');
 
-        Blade::anonymousComponentPath(__DIR__.'/../../resources/views/components', 'packstub-agents');
+        Blade::anonymousComponentPath(__DIR__.'/../resources/views/components', 'packstub-agents');
 
         // The chat's stylesheet and script are the engine's built files (packstub/agents, resources/dist); the plugin
         // adds the styles of what only a panel has (tables in answers, the slide-over, the tool picker) and the script
         // of the standalone composer. `php artisan filament:assets` publishes them all.
         FilamentAsset::register([
             Css::make('packstub-agents-chat', ChatAssets::path('agents-chat.css')),
-            Css::make('packstub-agents', __DIR__.'/../../resources/css/agents.css'),
+            Css::make('packstub-agents', __DIR__.'/../resources/css/agents.css'),
             AlpineComponent::make('agent-chat', ChatAssets::path('agent-chat.js')),
-            AlpineComponent::make('agent-composer', __DIR__.'/../../resources/js/agent-composer.js'),
+            AlpineComponent::make('agent-composer', __DIR__.'/../resources/js/agent-composer.js'),
         ], 'packstub/filament-agents');
     }
 }

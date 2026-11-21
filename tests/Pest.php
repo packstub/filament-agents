@@ -1,8 +1,8 @@
 <?php
 
 use Packstub\Agents\Support\AgentConversationStore;
-use Packstub\Agents\Tests\ChatTester;
-use Packstub\Agents\Tests\TestCase;
+use Packstub\FilamentAgents\Tests\ChatTester;
+use Packstub\FilamentAgents\Tests\TestCase;
 use Pest\TestSuite;
 
 pest()->extend(TestCase::class)->in('Feature');

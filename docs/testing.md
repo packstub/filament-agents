@@ -7,7 +7,7 @@ Never call a provider from tests. laravel/ai fakes the model, laravel/mcp drives
 ```php
 use App\Ai\Agents\Assistant;
 use Filament\Facades\Filament;
-use Packstub\Agents\Filament\Pages\Chat;
+use Packstub\FilamentAgents\Pages\Chat;
 
 it('answers in the chat', function () {
     actingAs($user);

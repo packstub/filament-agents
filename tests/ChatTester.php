@@ -1,6 +1,6 @@
 <?php
 
-namespace Packstub\Agents\Tests;
+namespace Packstub\FilamentAgents\Tests;
 
 use BadMethodCallException;
 use Filament\Facades\Filament;
@@ -9,7 +9,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Testing\TestResponse;
 use Packstub\Agents\Chat\ChatHost;
 use Packstub\Agents\Chat\ChatView;
-use Packstub\Agents\Filament\Pages\Chat;
+use Packstub\FilamentAgents\Pages\Chat;
 use PHPUnit\Framework\Assert;
 
 /**

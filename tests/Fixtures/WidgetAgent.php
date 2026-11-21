@@ -1,9 +1,9 @@
 <?php
 
-namespace Packstub\Agents\Tests\Fixtures;
+namespace Packstub\FilamentAgents\Tests\Fixtures;
 
 use Packstub\Agents\Ai\Agent;
-use Packstub\Agents\Tests\Fixtures\Models\Widget;
+use Packstub\FilamentAgents\Tests\Fixtures\Models\Widget;
 
 class WidgetAgent extends Agent
 {

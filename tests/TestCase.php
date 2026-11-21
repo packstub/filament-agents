@@ -1,6 +1,6 @@
 <?php
 
-namespace Packstub\Agents\Tests;
+namespace Packstub\FilamentAgents\Tests;
 
 use BladeUI\Heroicons\BladeHeroiconsServiceProvider;
 use BladeUI\Icons\BladeIconsServiceProvider;
@@ -22,13 +22,13 @@ use Laravel\Sanctum\SanctumServiceProvider;
 use Livewire\LivewireServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 use Packstub\Agents\AgentsServiceProvider;
-use Packstub\Agents\Filament\FilamentAgentsServiceProvider;
 use Packstub\Agents\Support\AgentLimits;
-use Packstub\Agents\Tests\Fixtures\Abilities;
-use Packstub\Agents\Tests\Fixtures\AdminPanelProvider;
-use Packstub\Agents\Tests\Fixtures\Models\User;
-use Packstub\Agents\Tests\Fixtures\Models\Widget;
-use Packstub\Agents\Tests\Fixtures\OpsPanelProvider;
+use Packstub\FilamentAgents\FilamentAgentsServiceProvider;
+use Packstub\FilamentAgents\Tests\Fixtures\Abilities;
+use Packstub\FilamentAgents\Tests\Fixtures\AdminPanelProvider;
+use Packstub\FilamentAgents\Tests\Fixtures\Models\User;
+use Packstub\FilamentAgents\Tests\Fixtures\Models\Widget;
+use Packstub\FilamentAgents\Tests\Fixtures\OpsPanelProvider;
 
 abstract class TestCase extends Orchestra
 {

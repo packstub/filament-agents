@@ -5,9 +5,9 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Packstub\Agents\Ai\WorkspaceCredentials;
 use Packstub\Agents\Facades\Agents;
-use Packstub\Agents\Filament\Pages\Chat;
 use Packstub\Agents\Support\AgentModels;
-use Packstub\Agents\Tests\Fixtures\WidgetAgent;
+use Packstub\FilamentAgents\Pages\Chat;
+use Packstub\FilamentAgents\Tests\Fixtures\WidgetAgent;
 
 use function Pest\Laravel\actingAs;
 

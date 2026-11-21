@@ -68,7 +68,7 @@ Then rebuild the theme (`npm run build` or `bun run build`). The package's own s
 ```php
 use App\Ai\Agents\Assistant;
 use App\Mcp\Servers\AcmeServer;
-use Packstub\Agents\AgentsPlugin;
+use Packstub\FilamentAgents\AgentsPlugin;
 
 public function panel(Panel $panel): Panel
 {

@@ -1,6 +1,6 @@
 <?php
 
-namespace Packstub\Agents\Filament\Pages;
+namespace Packstub\FilamentAgents\Pages;
 
 use BackedEnum;
 use Filament\Facades\Filament;
@@ -16,13 +16,13 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Packstub\Agents\Facades\Agents;
-use Packstub\Agents\Filament\Widgets\TurnsChart;
-use Packstub\Agents\Filament\Widgets\TurnStats;
 use Packstub\Agents\Models\AgentLimit;
 use Packstub\Agents\Models\AgentMessageFeedback;
 use Packstub\Agents\Models\AgentTurn;
 use Packstub\Agents\Support\AgentPricing;
 use Packstub\Agents\Support\TypedDecisions;
+use Packstub\FilamentAgents\Widgets\TurnsChart;
+use Packstub\FilamentAgents\Widgets\TurnStats;
 
 /**
  * AI turns (the operator panel): the week's numbers and a chart of turns

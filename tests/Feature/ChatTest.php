@@ -9,8 +9,6 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Models\ConversationMessage;
-use Packstub\Agents\Filament\Pages\Chat;
-use Packstub\Agents\Filament\Pages\Chats;
 use Packstub\Agents\Jobs\RunAgentTurn;
 use Packstub\Agents\Models\AgentLimit;
 use Packstub\Agents\Models\AgentMessageFeedback;
@@ -21,9 +19,11 @@ use Packstub\Agents\Support\AgentLimits;
 use Packstub\Agents\Support\AgentModels;
 use Packstub\Agents\Support\AgentTurns;
 use Packstub\Agents\Support\PageContext;
-use Packstub\Agents\Tests\Fixtures\Filament\Resources\Widgets\WidgetResource;
-use Packstub\Agents\Tests\Fixtures\Tools\RetireWidget;
-use Packstub\Agents\Tests\Fixtures\WidgetAgent;
+use Packstub\FilamentAgents\Pages\Chat;
+use Packstub\FilamentAgents\Pages\Chats;
+use Packstub\FilamentAgents\Tests\Fixtures\Filament\Resources\Widgets\WidgetResource;
+use Packstub\FilamentAgents\Tests\Fixtures\Tools\RetireWidget;
+use Packstub\FilamentAgents\Tests\Fixtures\WidgetAgent;
 use RuntimeException;
 
 use function Pest\Laravel\actingAs;
@@ -59,7 +59,7 @@ it('streams a chat into a persisted conversation and records feedback', function
         ->toContain('fi-chat-answer-tool" title="'.__('Not helpful').'"')
         ->not->toContain('fi-chat-answer-tool" title="'.__('Helpful').'"')
         ->toMatch('/fi-chat-answer-tool[^>]*title="'.preg_quote(__('Regenerate'), '/').'"/')
-        ->toMatch('/fi-chat-answer-tool fi-chat-foot-note">\d\d:\d\d</');
+        ->toMatch('/fi-chat-answer-tool fi-chat-foot-note">(<!--.*?-->)?<time datetime="[^"]+" data-agents-time>\d\d:\d\d</');
 
     livewire(Chats::class)->assertCanSeeTableRecords([$conversation]);
 
@@ -562,4 +562,11 @@ it('fills the composer from ?prompt= without sending, so a link cannot ask in th
 
     $this->withSession(['packstub-agents.prompt' => 'From the app']);
     chat()->assertSet('prompt', 'From the app')->assertSet('autoSend', true);
+});
+
+it('names the page for a tool that reads its title with nobody signed in', function () {
+    // Filament Shield's shield:generate resolves every page of the panel from the console and asks for its title.
+    auth()->logout();
+
+    expect((string) app(Chat::class)->getTitle())->toBe('New chat');
 });
