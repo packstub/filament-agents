@@ -157,6 +157,7 @@ AgentsPlugin::make()
     ->limits(enabled: true, authorize: fn (): bool => auth()->user()->is_admin)
     ->turnLog()
     ->slideOver()
+    ->sidebarChats()
     ->shortcut('mod+j')
     ->hideAskButtonOn(['*.pages.dashboard'])
     ->embeddedTable(limit: 25)
@@ -185,6 +186,7 @@ AgentsPlugin::make()
 | `turnLog(bool $enabled)` | the operator's AI turns page (one row per turn: who, model, tokens, tools, duration, how it ended), gated like the limits; default: shown wherever `limits()` is; on a panel with tenancy, the current workspace's turns alone |
 | `hideAskButtonOn(array $routePatterns)` | route name patterns without the topbar button (the chat itself is always excluded) |
 | `slideOver(bool $enabled)` | whether the "Ask …" button opens the chat as a slide-over on the right of the current page (default) or leads to the chat page |
+| `sidebarChats(bool $enabled)` | whether the person's recent and pinned chats show at the end of the sidebar (default); the Chats page lists them either way |
 | `shortcut(?string $keys)` | the keyboard shortcut that opens the chat from any page: `mod+j` (the default: ⌘J on a Mac, Ctrl+J elsewhere), `mod+shift+a`…; `null` for none |
 | `askButtonColor(string $color)` | the colour of the topbar "Ask …" button: `primary` (the default) sets it apart from the other actions, `gray` blends it in |
 | `embeddedTable(bool $search, bool $filters, int $limit)` | the table under an answer: whether it keeps the resource's search box and filter button (both off by default), and how many rows it shows before it links to the full table (25); see [show-table](tables-and-charts.md#show-table) |

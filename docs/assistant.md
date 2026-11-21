@@ -6,7 +6,7 @@
 
 - a **Chat** page (`/chat/{conversation?}`) where the answer streams in while the agent calls tools, with a model picker in the composer (Claude Opus 5, Claude Haiku 4.5, Claude Opus 5 · Deep out of the box);
 - an **Ask …** button in the topbar, in the panel's primary colour so it reads as the assistant, which opens a new chat and, on a record page of a resource that implements `AgentResource`, carries that record along as page context ("About Order RO-00012", linked to the record);
-- the recent conversations at the end of the sidebar, plus a **Chats** page listing all of the person's conversations. A panel with `topNavigation()` has no sidebar, so the Chats page registers an "Ask …" navigation item there instead — the assistant's name and icon, active on the list and on a chat.
+- the recent conversations at the end of the sidebar (`->sidebarChats(false)` leaves them out), plus a **Chats** page listing all of the person's conversations. A panel with `topNavigation()` has no sidebar, so the Chats page registers an "Ask …" navigation item there instead — the assistant's name and icon, active on the list and on a chat.
 
 A new chat opens on the assistant's name and a row of starter questions; click one and it is sent. They come from your agent's `suggestions()` (see [The Agent class](#the-agent-class)): by default what needs attention today, "Show me the latest orders." for the first two agent resources and what the assistant can do, or, when the chat was opened from a record, "What should I know about Order RO-00012?" and "What is the next step for Order RO-00012?".
 

@@ -92,6 +92,9 @@ class AgentsPlugin implements Plugin
     /** The "Ask …" button opens the chat in a slide-over over the page rather than leaving it. */
     protected bool $slideOver = true;
 
+    /** The person's recent and pinned chats at the end of the sidebar. */
+    protected bool $sidebarChats = true;
+
     /** The keyboard shortcut that opens the chat ("mod+j": ⌘J on a Mac, Ctrl+J elsewhere); null for none. */
     protected ?string $shortcut = 'mod+j';
 
@@ -351,6 +354,14 @@ class AgentsPlugin implements Plugin
     public function hasSlideOver(): bool
     {
         return $this->slideOver && $this->chat;
+    }
+
+    /** Whether the person's recent and pinned chats show at the end of the sidebar; the Chats page lists them either way. */
+    public function sidebarChats(bool $enabled = true): static
+    {
+        $this->sidebarChats = $enabled;
+
+        return $this;
     }
 
     /**
@@ -615,7 +626,9 @@ class AgentsPlugin implements Plugin
         $inPanel = fn (string $view): Closure => fn (): string => Filament::getCurrentPanel()?->getId() === $panel->getId() ? view($view)->render() : '';
 
         FilamentView::registerRenderHook(PanelsRenderHook::GLOBAL_SEARCH_BEFORE, $inPanel('packstub-agents::hooks.topbar'));
-        FilamentView::registerRenderHook(PanelsRenderHook::SIDEBAR_NAV_END, $inPanel('packstub-agents::hooks.sidebar'));
+        if ($this->sidebarChats) {
+            FilamentView::registerRenderHook(PanelsRenderHook::SIDEBAR_NAV_END, $inPanel('packstub-agents::hooks.sidebar'));
+        }
 
         if ($this->slideOver || $this->shortcut !== null) {
             FilamentView::registerRenderHook(PanelsRenderHook::BODY_END, $inPanel('packstub-agents::hooks.drawer'));
