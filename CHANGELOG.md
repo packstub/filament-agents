@@ -2,7 +2,7 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
-## Unreleased
+## 1.20.0 — 2026-11-21
 
 The chat page now runs on the chat that ships with Agents for Laravel: same look, no Livewire round trips.
 
