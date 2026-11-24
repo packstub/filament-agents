@@ -3,6 +3,7 @@
 namespace Packstub\FilamentAgents\Tests\Fixtures\Filament\Resources\Widgets;
 
 use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
@@ -28,6 +29,9 @@ class WidgetResource extends Resource implements AgentResource
     protected static ?string $model = Widget::class;
 
     protected static ?string $recordTitleAttribute = 'name';
+
+    /** A test turns this on to make the resource a manage page: no view or edit page, View and Edit are modals. */
+    public static bool $modals = false;
 
     public static function canViewAny(): bool
     {
@@ -57,14 +61,14 @@ class WidgetResource extends Resource implements AgentResource
                 TextColumn::make('price')->toggleable(),
             ])
             ->filters([SelectFilter::make('status')->options(['draft' => 'Draft', 'live' => 'Live', 'retired' => 'Retired'])])
-            ->recordActions([EditAction::make()]);
+            ->recordActions([ViewAction::make(), EditAction::make()]);
     }
 
     public static function getPages(): array
     {
         return [
             'index' => ListWidgets::route('/'),
-            'edit' => EditWidget::route('/{record}/edit'),
+            ...(static::$modals ? [] : ['edit' => EditWidget::route('/{record}/edit')]),
         ];
     }
 

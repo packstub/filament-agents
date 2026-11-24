@@ -8,6 +8,7 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Schemas\Concerns\InteractsWithSchemas;
 use Filament\Schemas\Contracts\HasSchemas;
+use Filament\Schemas\Schema;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
@@ -82,12 +83,22 @@ class AgentTable extends Component implements HasActions, HasSchemas, HasTable
         $url = $page ? fn (Model $record) => $resource::getUrl($page, ['record' => $record]) : null;
 
         // Outside the resource's own list page View/Edit do not know where to go; point them (and the row) at the page.
+        // A resource without that page (a manage page, where both are modals) gets the modal here: the resource's form
+        // and infolist fill it, which the list page would otherwise supply, and the resource's policy decides.
         $actions = collect($table->getRecordActions())->map(function ($action) use ($resource) {
-            if ($action instanceof ViewAction && $resource::hasPage('view')) {
-                return $action->url(fn (Model $record) => $resource::getUrl('view', ['record' => $record]));
+            if ($action instanceof ViewAction) {
+                return $resource::hasPage('view')
+                    ? $action->url(fn (Model $record) => $resource::getUrl('view', ['record' => $record]))
+                    : $action
+                        ->schema(fn (Schema $schema): Schema => $resource::infolist($resource::form($schema->hasCustomColumns() ? $schema : $schema->columns(2))))
+                        ->authorize(fn (Model $record) => $resource::getViewAuthorizationResponse($record));
             }
-            if ($action instanceof EditAction && $resource::hasPage('edit')) {
-                return $action->url(fn (Model $record) => $resource::getUrl('edit', ['record' => $record]));
+            if ($action instanceof EditAction) {
+                return $resource::hasPage('edit')
+                    ? $action->url(fn (Model $record) => $resource::getUrl('edit', ['record' => $record]))
+                    : $action
+                        ->schema(fn (Schema $schema): Schema => $resource::form($schema->hasCustomColumns() ? $schema : $schema->columns(2)))
+                        ->authorize(fn (Model $record) => $resource::getEditAuthorizationResponse($record));
             }
 
             return $action;

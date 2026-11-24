@@ -311,3 +311,31 @@ it('validates drawn charts and renders a chart from a stored tool result', funct
         ->assertSeeHtml('x-ref="canvas"')
         ->assertSee('Prices');
 });
+
+it('opens View and Edit as modals with the resource\'s form when the resource has no page for them', function () {
+    actingAs($this->user());
+    [$alpha] = $this->widgets();
+    WidgetResource::$modals = true;
+
+    try {
+        livewire(AgentTable::class, ['resource' => 'widgets'])
+            ->loadTable()
+            ->mountTableAction('view', $alpha)
+            ->assertSee('Alpha')
+            ->unmountTableAction()
+            ->mountTableAction('edit', $alpha)
+            ->assertSchemaStateSet(['name' => 'Alpha'])
+            ->fillForm(['name' => 'Alpha Prime'])
+            ->callMountedTableAction()
+            ->assertHasNoTableActionErrors();
+
+        expect($alpha->fresh()->name)->toBe('Alpha Prime');
+
+        // The resource's own gate decides: a record it does not let the person view has no View.
+        Abilities::$hiddenWidgets = [$alpha->getKey()];
+        livewire(AgentTable::class, ['resource' => 'widgets'])->loadTable()->assertTableActionHidden('view', $alpha);
+    } finally {
+        WidgetResource::$modals = false;
+        Abilities::$hiddenWidgets = [];
+    }
+});
