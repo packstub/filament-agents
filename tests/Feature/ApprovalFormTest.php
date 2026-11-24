@@ -1,5 +1,6 @@
 <?php
 
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\TextInput;
 use Illuminate\Support\Str;
 use Laravel\Ai\Models\Conversation;
@@ -22,21 +23,28 @@ beforeEach(function () {
     {
         protected string $name = 'rename-widget';
 
-        public function approvalForm(array $arguments): array
+        public function approvalForm(array $arguments): ?array
         {
-            return [TextInput::make('name')->label('New name')->required()->maxLength(40)];
+            return match ($arguments['name'] ?? null) {
+                'No form' => null,
+                'Broken form' => throw new RuntimeException('The form could not be built.'),
+                default => [
+                    TextInput::make('name')->label('New name')->required()->maxLength(40),
+                    DateTimePicker::make('at')->label('Renamed at'),
+                ],
+            };
         }
     });
 });
 
 /** A chat of $user whose answer proposes renaming $widget to $name (call c1), paused for the decision. */
-function proposedRename(object $user, object $widget, string $name): string
+function proposedRename(object $user, object $widget, string $name, array $more = []): string
 {
     $conversation = Conversation::query()->create(['id' => (string) Str::uuid(), 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id, 'title' => 'Rename']);
     $row = ['conversation_id' => $conversation->id, 'participant_type' => $user->getMorphClass(), 'participant_id' => $user->id, 'agent' => WidgetAgent::class, 'attachments' => [], 'meta' => [], 'usage' => []];
     ConversationMessage::query()->create(legacyRow($row + ['id' => (string) Str::uuid7(), 'role' => 'user', 'content' => 'Rename Alpha.', 'tool_calls' => [], 'tool_results' => [], 'created_at' => now()->subMinute()]));
     ConversationMessage::query()->create(legacyRow($row + ['id' => (string) Str::uuid7(), 'role' => 'assistant', 'content' => '', 'tool_calls' => [
-        ['id' => 'c1', 'name' => 'rename-widget', 'arguments' => ['id' => $widget->id, 'name' => $name]],
+        ['id' => 'c1', 'name' => 'rename-widget', 'arguments' => ['id' => $widget->id, 'name' => $name, ...$more]],
     ], 'tool_results' => [], 'approval_state' => ['pending' => ['c1' => 'Rename?']], 'created_at' => now()]));
 
     return $conversation->id;
@@ -77,6 +85,49 @@ it('validates the corrections and runs the tool with them', function () {
         ->and($row->arguments['name'])->toBe('Alpah II')
         ->and($row->approved_arguments['name'])->toBe('Alpha II');
 });
+
+it('sends only the fields the person changed, so an untouched form approves the call as proposed', function () {
+    $user = $this->user();
+    actingAs($user);
+    [$alpha] = $this->widgets();
+    // The date picker holds the proposed ISO date in its own format; untouched, that is not a correction.
+    $conversation = proposedRename($user, $alpha, 'Alpha II', ['at' => '2026-12-01T10:00:00Z']);
+
+    WidgetAgent::fake(['Renamed.']);
+    livewire(ApprovalForm::class, ['conversation' => $conversation, 'call' => 'c1'])
+        ->assertSet('data.at', '2026-12-01 10:00:00')
+        ->call('approve')->assertHasNoErrors()->assertDispatched('agents-decided');
+
+    $row = AgentToolCall::query()->sole();
+    expect($alpha->fresh()->name)->toBe('Alpha II')
+        ->and($row->approved_arguments)->toBeNull()
+        ->and(AgentTurn::query()->sole()->edits())->toBe([]);
+});
+
+it('keeps a changed field beside the proposed value of the ones left alone', function () {
+    $user = $this->user();
+    actingAs($user);
+    [$alpha] = $this->widgets();
+    $conversation = proposedRename($user, $alpha, 'Alpah II', ['at' => '2026-12-01T10:00:00Z']);
+
+    WidgetAgent::fake(['Renamed.']);
+    livewire(ApprovalForm::class, ['conversation' => $conversation, 'call' => 'c1'])
+        ->set('data.name', 'Alpha II')
+        ->call('approve')->assertHasNoErrors();
+
+    expect(AgentToolCall::query()->sole()->approved_arguments)->toBe(['id' => $alpha->id, 'name' => 'Alpha II', 'at' => '2026-12-01T10:00:00Z']);
+});
+
+it('keeps the Approve and Reject buttons for a call the tool gives no form, or whose form throws', function (string $name) {
+    $user = $this->user();
+    actingAs($user);
+    [$alpha] = $this->widgets();
+    $conversation = proposedRename($user, $alpha, $name);
+
+    expect(chat(['conversation' => $conversation])->html())
+        ->toContain('decide(&#039;c1&#039;, true)')
+        ->not->toContain('fi-chat-approval-form');
+})->with(['No form', 'Broken form']);
 
 it('never decides another person\'s proposal', function () {
     [$alpha] = $this->widgets();

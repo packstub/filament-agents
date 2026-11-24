@@ -170,7 +170,7 @@ use Packstub\FilamentAgents\Contracts\HasApprovalForm;
 
 class BookRoom extends AgentTool implements HasApprovalForm
 {
-    public function approvalForm(array $arguments): array
+    public function approvalForm(array $arguments): ?array
     {
         return [
             DateTimePicker::make('starts_at')->required()->after('now'),
@@ -182,7 +182,7 @@ class BookRoom extends AgentTool implements HasApprovalForm
 }
 ```
 
-The card shows the fields filled with what the model proposed, with Approve and Reject under them. Approve validates the fields with their own rules: an error shows under its field and nothing runs. Once they pass, the tool runs with the form's values in place of the proposed ones, and arguments without a field stay as proposed. The stored call is updated to what ran, so the assistant's next reply describes the corrected change. The tool log (`agent_tool_calls`) keeps both: `arguments` as the model proposed them and `approved_arguments` as they ran. `ProposalDecided` carries them too, as `$arguments` and `$approvedArguments`.
+The card shows the fields filled with what the model proposed, with Approve and Reject under them. Approve validates the fields with their own rules: an error shows under its field and nothing runs. Once they pass, the tool runs with the fields the person changed in place of the proposed values; a field left alone and an argument without a field stay exactly as the model sent them. A changed value arrives the way its field stores it (a `DateTimePicker` gives `2026-12-01 10:00:00`), so accept that format in `run()`. Return `null` (or no fields) from `approvalForm()` for a call that needs no form, and the card keeps its Approve and Reject buttons. The stored call is updated to what ran, so the assistant's next reply describes the corrected change. The tool log (`agent_tool_calls`) keeps both: `arguments` as the model proposed them and `approved_arguments` as they ran. `ProposalDecided` carries them too, as `$arguments` and `$approvedArguments`.
 
 The form is drawn in the panel only. A typed "yes", an embedded `<x-agents-chat />` outside the panel and the MCP server approve the call as proposed. Your own code can approve with corrections through `AgentChat::decide($call, true, $arguments)`; validate the arguments first ([Correcting the arguments before approving](https://packstub.dev/docs/agents/tools#correcting-the-arguments-before-approving)).
 

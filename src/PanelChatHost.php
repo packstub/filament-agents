@@ -11,9 +11,8 @@ use Illuminate\Database\Eloquent\Model;
 use Packstub\Agents\Chat\ApprovalForms;
 use Packstub\Agents\Chat\Hosts\RouteHost;
 use Packstub\Agents\Facades\Agents;
-use Packstub\Agents\Support\AgentChat;
 use Packstub\Agents\Support\AgentResources;
-use Packstub\FilamentAgents\Contracts\HasApprovalForm;
+use Packstub\FilamentAgents\Livewire\ApprovalForm;
 use Packstub\FilamentAgents\Pages\Chat;
 use Packstub\FilamentAgents\Pages\Chats;
 
@@ -127,17 +126,17 @@ class PanelChatHost extends RouteHost implements ApprovalForms
         };
     }
 
-    /** The chat's script as an Alpine component Filament loads on demand, and the chat's render hooks. */
-    /** A waiting proposal of a tool with HasApprovalForm gets its form on the card, in the panel only. */
+    /** A waiting proposal whose tool gives it fields (HasApprovalForm) gets them on the card, in the panel only. */
     public function approvalView(array $tool): ?string
     {
-        if (! $this->inPanel() || ! AgentChat::writeTools()->get((string) ($tool['tool'] ?? '')) instanceof HasApprovalForm) {
+        if (! $this->inPanel() || ApprovalForm::fieldsFor((string) ($tool['tool'] ?? ''), (array) ($tool['arguments'] ?? [])) === null) {
             return null;
         }
 
         return 'packstub-agents::embeds.approval-form';
     }
 
+    /** The chat's script as an Alpine component Filament loads on demand, and the chat's render hooks. */
     public function slot(string $name): string
     {
         if (! $this->inPanel()) {
