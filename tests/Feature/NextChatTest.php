@@ -2,6 +2,8 @@
 
 use Filament\Facades\Filament;
 use Filament\Support\Facades\FilamentView;
+use Filament\Support\View\ViewManager;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\View;
@@ -253,6 +255,21 @@ it('opens the chat as a slide-over from the Ask button and the shortcut, and emb
     $html = get(WidgetResource::getUrl('edit', ['record' => $alpha]))->assertOk()->content();
     expect($html)->not->toContain('open-agent-drawer');
     $plugin->slideOver(true)->shortcut('mod+j');
+});
+
+it('leaves the recent chats out of the sidebar when the panel asks it to, keeping the rest of the chat', function () {
+    $plugin = AgentsPlugin::current();
+    $panel = Filament::getPanel('admin');
+
+    // Render hooks are kept for the process, so each boot is read from an empty registry.
+    app()->instance(ViewManager::class, new ViewManager);
+    $plugin->sidebarChats(false)->boot($panel);
+    expect(FilamentView::hasRenderHook(PanelsRenderHook::SIDEBAR_NAV_END))->toBeFalse()
+        ->and(FilamentView::hasRenderHook(PanelsRenderHook::GLOBAL_SEARCH_BEFORE))->toBeTrue();
+
+    app()->instance(ViewManager::class, new ViewManager);
+    $plugin->sidebarChats()->boot($panel);
+    expect(FilamentView::hasRenderHook(PanelsRenderHook::SIDEBAR_NAV_END))->toBeTrue();
 });
 
 it('lists chats pinned first, searches inside the messages, and renames, pins, exports and deletes from the list', function () {
