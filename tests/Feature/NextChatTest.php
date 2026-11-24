@@ -258,6 +258,7 @@ it('opens the chat as a slide-over from the Ask button and the shortcut, and emb
 });
 
 it('leaves the recent chats out of the sidebar when the panel asks it to, keeping the rest of the chat', function () {
+    actingAs($this->user());
     $plugin = AgentsPlugin::current();
     $panel = Filament::getPanel('admin');
 
@@ -267,9 +268,14 @@ it('leaves the recent chats out of the sidebar when the panel asks it to, keepin
     expect(FilamentView::hasRenderHook(PanelsRenderHook::SIDEBAR_NAV_END))->toBeFalse()
         ->and(FilamentView::hasRenderHook(PanelsRenderHook::GLOBAL_SEARCH_BEFORE))->toBeTrue();
 
+    // The page keeps its sidebar and the "Ask …" button; only the chats block is gone.
+    $html = get(Chat::getUrl())->assertOk()->content();
+    expect($html)->toContain('fi-sidebar')->toContain('Ask Widgets')->not->toContain('fi-sidebar-chats');
+
     app()->instance(ViewManager::class, new ViewManager);
     $plugin->sidebarChats()->boot($panel);
     expect(FilamentView::hasRenderHook(PanelsRenderHook::SIDEBAR_NAV_END))->toBeTrue();
+    expect(get(Chat::getUrl())->assertOk()->content())->toContain('fi-sidebar-chats');
 });
 
 it('lists chats pinned first, searches inside the messages, and renames, pins, exports and deletes from the list', function () {

@@ -2,6 +2,10 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
+## Unreleased
+
+- A panel whose sidebar is already long can leave the recent chats out of it with `->sidebarChats(false)`; the chat, the "Ask …" button and the Chats page stay
+
 ## 1.20.0 — 2026-11-21
 
 The chat page now runs on the chat that ships with Agents for Laravel: same look, no Livewire round trips.
