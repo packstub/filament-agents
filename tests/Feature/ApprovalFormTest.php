@@ -1,6 +1,7 @@
 <?php
 
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Illuminate\Support\Str;
 use Laravel\Ai\Models\Conversation;
@@ -28,6 +29,11 @@ beforeEach(function () {
             return match ($arguments['name'] ?? null) {
                 'No form' => null,
                 'Broken form' => throw new RuntimeException('The form could not be built.'),
+                'Pick a name' => [
+                    Select::make('name')->searchable()->required()
+                        ->getSearchResultsUsing(fn (string $search) => collect(['Alpha II', 'Alpha III', 'Beta'])->filter(fn ($n) => str_contains(strtolower($n), strtolower($search)))->mapWithKeys(fn ($n) => [$n => $n])->all())
+                        ->getOptionLabelUsing(fn ($value) => $value),
+                ],
                 default => [
                     TextInput::make('name')->label('New name')->required()->maxLength(40),
                     DateTimePicker::make('at')->label('Renamed at'),
@@ -128,6 +134,23 @@ it('keeps the Approve and Reject buttons for a call the tool gives no form, or w
         ->toContain('decide(&#039;c1&#039;, true)')
         ->not->toContain('fi-chat-approval-form');
 })->with(['No form', 'Broken form']);
+
+it('lets a searchable select correct an argument', function () {
+    $user = $this->user();
+    actingAs($user);
+    [$alpha] = $this->widgets();
+    $conversation = proposedRename($user, $alpha, 'Pick a name');
+
+    WidgetAgent::fake(['Renamed.']);
+    livewire(ApprovalForm::class, ['conversation' => $conversation, 'call' => 'c1'])
+        ->assertSet('data.name', 'Pick a name')
+        ->assertFormFieldExists('name', fn (Select $field) => array_keys($field->getSearchResults('alpha')) === ['Alpha II', 'Alpha III'])
+        ->set('data.name', 'Alpha III')
+        ->call('approve')->assertHasNoErrors();
+
+    expect($alpha->fresh()->name)->toBe('Alpha III')
+        ->and(AgentToolCall::query()->sole()->approved_arguments['name'])->toBe('Alpha III');
+});
 
 it('never decides another person\'s proposal', function () {
     [$alpha] = $this->widgets();
