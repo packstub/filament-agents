@@ -5,6 +5,8 @@ All notable changes to `packstub/filament-agents` are documented here.
 ## Unreleased
 
 - A panel whose sidebar is already long can leave the recent chats out of it with `->sidebarChats(false)`; the chat, the "Ask …" button and the Chats page stay
+- A write tool can let the person correct its arguments before approving: implement `HasApprovalForm` and the approval card shows your Filament fields, validated on Approve (#108)
+- **Upgrading:** requires `packstub/agents` ^1.15; run `php artisan migrate` (the tool log keeps the proposed and the approved arguments)
 
 ## 1.20.0 — 2026-11-21
 
