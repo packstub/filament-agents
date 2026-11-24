@@ -54,9 +54,10 @@ class Chats extends Page implements HasTable
     }
 
     /**
-     * A panel with a sidebar lists the recent chats there (the sidebar hook) and needs no item for this page. A panel
-     * with top navigation has no such place, so it gets an "Ask …" item — the assistant's name and icon — that leads
-     * here and stays active on a chat; the topbar button keeps opening a new chat with the record being viewed.
+     * A panel with a sidebar gets no item for this page: the sidebar hook lists the recent chats there, and with
+     * `sidebarChats(false)` the page is reached through the chat's "All chats" link. A panel with top navigation has
+     * no sidebar, so it gets an "Ask …" item — the assistant's name and icon — that leads here and stays active on a
+     * chat; the topbar button keeps opening a new chat with the record being viewed.
      */
     public static function shouldRegisterNavigation(): bool
     {
