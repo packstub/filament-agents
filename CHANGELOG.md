@@ -2,7 +2,9 @@
 
 All notable changes to `packstub/filament-agents` are documented here.
 
-## Unreleased
+## 1.21.0 — 2026-11-25
+
+Correct a proposed change on the approval card before approving it.
 
 - A panel whose sidebar is already long can leave the recent chats out of it with `->sidebarChats(false)`; the chat, the "Ask …" button and the Chats page stay
 - A write tool can let the person correct its arguments before approving: implement `HasApprovalForm` and the approval card shows your Filament fields, validated on Approve (#108)
