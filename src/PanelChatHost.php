@@ -8,9 +8,11 @@ use Filament\Support\Facades\FilamentAsset;
 use Filament\Support\Facades\FilamentView;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Packstub\Agents\Chat\ApprovalForms;
 use Packstub\Agents\Chat\Hosts\RouteHost;
 use Packstub\Agents\Facades\Agents;
 use Packstub\Agents\Support\AgentResources;
+use Packstub\FilamentAgents\Livewire\ApprovalForm;
 use Packstub\FilamentAgents\Pages\Chat;
 use Packstub\FilamentAgents\Pages\Chats;
 
@@ -22,7 +24,7 @@ use Packstub\FilamentAgents\Pages\Chats;
  * of the app's own that renders <x-agents-chat /> — it steps aside for the
  * plain host.
  */
-class PanelChatHost extends RouteHost
+class PanelChatHost extends RouteHost implements ApprovalForms
 {
     protected function inPanel(): bool
     {
@@ -122,6 +124,16 @@ class PanelChatHost extends RouteHost
             'chart' => 'packstub-agents::embeds.chart',
             default => null,
         };
+    }
+
+    /** A waiting proposal whose tool gives it fields (HasApprovalForm) gets them on the card, in the panel only. */
+    public function approvalView(array $tool): ?string
+    {
+        if (! $this->inPanel() || ApprovalForm::fieldsFor((string) ($tool['tool'] ?? ''), (array) ($tool['arguments'] ?? [])) === null) {
+            return null;
+        }
+
+        return 'packstub-agents::embeds.approval-form';
     }
 
     /** The chat's script as an Alpine component Filament loads on demand, and the chat's render hooks. */

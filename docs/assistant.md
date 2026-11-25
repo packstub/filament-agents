@@ -158,6 +158,34 @@ The proposal sits in the conversation like any other answer, with the composer u
 
 ![A request to confirm an order paused as the question "Confirm order RO-00020 for Halvorsen & Co.?" with Approve and Reject buttons, the status change it would make (Pending struck through, then Confirmed) and the folded confirm-order call under it, the one-row composer underneath](https://raw.githubusercontent.com/packstub/art/main/filament-agents/docs/chat-approval.png)
 
+#### Approval forms
+
+When one argument of a proposal is slightly off (the time of a booking, a quantity, a typo in a name), the person can correct it on the card and approve, instead of rejecting and asking again. Give the write tool `HasApprovalForm` and return the Filament fields the person may change, each named after an argument:
+
+```php
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\TextInput;
+use Packstub\Agents\Mcp\AgentTool;
+use Packstub\FilamentAgents\Contracts\HasApprovalForm;
+
+class BookRoom extends AgentTool implements HasApprovalForm
+{
+    public function approvalForm(array $arguments): ?array
+    {
+        return [
+            DateTimePicker::make('starts_at')->required()->after('now'),
+            TextInput::make('seats')->integer()->required()->minValue(1)->maxValue(12),
+        ];
+    }
+
+    // run(), describe(), preview() and schema() as for any write tool
+}
+```
+
+The card shows the fields filled with what the model proposed, with Approve and Reject under them. Approve validates the fields with their own rules: an error shows under its field and nothing runs. Once they pass, the tool runs with the fields the person changed in place of the proposed values; a field left alone and an argument without a field stay exactly as the model sent them. A changed value arrives the way its field stores it (a `DateTimePicker` gives `2026-12-01 10:00:00`), so accept that format in `run()`. Return `null` (or no fields) from `approvalForm()` for a call that needs no form, and the card keeps its Approve and Reject buttons. The stored call is updated to what ran, so the assistant's next reply describes the corrected change. The tool log (`agent_tool_calls`) keeps both: `arguments` as the model proposed them and `approved_arguments` as they ran. `ProposalDecided` carries them too, as `$arguments` and `$approvedArguments`.
+
+The form is drawn in the panel only. A typed "yes", an embedded `<x-agents-chat />` outside the panel and the MCP server approve the call as proposed. Your own code can approve with corrections through `AgentChat::decide($call, true, $arguments)`; validate the arguments first ([Correcting the arguments before approving](https://packstub.dev/docs/agents/tools#correcting-the-arguments-before-approving)).
+
 ### When the chat is hidden
 
 The chat pages, the topbar button and the sidebar block hide themselves when `AgentModels::enabled()` is false: no provider key for the configured provider, for the provider of any picker entry or from the workspace, `AGENT_ENABLED=false`, or the workspace switched off on the operator's limits page. The MCP endpoint is independent of that.

@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Blade;
 use Livewire\Livewire;
 use Packstub\Agents\Chat\ChatAssets;
 use Packstub\FilamentAgents\Livewire\AgentTable;
+use Packstub\FilamentAgents\Livewire\ApprovalForm;
 use Packstub\FilamentAgents\Widgets\TurnsChart;
 use Packstub\FilamentAgents\Widgets\TurnStats;
 use Spatie\LaravelPackageTools\Package;
@@ -38,6 +39,7 @@ class FilamentAgentsServiceProvider extends PackageServiceProvider
         // queued while providers register runs before any queued while they boot, whatever the package order.
         $this->app->booted(function (): void {
             Livewire::component('packstub-agents.agent-table', AgentTable::class);
+            Livewire::component('packstub-agents.approval-form', ApprovalForm::class);
             Livewire::component('packstub-agents.turn-stats', TurnStats::class);
             Livewire::component('packstub-agents.turns-chart', TurnsChart::class);
 
