@@ -121,7 +121,8 @@ it('keeps a changed field beside the proposed value of the ones left alone', fun
         ->set('data.name', 'Alpha II')
         ->call('approve')->assertHasNoErrors();
 
-    expect(AgentToolCall::query()->sole()->approved_arguments)->toBe(['id' => $alpha->id, 'name' => 'Alpha II', 'at' => '2026-12-01T10:00:00Z']);
+    // toEqual: a MySQL JSON column hands the keys back in its own order.
+    expect(AgentToolCall::query()->sole()->approved_arguments)->toEqual(['id' => $alpha->id, 'name' => 'Alpha II', 'at' => '2026-12-01T10:00:00Z']);
 });
 
 it('keeps the Approve and Reject buttons for a call the tool gives no form, or whose form throws', function (string $name) {
